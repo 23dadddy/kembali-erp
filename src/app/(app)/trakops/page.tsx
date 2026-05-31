@@ -15,8 +15,9 @@ import {
 } from '@/components/ui/select'
 import {
   Truck, MapPin, Package, CheckCircle2, Clock, Navigation,
-  Plus, RotateCcw, AlertCircle, Loader2, ExternalLink, Users,
+  Plus, RotateCcw, AlertCircle, Loader2, ExternalLink, Users, Zap,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { getDeliveries, getRoutes, getStaff, getCustomers, createDelivery, createRoute, addRouteStop, updateDeliveryStatus } from '@/lib/db'
 import type { Delivery, Route, Staff, Customer } from '@/types'
 import Link from 'next/link'
@@ -53,6 +54,8 @@ export default function TrakOpsPage() {
     delivered_350ml: 0, delivered_750ml: 0,
   })
   const [savingDelivery, setSavingDelivery] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [generateResult, setGenerateResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,7 +77,6 @@ export default function TrakOpsPage() {
 
   // Real-time: subscribe to delivery updates and auto-refresh
   useEffect(() => {
-    const { createClient } = require('@/lib/supabase/client')
     const sb = createClient()
     const channel = sb
       .channel('trakops-deliveries')
@@ -128,6 +130,68 @@ export default function TrakOpsPage() {
     } finally { setSavingDelivery(false) }
   }
 
+  const handleGenerateDeliveries = async () => {
+    setGenerating(true)
+    setGenerateResult(null)
+    try {
+      const sb = createClient()
+      const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+      const dateStr = new Date().toISOString().split('T')[0]
+
+      // Get active subscriptions that include today in delivery_days
+      const { data: subs, error } = await sb
+        .from('customer_subscriptions')
+        .select('*, customer:customers(id, name)')
+        .eq('status', 'active')
+        .contains('delivery_days', [todayName])
+
+      if (error) throw error
+
+      // Get existing deliveries for today to avoid duplicates
+      const { data: existing } = await sb
+        .from('deliveries')
+        .select('customer_id')
+        .eq('delivery_date', dateStr)
+
+      const existingCustomerIds = new Set((existing ?? []).map((d: any) => d.customer_id))
+
+      const toCreate = (subs ?? []).filter((s: any) => !existingCustomerIds.has(s.customer_id))
+
+      let created = 0
+      for (const sub of toCreate) {
+        await createDelivery({
+          customer_id: sub.customer_id,
+          driver_id: null,
+          route_id: null,
+          order_id: null,
+          delivery_date: dateStr,
+          status: 'pending' as const,
+          delivered_350ml: sub.qty_350ml ?? 0,
+          delivered_750ml: sub.qty_750ml ?? 0,
+          collected_350ml: 0,
+          collected_750ml: 0,
+          damaged_350ml: 0,
+          damaged_750ml: 0,
+          driver_notes: sub.special_instructions ?? null,
+          signature_data: null,
+          signature_confirmed_by: null,
+        })
+        created++
+      }
+
+      setGenerateResult(
+        created === 0
+          ? `All ${(subs ?? []).length} subscription deliveries already exist for today`
+          : `Created ${created} delivery${created !== 1 ? 'ies' : ''} from subscriptions`
+      )
+      await load()
+    } catch (e: any) {
+      setGenerateResult(`Error: ${e.message}`)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const markInTransit = async (id: string) => {
     await updateDeliveryStatus(id, 'in_transit')
     await load()
@@ -138,10 +202,25 @@ export default function TrakOpsPage() {
       <Topbar title="TrakOps — Route & Delivery Tracker" />
       <div className="p-6 space-y-6">
 
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          Live — updates automatically when delivery statuses change
+        {/* Live indicator + Generate */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            Live — updates automatically when delivery statuses change
+          </div>
+          <div className="flex items-center gap-3">
+            {generateResult && (
+              <span className="text-xs text-slate-500 bg-slate-100 rounded-lg px-3 py-1.5">{generateResult}</span>
+            )}
+            <button
+              onClick={handleGenerateDeliveries}
+              disabled={generating}
+              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              Generate Today's Deliveries
+            </button>
+          </div>
         </div>
 
         {/* Day selector + date */}
