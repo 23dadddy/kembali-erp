@@ -36,10 +36,12 @@ export function GlobalSearch() {
     const sb = createClient()
     const like = `%${q}%`
 
-    const [customersRes, invoicesRes, staffRes] = await Promise.all([
-      sb.from('customers').select('id, name, city, type').ilike('name', like).limit(5),
-      sb.from('invoices').select('id, invoice_number, total, status').ilike('invoice_number', like).limit(5),
+    const [customersRes, invoicesRes, staffRes, ticketsRes, leadsRes] = await Promise.all([
+      sb.from('customers').select('id, name, city, type').or(`name.ilike.${like},contact_email.ilike.${like},contact_name.ilike.${like}`).limit(5),
+      sb.from('invoices').select('id, invoice_number, total, status').ilike('invoice_number', like).limit(4),
       sb.from('staff').select('id, name, role').ilike('name', like).eq('active', true).limit(3),
+      sb.from('support_tickets').select('id, subject, status').ilike('subject', like).limit(3),
+      sb.from('leads').select('id, name, status, city').ilike('name', like).limit(3),
     ])
 
     const all: SearchResult[] = [
@@ -60,6 +62,18 @@ export function GlobalSearch() {
         title: s.name,
         subtitle: s.role,
         href: `/hr`,
+      })),
+      ...(ticketsRes.data ?? []).map((t: any) => ({
+        id: t.id, type: 'delivery' as const,
+        title: t.subject,
+        subtitle: `Support · ${t.status}`,
+        href: `/support`,
+      })),
+      ...(leadsRes.data ?? []).map((l: any) => ({
+        id: l.id, type: 'customer' as const,
+        title: l.name,
+        subtitle: `Lead · ${l.status}${l.city ? ` · ${l.city}` : ''}`,
+        href: `/crm`,
       })),
     ]
 

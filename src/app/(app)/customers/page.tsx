@@ -307,9 +307,10 @@ export default function CustomersPage() {
                       <div className="space-y-0.5">
                         {c.contact_name && <div className="text-sm">{c.contact_name}</div>}
                         {c.contact_phone && (
-                          <div className="text-xs text-slate-400 flex items-center gap-1">
+                          <a href={`https://wa.me/${c.contact_phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium">
                             <Phone className="w-3 h-3" /> {c.contact_phone}
-                          </div>
+                          </a>
                         )}
                         {c.contact_email && (
                           <div className="text-xs text-slate-400 flex items-center gap-1">

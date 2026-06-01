@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
 import {
   MessageSquare, Plus, Loader2, Check, X, AlertCircle,
-  CheckCircle2, Clock, User, Building2, ChevronRight,
-  Filter, Search, MessageCircle
+  CheckCircle2, Clock, Building2, Search, Send, Lock, Eye,
+  ChevronDown, User,
 } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: React.ElementType }> = {
@@ -15,51 +15,93 @@ const STATUS_CONFIG: Record<string, { color: string; label: string; icon: React.
   resolved: { color: 'bg-emerald-100 text-emerald-700', label: 'Resolved', icon: CheckCircle2 },
   closed: { color: 'bg-slate-100 text-slate-500', label: 'Closed', icon: X },
 }
-
 const PRIORITY_CONFIG: Record<string, { color: string; label: string }> = {
   low: { color: 'bg-slate-100 text-slate-500', label: 'Low' },
   medium: { color: 'bg-blue-100 text-blue-600', label: 'Medium' },
   high: { color: 'bg-amber-100 text-amber-700', label: 'High' },
   urgent: { color: 'bg-red-100 text-red-600', label: 'Urgent' },
 }
-
 const CATEGORY_LABELS: Record<string, string> = {
-  delivery: 'Delivery Issue',
-  billing: 'Billing',
-  quality: 'Quality',
-  bottles: 'Bottles',
-  other: 'Other',
+  delivery: 'Delivery Issue', billing: 'Billing', quality: 'Quality',
+  bottles: 'Bottles', other: 'Other',
 }
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 const fmtTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+const fmtRelative = (d: string) => {
+  const diff = Date.now() - new Date(d).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return fmtDate(d)
+}
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([])
+  const [comments, setComments] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
+  const [myStaff, setMyStaff] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingComments, setLoadingComments] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [filterStatus, setFilterStatus] = useState('open')
   const [filterPriority, setFilterPriority] = useState('all')
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
-  const [reply, setReply] = useState('')
+  const [replyText, setReplyText] = useState('')
+  const [isInternal, setIsInternal] = useState(false)
+  const [sendingReply, setSendingReply] = useState(false)
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [newForm, setNewForm] = useState({ customer_id: '', subject: '', description: '', priority: 'medium', category: 'other' })
+  const [customers, setCustomers] = useState<any[]>([])
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => {
+    const init = async () => {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      const [ticketsRes, staffRes, customersRes, myRes] = await Promise.all([
+        sb.from('support_tickets').select('*, customer:customers(name, city, contact_phone), assignee:staff!assigned_to(name)').order('created_at', { ascending: false }),
+        sb.from('staff').select('id, name').eq('active', true).order('name'),
+        sb.from('customers').select('id, name, city').eq('active', true).order('name'),
+        user ? sb.from('staff').select('id, name').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
+      ])
+      setTickets(ticketsRes.data ?? [])
+      setStaff(staffRes.data ?? [])
+      setCustomers(customersRes.data ?? [])
+      setMyStaff((myRes as any).data)
+      setLoading(false)
+    }
+    init()
+  }, [])
 
-  const loadAll = async () => {
-    setLoading(true)
+  // Load comments when ticket selected
+  useEffect(() => {
+    if (!selected) { setComments([]); return }
+    const loadComments = async () => {
+      setLoadingComments(true)
+      const sb = createClient()
+      const { data } = await sb.from('ticket_comments')
+        .select('*, author:staff!author_id(name)')
+        .eq('ticket_id', selected.id)
+        .order('created_at', { ascending: true })
+      setComments(data ?? [])
+      setLoadingComments(false)
+    }
+    loadComments()
+
+    // Realtime
     const sb = createClient()
-    const [ticketsRes, staffRes] = await Promise.all([
-      sb.from('support_tickets')
-        .select('*, customer:customers(name, city), assignee:staff!assigned_to(name)')
-        .order('created_at', { ascending: false }),
-      sb.from('staff').select('id, name').eq('active', true).order('name'),
-    ])
-    setTickets(ticketsRes.data ?? [])
-    setStaff(staffRes.data ?? [])
-    setLoading(false)
-  }
+    const sub = sb.channel(`comments-${selected.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_comments', filter: `ticket_id=eq.${selected.id}` },
+        (payload) => setComments(prev => [...prev, payload.new as any]))
+      .subscribe()
+    return () => { sub.unsubscribe() }
+  }, [selected?.id])
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [comments])
 
   const updateTicket = async (id: string, updates: Record<string, any>) => {
     setSaving(true)
@@ -70,10 +112,33 @@ export default function SupportPage() {
     setSaving(false)
   }
 
-  const resolve = (id: string) => updateTicket(id, {
-    status: 'resolved',
-    resolved_at: new Date().toISOString(),
-  })
+  const sendReply = async () => {
+    if (!replyText.trim() || !selected) return
+    setSendingReply(true)
+    const sb = createClient()
+    const { data } = await sb.from('ticket_comments').insert({
+      ticket_id: selected.id,
+      author_id: myStaff?.id ?? null,
+      content: replyText.trim(),
+      is_internal: isInternal,
+    }).select('*, author:staff!author_id(name)').single()
+    if (data) setComments(prev => [...prev, data])
+    // Auto-move to in_progress if open
+    if (selected.status === 'open') updateTicket(selected.id, { status: 'in_progress' })
+    setReplyText('')
+    setSendingReply(false)
+  }
+
+  const createTicket = async () => {
+    if (!newForm.customer_id || !newForm.subject) return
+    setSaving(true)
+    const sb = createClient()
+    const { data } = await sb.from('support_tickets').insert({ ...newForm, source: 'manual' }).select('*, customer:customers(name, city, contact_phone)').single()
+    if (data) { setTickets(prev => [data, ...prev]); setSelected(data) }
+    setShowNewForm(false)
+    setNewForm({ customer_id: '', subject: '', description: '', priority: 'medium', category: 'other' })
+    setSaving(false)
+  }
 
   const filtered = tickets.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
@@ -86,16 +151,16 @@ export default function SupportPage() {
   const counts = {
     open: tickets.filter(t => t.status === 'open').length,
     in_progress: tickets.filter(t => t.status === 'in_progress').length,
-    urgent: tickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed').length,
+    urgent: tickets.filter(t => t.priority === 'urgent' && !['resolved','closed'].includes(t.status)).length,
   }
 
   return (
     <>
       <Topbar title="Support Tickets" />
       <div className="flex h-[calc(100vh-57px)]">
-        {/* Left panel */}
+
+        {/* ── Left panel ── */}
         <div className="w-80 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-2 p-3 border-b border-slate-100">
             <div className="bg-red-50 rounded-xl p-2 text-center">
               <p className="text-xl font-bold text-red-600">{counts.open}</p>
@@ -111,34 +176,27 @@ export default function SupportPage() {
             </div>
           </div>
 
-          {/* Search */}
-          <div className="px-3 py-2 border-b border-slate-100">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <div className="px-3 py-2 border-b border-slate-100 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                placeholder="Search tickets..."
-                value={search} onChange={e => setSearch(e.target.value)} />
+                placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <button onClick={() => setShowNewForm(true)}
+              className="flex-shrink-0 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Filters */}
           <div className="px-3 py-2 flex gap-1 flex-wrap border-b border-slate-100">
-            {['all', 'open', 'in_progress', 'resolved'].map(s => (
+            {['open', 'in_progress', 'resolved', 'all'].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
                 className={`px-2 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                 {s === 'in_progress' ? 'Active' : s}
               </button>
             ))}
-            <div className="w-px bg-slate-200 mx-1" />
-            {['all', 'urgent', 'high'].map(p => (
-              <button key={p} onClick={() => setFilterPriority(p)}
-                className={`px-2 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${filterPriority === p ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                {p === 'all' ? 'All priority' : p}
-              </button>
-            ))}
           </div>
 
-          {/* Ticket list */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
@@ -148,25 +206,22 @@ export default function SupportPage() {
                 <p className="text-sm">No tickets</p>
               </div>
             ) : filtered.map(ticket => {
-              const statusCfg = STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.open
               const priCfg = PRIORITY_CONFIG[ticket.priority] ?? PRIORITY_CONFIG.medium
+              const statusCfg = STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.open
               return (
                 <button key={ticket.id} onClick={() => setSelected(ticket)}
                   className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${selected?.id === ticket.id ? 'bg-cyan-50 border-l-2 border-l-cyan-500' : ''}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800 text-sm truncate">{ticket.subject}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">
-                        {ticket.customer?.name ?? (ticket as any).from_email ?? 'Unknown'}
-                        {(ticket as any).source === 'email' && <span className="ml-1.5 text-cyan-500">✉ email</span>}
-                      </p>
-                    </div>
+                    <p className="font-medium text-slate-800 text-sm truncate flex-1">{ticket.subject}</p>
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${priCfg.color}`}>{priCfg.label}</span>
                   </div>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    {ticket.customer?.name ?? ticket.from_email ?? 'Unknown'}
+                    {ticket.source === 'email' && <span className="ml-1.5 text-cyan-500">✉</span>}
+                  </p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
-                    <span className="text-xs text-slate-400">{CATEGORY_LABELS[ticket.category] ?? ticket.category}</span>
-                    <span className="text-xs text-slate-300 ml-auto">{fmtDate(ticket.created_at)}</span>
+                    <span className="text-xs text-slate-300 ml-auto">{fmtRelative(ticket.created_at)}</span>
                   </div>
                 </button>
               )
@@ -174,117 +229,174 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* Detail panel */}
-        <div className="flex-1 overflow-y-auto bg-slate-50">
-          {!selected ? (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              <div className="text-center">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-                <p className="font-medium">Select a ticket to view details</p>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 space-y-4 max-w-2xl">
-              {/* Header */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h2 className="text-lg font-bold text-slate-800">{selected.subject}</h2>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-                      {selected.customer?.name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{selected.customer.name}</span>}
-                      {(selected as any).from_email && (
-                        <span className="flex items-center gap-1 text-cyan-600">
-                          ✉ {(selected as any).from_name ? `${(selected as any).from_name} <${(selected as any).from_email}>` : (selected as any).from_email}
-                        </span>
-                      )}
-                      <span>{CATEGORY_LABELS[selected.category] ?? selected.category}</span>
-                      <span>{fmtDate(selected.created_at)} at {fmtTime(selected.created_at)}</span>
-                      {(selected as any).source && (selected as any).source !== 'manual' && (
-                        <span className="bg-cyan-50 text-cyan-600 px-1.5 py-0.5 rounded-full capitalize">{(selected as any).source}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_CONFIG[selected.status]?.color}`}>
-                        {STATUS_CONFIG[selected.status]?.label}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${PRIORITY_CONFIG[selected.priority]?.color}`}>
-                        {PRIORITY_CONFIG[selected.priority]?.label} priority
-                      </span>
-                    </div>
-                  </div>
-                  {(selected.status === 'open' || selected.status === 'in_progress') && (
-                    <button onClick={() => resolve(selected.id)} disabled={saving}
-                      className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 transition-colors">
-                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><CheckCircle2 className="w-3.5 h-3.5" />Resolve</>}
-                    </button>
-                  )}
+        {/* ── Detail panel ── */}
+        <div className="flex-1 flex flex-col bg-slate-50 min-w-0">
+          {showNewForm ? (
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-xl space-y-4">
+                <h2 className="text-lg font-bold text-slate-800">New Support Ticket</h2>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Customer *</label>
+                  <select className="w-full border rounded-lg px-3 py-2 text-sm" value={newForm.customer_id} onChange={e => setNewForm({ ...newForm, customer_id: e.target.value })}>
+                    <option value="">— select customer —</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name} · {c.city}</option>)}
+                  </select>
                 </div>
-              </div>
-
-              {/* Description */}
-              {selected.description && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Description</p>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{selected.description}</p>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Subject *</label>
+                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={newForm.subject} onChange={e => setNewForm({ ...newForm, subject: e.target.value })} placeholder="Brief description of the issue" />
                 </div>
-              )}
-
-              {/* Assignment & Actions */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Management</p>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-slate-500 block mb-1">Assigned To</label>
-                    <select className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm"
-                      value={selected.assigned_to ?? ''}
-                      onChange={e => updateTicket(selected.id, { assigned_to: e.target.value || null })}>
-                      <option value="">Unassigned</option>
-                      {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 block mb-1">Status</label>
-                    <select className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm"
-                      value={selected.status}
-                      onChange={e => updateTicket(selected.id, { status: e.target.value })}>
-                      {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 block mb-1">Priority</label>
-                    <select className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm"
-                      value={selected.priority}
-                      onChange={e => updateTicket(selected.id, { priority: e.target.value })}>
+                    <label className="text-xs font-medium text-slate-500 block mb-1">Priority</label>
+                    <select className="w-full border rounded-lg px-3 py-2 text-sm" value={newForm.priority} onChange={e => setNewForm({ ...newForm, priority: e.target.value })}>
                       {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 block mb-1">Category</label>
-                    <select className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm"
-                      value={selected.category ?? ''}
-                      onChange={e => updateTicket(selected.id, { category: e.target.value || null })}>
-                      <option value="">— select —</option>
+                    <label className="text-xs font-medium text-slate-500 block mb-1">Category</label>
+                    <select className="w-full border rounded-lg px-3 py-2 text-sm" value={newForm.category} onChange={e => setNewForm({ ...newForm, category: e.target.value })}>
                       {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Description</label>
+                  <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={4} value={newForm.description} onChange={e => setNewForm({ ...newForm, description: e.target.value })} placeholder="Detailed description..." />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={createTicket} disabled={saving || !newForm.customer_id || !newForm.subject}
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Create Ticket</>}
+                  </button>
+                  <button onClick={() => setShowNewForm(false)} className="border px-4 py-2.5 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
+                </div>
+              </div>
+            </div>
+          ) : !selected ? (
+            <div className="flex items-center justify-center flex-1 text-slate-400">
+              <div className="text-center">
+                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                <p className="font-medium">Select a ticket to view details</p>
+                <button onClick={() => setShowNewForm(true)} className="mt-3 text-sm text-cyan-600 hover:underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-3.5 h-3.5" />New ticket
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Ticket header */}
+              <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-bold text-slate-800 truncate">{selected.subject}</h2>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
+                      {selected.customer?.name && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-3 h-3" />{selected.customer.name}
+                          {selected.customer.contact_phone && (
+                            <a href={`https://wa.me/${selected.customer.contact_phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                              className="ml-1 text-emerald-500 hover:text-emerald-700 font-medium">WhatsApp ↗</a>
+                          )}
+                        </span>
+                      )}
+                      {selected.from_email && <span className="text-cyan-600">✉ {selected.from_name ? `${selected.from_name} <${selected.from_email}>` : selected.from_email}</span>}
+                      <span>{fmtDate(selected.created_at)}</span>
+                    </div>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CONFIG[selected.status]?.color}`}>{STATUS_CONFIG[selected.status]?.label}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_CONFIG[selected.priority]?.color}`}>{PRIORITY_CONFIG[selected.priority]?.label}</span>
+                      {selected.category && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{CATEGORY_LABELS[selected.category] ?? selected.category}</span>}
+                      {selected.assignee?.name && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">→ {selected.assignee.name}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    {(selected.status === 'open' || selected.status === 'in_progress') && (
+                      <button onClick={() => updateTicket(selected.id, { status: 'resolved', resolved_at: new Date().toISOString() })} disabled={saving}
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors">
+                        <CheckCircle2 className="w-3.5 h-3.5" />Resolve
+                      </button>
+                    )}
+                    <select className="border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600"
+                      value={selected.assigned_to ?? ''} onChange={e => updateTicket(selected.id, { assigned_to: e.target.value || null })}>
+                      <option value="">Unassigned</option>
+                      {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <select className="border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600"
+                      value={selected.priority} onChange={e => updateTicket(selected.id, { priority: e.target.value })}>
+                      {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {selected.description && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2 whitespace-pre-wrap">
+                    {selected.description}
+                  </div>
+                )}
               </div>
 
-              {/* Resolution */}
-              {selected.status === 'resolved' && selected.resolved_at && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <p className="text-sm font-semibold text-emerald-800">Resolved</p>
-                    <span className="text-xs text-emerald-600">{fmtDate(selected.resolved_at)} at {fmtTime(selected.resolved_at)}</span>
+              {/* Comment thread */}
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                {loadingComments ? (
+                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
+                ) : comments.length === 0 ? (
+                  <div className="text-center py-8 text-slate-300">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2" />
+                    <p className="text-sm">No replies yet — start the conversation below</p>
                   </div>
-                  {selected.assignee?.name && (
-                    <p className="text-xs text-emerald-600 mt-1">by {selected.assignee.name}</p>
-                  )}
+                ) : comments.map(c => (
+                  <div key={c.id} className={`flex gap-3 ${c.is_internal ? 'opacity-80' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold ${c.is_internal ? 'bg-amber-400' : 'bg-cyan-500'}`}>
+                      {c.author?.name?.[0] ?? '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-slate-700">{c.author?.name ?? 'Staff'}</span>
+                        {c.is_internal && (
+                          <span className="flex items-center gap-0.5 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                            <Lock className="w-2.5 h-2.5" />Internal
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400">{fmtRelative(c.created_at)}</span>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-2.5 text-sm text-slate-700 whitespace-pre-wrap ${c.is_internal ? 'bg-amber-50 border border-amber-200' : 'bg-white border border-slate-200'}`}>
+                        {c.content}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Reply box */}
+              <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0">
+                <div className={`border rounded-2xl overflow-hidden ${isInternal ? 'border-amber-300' : 'border-slate-200'}`}>
+                  <textarea
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendReply() }}
+                    placeholder={isInternal ? 'Internal note (not visible to customer)…' : 'Reply to this ticket… (Cmd+Enter to send)'}
+                    rows={3}
+                    className={`w-full px-4 py-3 text-sm resize-none focus:outline-none ${isInternal ? 'bg-amber-50' : 'bg-white'}`}
+                  />
+                  <div className="flex items-center gap-2 px-3 pb-3">
+                    <button
+                      onClick={() => setIsInternal(!isInternal)}
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors ${isInternal ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                      {isInternal ? <Lock className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {isInternal ? 'Internal note' : 'Public reply'}
+                    </button>
+                    <button
+                      onClick={sendReply}
+                      disabled={sendingReply || !replyText.trim()}
+                      className="ml-auto flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                      {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      Send
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>

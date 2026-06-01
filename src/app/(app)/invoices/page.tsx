@@ -19,6 +19,7 @@ import { idr } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Invoice, Customer, InvoiceStatus } from '@/types'
 import { getInvoices, createInvoice, updateInvoiceStatus, getCustomers, getPricing } from '@/lib/db'
+import { createClient } from '@/lib/supabase/client'
 
 const statusColors: Record<InvoiceStatus, string> = {
   draft: 'bg-slate-100 text-slate-600',
@@ -84,6 +85,23 @@ export default function InvoicesPage() {
 
   const changeStatus = async (id: string, status: string) => {
     await updateInvoiceStatus(id, status)
+    await load()
+  }
+
+  const markAsPaid = async (inv: Invoice) => {
+    const sb = createClient()
+    await Promise.all([
+      sb.from('invoices').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', inv.id),
+      sb.from('payments').insert({
+        customer_id: inv.customer_id,
+        invoice_id: inv.id,
+        amount: inv.total,
+        currency: 'IDR',
+        method: 'bank_transfer',
+        payment_date: new Date().toISOString().split('T')[0],
+        notes: `Auto-recorded when marked paid for invoice ${(inv as any).invoice_number}`,
+      }),
+    ])
     await load()
   }
 
@@ -294,9 +312,18 @@ export default function InvoicesPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <button onClick={() => router.push(`/invoices/${inv.id}`)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="View invoice">
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {['sent', 'overdue'].includes(inv.status) && (
+                          <button onClick={() => markAsPaid(inv)}
+                            className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg transition-colors"
+                            title="Mark as paid — creates payment record">
+                            <DollarSign className="w-3 h-3" />Paid
+                          </button>
+                        )}
+                        <button onClick={() => router.push(`/invoices/${inv.id}`)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="View invoice">
+                          <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

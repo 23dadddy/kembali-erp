@@ -197,6 +197,19 @@ export default function TrakOpsPage() {
     await load()
   }
 
+  const markCompleted = async (id: string) => {
+    const sb = createClient()
+    await sb.from('deliveries').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id)
+    await load()
+  }
+
+  const markFailed = async (id: string) => {
+    const reason = prompt('Reason for failure (optional):') ?? ''
+    const sb = createClient()
+    await sb.from('deliveries').update({ status: 'failed', failure_reason: reason || null }).eq('id', id)
+    await load()
+  }
+
   return (
     <>
       <Topbar title="TrakOps — Route & Delivery Tracker" />
@@ -449,26 +462,37 @@ export default function TrakOpsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {d.status === 'pending' && (
-                          <button
-                            onClick={() => markInTransit(d.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                          >
+                          <button onClick={() => markInTransit(d.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded-lg hover:bg-blue-50">
                             Start
                           </button>
                         )}
+                        {d.status === 'in_transit' && (
+                          <div className="flex gap-1">
+                            <button onClick={() => markCompleted(d.id)}
+                              className="text-xs text-emerald-600 hover:text-emerald-800 font-medium px-2 py-1 rounded-lg hover:bg-emerald-50">
+                              ✓ Done
+                            </button>
+                            <button onClick={() => markFailed(d.id)}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50">
+                              ✕ Fail
+                            </button>
+                          </div>
+                        )}
                         {(d.status === 'pending' || d.status === 'in_transit') && (
-                          <Link
-                            href={`/deliver/${d.id}`}
-                            className="flex items-center gap-1 bg-cyan-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-cyan-700"
-                          >
+                          <Link href={`/deliver/${d.id}`}
+                            className="flex items-center gap-1 bg-cyan-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-cyan-700">
                             Log <ExternalLink className="w-3 h-3" />
                           </Link>
                         )}
-                        {d.status === 'completed' && d.signature_confirmed_by && (
+                        {d.status === 'completed' && (
                           <span className="text-xs text-emerald-600 flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" />
-                            {d.signature_confirmed_by}
+                            {d.signature_confirmed_by ?? 'Done'}
                           </span>
+                        )}
+                        {d.status === 'failed' && (
+                          <span className="text-xs text-red-500 font-medium">✕ Failed</span>
                         )}
                       </div>
                     </div>

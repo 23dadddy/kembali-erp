@@ -227,9 +227,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     <MapPin className="w-3 h-3" />{customer.address}, {customer.city}
                   </p>
                   {customer.contact_phone && (
-                    <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5">
-                      <Phone className="w-3 h-3" />{customer.contact_phone}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-sm text-slate-400 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />{customer.contact_phone}
+                      </p>
+                      <a href={`https://wa.me/${customer.contact_phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                        className="text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-2 py-0.5 rounded-full font-medium transition-colors">
+                        WhatsApp ↗
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
