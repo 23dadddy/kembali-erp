@@ -20,10 +20,19 @@ import type { Customer, CustomerAddress, CustomerContact, CustomerNote, Invoice,
 import {
   ChevronLeft, MapPin, Phone, Mail, User, Plus, Edit2, Check, X,
   Package, FileText, Truck, MessageSquare, Building2, Star,
-  AlertTriangle, Loader2, Globe, ExternalLink,
+  AlertTriangle, Loader2, Globe, ExternalLink, Clock,
 } from 'lucide-react'
 
-type Tab = 'overview' | 'addresses' | 'contacts' | 'deliveries' | 'invoices' | 'notes'
+interface FieldHistory {
+  id: string
+  field_name: string
+  old_value: string | null
+  new_value: string | null
+  changed_at: string
+  changed_by_name?: string | null
+}
+
+type Tab = 'overview' | 'addresses' | 'contacts' | 'deliveries' | 'invoices' | 'notes' | 'history'
 
 const TIER_COLORS: Record<string, string> = {
   standard: 'bg-slate-100 text-slate-600',
@@ -73,6 +82,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [enablingPortal, setEnablingPortal] = useState(false)
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [salesStaff, setSalesStaff] = useState<{ id: string; name: string; crm_role: string | null }[]>([])
+  const [fieldHistory, setFieldHistory] = useState<FieldHistory[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -127,11 +138,55 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     setEnablingPortal(false)
   }
 
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    const sb = createClient()
+    const { data } = await sb
+      .from('customer_field_history')
+      .select('id, field_name, old_value, new_value, changed_at, staff:changed_by(name)')
+      .eq('customer_id', id)
+      .order('changed_at', { ascending: false })
+      .limit(100)
+    setFieldHistory((data ?? []).map((r: any) => ({
+      id: r.id,
+      field_name: r.field_name,
+      old_value: r.old_value,
+      new_value: r.new_value,
+      changed_at: r.changed_at,
+      changed_by_name: r.staff?.name ?? null,
+    })))
+    setHistoryLoading(false)
+  }
+
+  // Track which fields changed and insert history rows before saving
+  const TRACKED_FIELDS: (keyof Customer)[] = [
+    'name', 'type', 'status', 'tier', 'city', 'address',
+    'contact_name', 'contact_email', 'contact_phone', 'notes',
+  ]
+
   const handleSaveCustomer = async () => {
     if (!customer) return
+    const sb = createClient()
+    // Build history rows for changed fields
+    const historyRows = TRACKED_FIELDS
+      .filter(f => {
+        const oldVal = String(customer[f] ?? '')
+        const newVal = String((editForm as any)[f] ?? '')
+        return oldVal !== newVal
+      })
+      .map(f => ({
+        customer_id: customer.id,
+        field_name: f,
+        old_value: String(customer[f] ?? '') || null,
+        new_value: String((editForm as any)[f] ?? '') || null,
+      }))
+    if (historyRows.length > 0) {
+      await sb.from('customer_field_history').insert(historyRows)
+    }
     const updated = await updateCustomer(customer.id, editForm)
     setCustomer(updated)
     setEditingCustomer(false)
+    if (historyRows.length > 0) loadHistory()
   }
 
   const handleAddNote = async () => {
@@ -155,6 +210,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     setContacts([...contacts, cont])
     setNewContact({ is_primary: false, receives_invoices: false, receives_delivery_notices: false })
     setAddingContact(false)
+    // Log history
+    const sb = createClient()
+    await sb.from('customer_field_history').insert({
+      customer_id: customer.id,
+      field_name: 'contact_added',
+      old_value: null,
+      new_value: [newContact.name, newContact.role, newContact.phone].filter(Boolean).join(' · '),
+    })
+    loadHistory()
   }
 
   const handleGenerateInvoice = async () => {
@@ -196,6 +260,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     { id: 'deliveries', label: `Deliveries (${deliveries.length})`, icon: Truck },
     { id: 'invoices', label: `Invoices (${invoices.length})`, icon: FileText },
     { id: 'notes', label: `Notes (${notes.length})`, icon: MessageSquare },
+    { id: 'history', label: 'Edit History', icon: Clock },
   ]
 
   return (
@@ -280,7 +345,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           {TABS.map(({ id: tid, label, icon: Icon }) => (
             <button
               key={tid}
-              onClick={() => setTab(tid)}
+              onClick={() => { setTab(tid); if (tid === 'history') loadHistory() }}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 tab === tid ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
@@ -532,7 +597,18 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       {c.receives_delivery_notices && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Deliveries</span>}
                     </div>
                   </div>
-                  <button onClick={async () => { await deleteCustomerContact(c.id); setContacts(contacts.filter(x => x.id !== c.id)) }} className="text-slate-300 hover:text-red-400 mt-1">
+                  <button onClick={async () => {
+                    await deleteCustomerContact(c.id)
+                    setContacts(contacts.filter(x => x.id !== c.id))
+                    const sb = createClient()
+                    await sb.from('customer_field_history').insert({
+                      customer_id: customer.id,
+                      field_name: 'contact_removed',
+                      old_value: [c.name, c.role, c.phone].filter(Boolean).join(' · '),
+                      new_value: null,
+                    })
+                    loadHistory()
+                  }} className="text-slate-300 hover:text-red-400 mt-1">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -587,6 +663,68 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
           </CardContent></Card>
+        )}
+
+        {/* HISTORY */}
+        {tab === 'history' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500">All field changes and contact edits are logged here automatically.</p>
+              <button onClick={loadHistory} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Refresh
+              </button>
+            </div>
+            {historyLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
+            ) : fieldHistory.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">No edit history yet — changes made via the Edit button will appear here.</div>
+            ) : (
+              <div className="space-y-2">
+                {fieldHistory.map(entry => {
+                  const isContactEvent = entry.field_name === 'contact_added' || entry.field_name === 'contact_removed'
+                  const isRemoval = entry.field_name === 'contact_removed' || (!entry.new_value && entry.old_value)
+                  const fieldLabel = entry.field_name
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase())
+                  return (
+                    <div key={entry.id} className="flex items-start gap-3 text-sm">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        isRemoval ? 'bg-red-50' : isContactEvent ? 'bg-emerald-50' : 'bg-slate-100'
+                      }`}>
+                        <Clock className={`w-3.5 h-3.5 ${isRemoval ? 'text-red-400' : isContactEvent ? 'text-emerald-500' : 'text-slate-400'}`} />
+                      </div>
+                      <div className="flex-1 bg-white border border-slate-100 rounded-xl px-3 py-2.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-slate-700">{fieldLabel}</span>
+                            {!isContactEvent && (
+                              <span className="text-slate-400"> changed</span>
+                            )}
+                            {entry.old_value && (
+                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded line-through">{entry.old_value}</span>
+                                {entry.new_value && <span className="text-xs text-slate-400">→</span>}
+                              </div>
+                            )}
+                            {entry.new_value && (
+                              <div className="mt-1">
+                                <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">{entry.new_value}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs text-slate-400">{new Date(entry.changed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                            <p className="text-xs text-slate-300">{new Date(entry.changed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            {entry.changed_by_name && <p className="text-xs text-slate-400 font-medium">{entry.changed_by_name}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* NOTES */}
