@@ -38,12 +38,13 @@ export default function ChatPage() {
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [myStaff, setMyStaff] = useState<StaffMember | null>(null)
   const [loading, setLoading] = useState(true)
-  const [onlineIds] = useState<Set<string>>(new Set()) // placeholder
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set())
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load staff and current user
+  // Load staff and current user, then set up presence
   useEffect(() => {
+    let presenceChannel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null
     const init = async () => {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
@@ -51,10 +52,27 @@ export default function ChatPage() {
         sb.from('staff').select('id, name, role').eq('active', true).order('name'),
         user ? sb.from('staff').select('id, name, role').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
       ])
+      const myStaffData = (myRes as any).data as StaffMember | null
       setStaff((staffRes.data ?? []) as StaffMember[])
-      setMyStaff((myRes as any).data as StaffMember | null)
+      setMyStaff(myStaffData)
+
+      // Presence tracking
+      if (myStaffData) {
+        presenceChannel = sb.channel('presence-chat', { config: { presence: { key: myStaffData.id } } })
+        presenceChannel
+          .on('presence', { event: 'sync' }, () => {
+            const state = presenceChannel!.presenceState()
+            setOnlineIds(new Set(Object.keys(state)))
+          })
+          .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              await presenceChannel!.track({ staff_id: myStaffData.id, name: myStaffData.name })
+            }
+          })
+      }
     }
     init()
+    return () => { presenceChannel?.unsubscribe() }
   }, [])
 
   const loadMessages = useCallback(async () => {
