@@ -8,7 +8,7 @@ import { idr } from '@/lib/format'
 import {
   TrendingUp, Plus, Check, X, Loader2, Phone, Mail, MapPin,
   ArrowRight, Users, DollarSign, Target, Star, MessageSquare,
-  Calendar, Video, FileText, Activity, ChevronRight, Edit2, Building2
+  Calendar, Video, FileText, Activity, ChevronRight, Edit2, Building2, User
 } from 'lucide-react'
 
 const STAGES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'] as const
@@ -347,6 +347,16 @@ export default function CRMPage() {
                     </select>
                   </div>
                   <div className="col-span-2">
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Assign To (AE)</label>
+                    <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      value={form.assigned_to ?? ''} onChange={e => setForm({ ...form, assigned_to: e.target.value || null })}>
+                      <option value="">— Unassigned —</option>
+                      {staff.filter((s: any) => s.crm_role === 'ae' || s.crm_role === 'manager').map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-xs font-medium text-slate-600 block mb-1">Notes</label>
                     <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none" rows={3}
                       value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
@@ -404,6 +414,11 @@ export default function CRMPage() {
                   {selected.contact_email && <a href={`mailto:${selected.contact_email}`} className="flex items-center gap-1 hover:text-cyan-600"><Mail className="w-3.5 h-3.5 text-slate-400" />{selected.contact_email}</a>}
                 </div>
 
+                {selected.assigned_to && (
+                  <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                    <User className="w-3 h-3" /> AE: {staff.find((s: any) => s.id === selected.assigned_to)?.name ?? 'Unknown'}
+                  </p>
+                )}
                 {selected.notes && <p className="text-sm text-slate-500 mt-3 bg-slate-50 rounded-xl px-3 py-2">{selected.notes}</p>}
 
                 {/* Stage progression */}
