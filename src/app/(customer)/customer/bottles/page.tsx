@@ -2,36 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getPortalCustomer } from '@/lib/customer-auth'
 import { Droplets, Package, TrendingDown, AlertCircle, CheckCircle2, Loader2, Info } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function CustomerBottlesPage() {
-  const [customers, setCustomers] = useState<any[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const router = useRouter()
   const [balance, setBalance] = useState<any>(null)
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadCustomers() }, [])
-  useEffect(() => { if (selectedCustomer) loadData() }, [selectedCustomer])
+  useEffect(() => {
+    const load = async () => {
+      const customer = await getPortalCustomer()
+      if (!customer) { router.push('/customer/login'); return }
 
-  const loadCustomers = async () => {
-    const sb = createClient()
-    const { data } = await sb.from('customers').select('id, name, city').eq('active', true).limit(50)
-    setCustomers(data ?? [])
-    if (data?.[0]) setSelectedCustomer(data[0].id)
-  }
-
-  const loadData = async () => {
-    setLoading(true)
-    const sb = createClient()
-    const [balRes, delivRes] = await Promise.all([
-      sb.from('customer_bottle_balance').select('*').eq('customer_id', selectedCustomer).single(),
-      sb.from('deliveries').select('*').eq('customer_id', selectedCustomer).in('status', ['completed', 'delivered']).order('delivery_date', { ascending: false }).limit(20),
-    ])
-    setBalance(balRes.data)
-    setDeliveries(delivRes.data ?? [])
-    setLoading(false)
-  }
+      const sb = createClient()
+      const [balRes, delivRes] = await Promise.all([
+        sb.from('customer_bottle_balance').select('*').eq('customer_id', customer.id).single(),
+        sb.from('deliveries').select('*').eq('customer_id', customer.id).in('status', ['completed', 'delivered']).order('delivery_date', { ascending: false }).limit(20),
+      ])
+      setBalance(balRes.data)
+      setDeliveries(delivRes.data ?? [])
+      setLoading(false)
+    }
+    load()
+  }, [router])
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const fmt = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
@@ -43,14 +39,9 @@ export default function CustomerBottlesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Bottle Account</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Track your bottle loans, returns, and charges</p>
-        </div>
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Bottle Account</h1>
+        <p className="text-slate-500 text-sm mt-0.5">Track your bottle loans, returns, and charges</p>
       </div>
 
       {loading ? (

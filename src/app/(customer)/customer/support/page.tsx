@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getPortalCustomer } from '@/lib/customer-auth'
 import {
   MessageSquare, Plus, Loader2, Check, X, AlertCircle,
   Clock, CheckCircle2, ChevronDown, Package, Truck, HelpCircle
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 const TICKET_CATEGORIES = [
   { value: 'delivery_issue', label: 'Delivery Issue', icon: Truck },
@@ -16,8 +18,8 @@ const TICKET_CATEGORIES = [
 ]
 
 export default function CustomerSupportPage() {
-  const [customers, setCustomers] = useState<any[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const router = useRouter()
+  const [customerId, setCustomerId] = useState('')
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -29,20 +31,21 @@ export default function CustomerSupportPage() {
     priority: 'medium',
   })
 
-  useEffect(() => { loadCustomers() }, [])
-  useEffect(() => { if (selectedCustomer) loadTickets() }, [selectedCustomer])
+  useEffect(() => {
+    const init = async () => {
+      const customer = await getPortalCustomer()
+      if (!customer) { router.push('/customer/login'); return }
+      setCustomerId(customer.id)
+    }
+    init()
+  }, [router])
 
-  const loadCustomers = async () => {
-    const sb = createClient()
-    const { data } = await sb.from('customers').select('id, name, city').eq('active', true).limit(50)
-    setCustomers(data ?? [])
-    if (data?.[0]) setSelectedCustomer(data[0].id)
-  }
+  useEffect(() => { if (customerId) loadTickets() }, [customerId])
 
   const loadTickets = async () => {
     setLoading(true)
     const sb = createClient()
-    const { data } = await sb.from('support_tickets').select('*').eq('customer_id', selectedCustomer).order('created_at', { ascending: false })
+    const { data } = await sb.from('support_tickets').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
     setTickets(data ?? [])
     setLoading(false)
   }
@@ -52,7 +55,7 @@ export default function CustomerSupportPage() {
     setSaving(true)
     const sb = createClient()
     const { data } = await sb.from('support_tickets').insert({
-      customer_id: selectedCustomer,
+      customer_id: customerId,
       subject: form.subject,
       category: form.category,
       description: form.description,
@@ -83,14 +86,9 @@ export default function CustomerSupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Support</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Submit and track your service requests</p>
-        </div>
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Support</h1>
+        <p className="text-slate-500 text-sm mt-0.5">Submit and track your service requests</p>
       </div>
 
       {/* Contact Banner */}

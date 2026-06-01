@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getPortalCustomer } from '@/lib/customer-auth'
 import {
   Package, Plus, Loader2, Check, X, Clock, CheckCircle2, Truck,
   RefreshCw, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 export default function CustomerOrdersPage() {
-  const [customers, setCustomers] = useState<any[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const router = useRouter()
+  const [customerId, setCustomerId] = useState('')
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,22 +38,23 @@ export default function CustomerOrdersPage() {
     special_instructions: '',
   })
 
-  useEffect(() => { loadCustomers() }, [])
-  useEffect(() => { if (selectedCustomer) loadData() }, [selectedCustomer])
+  useEffect(() => {
+    const init = async () => {
+      const customer = await getPortalCustomer()
+      if (!customer) { router.push('/customer/login'); return }
+      setCustomerId(customer.id)
+    }
+    init()
+  }, [router])
 
-  const loadCustomers = async () => {
-    const sb = createClient()
-    const { data } = await sb.from('customers').select('id, name, city').eq('active', true).limit(50)
-    setCustomers(data ?? [])
-    if (data?.[0]) setSelectedCustomer(data[0].id)
-  }
+  useEffect(() => { if (customerId) loadData() }, [customerId])
 
   const loadData = async () => {
     setLoading(true)
     const sb = createClient()
     const [delivRes, subRes] = await Promise.all([
-      sb.from('deliveries').select('*').eq('customer_id', selectedCustomer).order('delivery_date', { ascending: false }).limit(30),
-      sb.from('customer_subscriptions').select('*').eq('customer_id', selectedCustomer),
+      sb.from('deliveries').select('*').eq('customer_id', customerId).order('delivery_date', { ascending: false }).limit(30),
+      sb.from('customer_subscriptions').select('*').eq('customer_id', customerId),
     ])
     setDeliveries(delivRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -63,7 +66,7 @@ export default function CustomerOrdersPage() {
     setSaving(true)
     const sb = createClient()
     await sb.from('deliveries').insert({
-      customer_id: selectedCustomer,
+      customer_id: customerId,
       delivery_date: orderForm.delivery_date,
       status: 'pending',
       delivered_350ml: orderForm.qty_350ml,
@@ -84,7 +87,7 @@ export default function CustomerOrdersPage() {
     setSaving(true)
     const sb = createClient()
     await sb.from('customer_subscriptions').insert({
-      customer_id: selectedCustomer,
+      customer_id: customerId,
       frequency: subForm.frequency,
       qty_350ml: subForm.qty_350ml,
       qty_750ml: subForm.qty_750ml,
@@ -109,14 +112,9 @@ export default function CustomerOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Orders</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Place one-time orders or manage standing deliveries</p>
-        </div>
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Orders</h1>
+        <p className="text-slate-500 text-sm mt-0.5">Place one-time orders or manage standing deliveries</p>
       </div>
 
       {/* Tabs */}

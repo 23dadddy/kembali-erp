@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getPortalCustomer } from '@/lib/customer-auth'
 import {
   User, MapPin, Phone, Mail, Building2, Plus, Check, X, Loader2,
   Edit2, Trash2, Star, Bell, BellOff
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function CustomerAccountPage() {
-  const [customers, setCustomers] = useState<any[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const router = useRouter()
+  const [customerId, setCustomerId] = useState('')
   const [customer, setCustomer] = useState<any>(null)
   const [addresses, setAddresses] = useState<any[]>([])
   const [contacts, setContacts] = useState<any[]>([])
@@ -24,23 +26,24 @@ export default function CustomerAccountPage() {
   const [addressForm, setAddressForm] = useState({ label: '', address: '', city: '', delivery_instructions: '', is_primary: false })
   const [contactForm, setContactForm] = useState({ name: '', role: '', phone: '', email: '', whatsapp: '', receives_invoices: false, receives_delivery_notices: false })
 
-  useEffect(() => { loadCustomers() }, [])
-  useEffect(() => { if (selectedCustomer) loadData() }, [selectedCustomer])
+  useEffect(() => {
+    const init = async () => {
+      const portalCustomer = await getPortalCustomer()
+      if (!portalCustomer) { router.push('/customer/login'); return }
+      setCustomerId(portalCustomer.id)
+    }
+    init()
+  }, [router])
 
-  const loadCustomers = async () => {
-    const sb = createClient()
-    const { data } = await sb.from('customers').select('id, name, city').eq('active', true).limit(50)
-    setCustomers(data ?? [])
-    if (data?.[0]) setSelectedCustomer(data[0].id)
-  }
+  useEffect(() => { if (customerId) loadData() }, [customerId])
 
   const loadData = async () => {
     setLoading(true)
     const sb = createClient()
     const [custRes, addrRes, contactRes] = await Promise.all([
-      sb.from('customers').select('*').eq('id', selectedCustomer).single(),
-      sb.from('customer_addresses').select('*').eq('customer_id', selectedCustomer).order('is_primary', { ascending: false }),
-      sb.from('customer_contacts').select('*').eq('customer_id', selectedCustomer),
+      sb.from('customers').select('*').eq('id', customerId).single(),
+      sb.from('customer_addresses').select('*').eq('customer_id', customerId).order('is_primary', { ascending: false }),
+      sb.from('customer_contacts').select('*').eq('customer_id', customerId),
     ])
     const c = custRes.data
     setCustomer(c)
@@ -54,7 +57,7 @@ export default function CustomerAccountPage() {
     setSaving(true)
     const sb = createClient()
     const { phone, email, ...rest } = profileForm
-    await sb.from('customers').update({ ...rest, contact_phone: phone, contact_email: email }).eq('id', selectedCustomer)
+    await sb.from('customers').update({ ...rest, contact_phone: phone, contact_email: email }).eq('id', customerId)
     setCustomer({ ...customer, ...profileForm })
     setEditProfile(false)
     setSaving(false)
@@ -64,7 +67,7 @@ export default function CustomerAccountPage() {
     if (!addressForm.address) return
     setSaving(true)
     const sb = createClient()
-    const { data } = await sb.from('customer_addresses').insert({ ...addressForm, customer_id: selectedCustomer }).select().single()
+    const { data } = await sb.from('customer_addresses').insert({ ...addressForm, customer_id: customerId }).select().single()
     if (data) setAddresses([...addresses, data])
     setAddressForm({ label: '', address: '', city: '', delivery_instructions: '', is_primary: false })
     setShowAddressForm(false)
@@ -75,7 +78,7 @@ export default function CustomerAccountPage() {
     if (!contactForm.name) return
     setSaving(true)
     const sb = createClient()
-    const { data } = await sb.from('customer_contacts').insert({ ...contactForm, customer_id: selectedCustomer }).select().single()
+    const { data } = await sb.from('customer_contacts').insert({ ...contactForm, customer_id: customerId }).select().single()
     if (data) setContacts([...contacts, data])
     setContactForm({ name: '', role: '', phone: '', email: '', whatsapp: '', receives_invoices: false, receives_delivery_notices: false })
     setShowContactForm(false)
@@ -100,14 +103,9 @@ export default function CustomerAccountPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Account</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage your profile, addresses, and contacts</p>
-        </div>
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Account</h1>
+        <p className="text-slate-500 text-sm mt-0.5">Manage your profile, addresses, and contacts</p>
       </div>
 
       {/* Tabs */}
