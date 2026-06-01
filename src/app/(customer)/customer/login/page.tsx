@@ -46,7 +46,7 @@ function CustomerLoginForm() {
     const { error: authError } = await sb.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/customer/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/customer/dashboard`,
         shouldCreateUser: true,
       },
     })

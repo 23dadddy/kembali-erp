@@ -19,10 +19,11 @@ export default async function DashboardPage() {
   const sb = await createClient()
   const today = new Date().toISOString().split('T')[0]
 
-  // Month range
+  // Rolling 30-day range for revenue
   const now = new Date()
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30)
+  const monthStart = thirtyDaysAgo.toISOString().split('T')[0]
+  const monthEnd = today
 
   const [
     customersRes, deliveriesRes, inventoryRes, invoicesRes, todayDeliveriesRes,
@@ -129,7 +130,7 @@ export default async function DashboardPage() {
         {/* Revenue + Overdue */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[
-            { label: 'Revenue This Month', value: formatIDR(monthRevenue), icon: DollarSign, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+            { label: 'Revenue (30 days)', value: formatIDR(monthRevenue), icon: DollarSign, color: 'text-emerald-700', bg: 'bg-emerald-50' },
             { label: 'Overdue AR', value: formatIDR(overdueTotal), icon: AlertCircle, color: overdueTotal > 0 ? 'text-red-600' : 'text-slate-400', bg: overdueTotal > 0 ? 'bg-red-50' : 'bg-slate-50' },
             { label: 'Active Vehicles', value: `${activeVehicles} (${maintVehicles} in maint.)`, icon: Wrench, color: 'text-slate-700', bg: 'bg-slate-50' },
             { label: 'Drivers on Team', value: drivers, icon: Target, color: 'text-cyan-700', bg: 'bg-cyan-50' },

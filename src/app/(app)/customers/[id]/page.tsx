@@ -117,7 +117,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       // Send magic link invitation
       await sb.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/customer/dashboard`, shouldCreateUser: true },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/customer/dashboard`, shouldCreateUser: true },
       })
       setPortalStatus(`✓ Invitation sent to ${email}`)
       setCustomer({ ...customer, portal_enabled: true } as any)

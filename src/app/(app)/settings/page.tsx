@@ -48,9 +48,10 @@ export default function SettingsPage() {
     setLoading(true)
     const sb = createClient()
 
-    const [pricingData, locData] = await Promise.all([
+    const [pricingData, locData, settingsData] = await Promise.all([
       getPricing(),
       sb.from('locations').select('*').order('name'),
+      sb.from('app_settings').select('value').eq('key', 'invoice').single(),
     ])
 
     for (const p of pricingData) {
@@ -58,6 +59,23 @@ export default function SettingsPage() {
       if (p.bottle_size === '750ml') setPrice750(String(p.price_per_unit))
     }
     setLocations(locData.data ?? [])
+    if (settingsData.data?.value) {
+      const s = settingsData.data.value as any
+      setInvoiceSettings(prev => ({
+        ...prev,
+        company_name: s.company_name ?? prev.company_name,
+        bank_name: s.bank_name ?? prev.bank_name,
+        bank_account: s.bank_account ?? prev.bank_account,
+        bank_holder: s.bank_holder ?? prev.bank_holder,
+        invoice_footer: s.footer_note ?? prev.invoice_footer,
+        payment_terms_days: String(s.payment_terms ?? prev.payment_terms_days),
+        invoice_prefix: s.invoice_prefix ?? prev.invoice_prefix,
+      }))
+    } else {
+      // Fall back to localStorage
+      const saved = localStorage.getItem('invoice_settings')
+      if (saved) setInvoiceSettings(JSON.parse(saved))
+    }
     setLoading(false)
   }
 
@@ -91,19 +109,23 @@ export default function SettingsPage() {
 
   const saveInvoiceSettings = async () => {
     setSavingInvoice(true)
-    // Store in Supabase as a settings record (we'll use a simple approach)
     const sb = createClient()
-    // In a production app, you'd have a settings table. For now persist to localStorage.
+    const dbValue = {
+      company_name: invoiceSettings.company_name,
+      bank_name: invoiceSettings.bank_name,
+      bank_account: invoiceSettings.bank_account,
+      bank_holder: invoiceSettings.bank_holder,
+      footer_note: invoiceSettings.invoice_footer,
+      payment_terms: parseInt(invoiceSettings.payment_terms_days) || 30,
+      invoice_prefix: invoiceSettings.invoice_prefix,
+    }
+    await sb.from('app_settings').upsert({ key: 'invoice', value: dbValue, updated_at: new Date().toISOString() })
+    // Also sync to localStorage for PDF generation
     localStorage.setItem('invoice_settings', JSON.stringify(invoiceSettings))
     setInvoiceSaved(true)
     setTimeout(() => setInvoiceSaved(false), 3000)
     setSavingInvoice(false)
   }
-
-  useEffect(() => {
-    const saved = localStorage.getItem('invoice_settings')
-    if (saved) setInvoiceSettings(JSON.parse(saved))
-  }, [])
 
   const Section = ({ title, icon: Icon, children }: any) => (
     <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">

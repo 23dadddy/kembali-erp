@@ -97,17 +97,22 @@ export default function DocumentsPage() {
     let mimeType: string | null = null
 
     if (file) {
-      const ext = file.name.split('.').pop()
       const path = `documents/${Date.now()}-${file.name}`
-      const { data: uploadData, error } = await sb.storage.from('kembali-docs').upload(path, file, {
+      const { data: uploadData, error: uploadError } = await sb.storage.from('kembali-docs').upload(path, file, {
         contentType: file.type,
       })
-      if (!error && uploadData) {
+      if (!uploadError && uploadData) {
         const { data: urlData } = sb.storage.from('kembali-docs').getPublicUrl(path)
         fileUrl = urlData.publicUrl
         fileName = file.name
         fileSize = file.size
         mimeType = file.type
+      } else if (uploadError) {
+        // Bucket may not exist yet — save metadata only, mark filename for reference
+        fileName = file.name
+        fileSize = file.size
+        mimeType = file.type
+        // fileUrl remains null; user sees the filename but no download link
       }
     }
 

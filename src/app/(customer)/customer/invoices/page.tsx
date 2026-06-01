@@ -13,6 +13,7 @@ export default function CustomerInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all')
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [bankSettings, setBankSettings] = useState({ bank_name: 'BCA', bank_account: '—', bank_holder: 'PT Kembali Air Bali' })
 
   useEffect(() => {
     const load = async () => {
@@ -20,8 +21,15 @@ export default function CustomerInvoicesPage() {
       if (!cust) { router.push('/customer/login'); return }
       setCustomer(cust)
       const sb = createClient()
-      const { data } = await sb.from('invoices').select('*').eq('customer_id', cust.id).order('created_at', { ascending: false })
-      setInvoices(data ?? [])
+      const [{ data: invData }, { data: settingsData }] = await Promise.all([
+        sb.from('invoices').select('*').eq('customer_id', cust.id).order('created_at', { ascending: false }),
+        sb.from('app_settings').select('value').eq('key', 'invoice').single(),
+      ])
+      setInvoices(invData ?? [])
+      if (settingsData?.value) {
+        const s = settingsData.value as any
+        setBankSettings({ bank_name: s.bank_name ?? 'BCA', bank_account: s.bank_account ?? '—', bank_holder: s.bank_holder ?? 'PT Kembali Air Bali' })
+      }
       setLoading(false)
     }
     load()
@@ -145,8 +153,8 @@ export default function CustomerInvoicesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Bank Transfer</p>
-            <p className="text-slate-700 font-medium">BCA — contact your account manager for details</p>
-            <p className="text-slate-500">PT Kembali Air Bali</p>
+            <p className="text-slate-700 font-medium">{bankSettings.bank_name} — {bankSettings.bank_account}</p>
+            <p className="text-slate-500">{bankSettings.bank_holder}</p>
           </div>
           <div>
             <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Reference</p>
