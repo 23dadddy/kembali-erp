@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── Driver routes (/deliver/*, /portal, /checklist) ──────────────────────
+  // ── Driver routes (/deliver/*, /driver/*) ────────────────────────────────
   // These are accessible without auth (drivers use direct links from TrakOps)
 
   // ── Admin ERP routes ─────────────────────────────────────────────────────

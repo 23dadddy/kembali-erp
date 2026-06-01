@@ -64,7 +64,7 @@ export default function PortalPage() {
           <div>
             <p className="font-semibold text-cyan-800 text-sm">Driver Mobile Access</p>
             <p className="text-xs text-cyan-700 mt-0.5">
-              Drivers access their deliveries at <strong>kembali-erp.vercel.app/deliver/[delivery-id]</strong>.
+              Drivers access their deliveries at <strong>kembali-erp.vercel.app/deliver/[delivery-id]. Driver portal: /driver/portal</strong>.
               Share the direct link or scan QR from the TrakOps board.
             </p>
           </div>
