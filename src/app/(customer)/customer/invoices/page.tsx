@@ -145,7 +145,7 @@ export default function CustomerInvoicesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Bank Transfer</p>
-            <p className="text-slate-700 font-medium">BCA — 123-456-7890</p>
+            <p className="text-slate-700 font-medium">BCA — contact your account manager for details</p>
             <p className="text-slate-500">PT Kembali Air Bali</p>
           </div>
           <div>

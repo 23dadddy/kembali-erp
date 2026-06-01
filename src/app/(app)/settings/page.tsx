@@ -392,6 +392,25 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Document Storage */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-amber-500 text-lg">📦</span>
+                <p className="font-semibold text-amber-800">Document Library — Storage Setup Required</p>
+              </div>
+              <p className="text-sm text-amber-700 mb-3">
+                To enable file uploads in the Document Library, create a storage bucket in Supabase:
+              </p>
+              <ol className="text-xs text-amber-700 space-y-1 ml-1">
+                <li>1. Go to <span className="font-medium">supabase.com → your project → Storage</span></li>
+                <li>2. Click <span className="font-medium">New bucket</span></li>
+                <li>3. Name it exactly: <code className="bg-amber-100 px-1 rounded">kembali-docs</code></li>
+                <li>4. Set to <span className="font-medium">Public</span> (so download links work)</li>
+                <li>5. Save — file uploads will then work immediately</li>
+              </ol>
+              <p className="text-xs text-amber-600 mt-2">Until the bucket exists, documents still save with metadata (name, size) but no download link.</p>
+            </div>
+
             {/* Version */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <p className="font-semibold text-slate-800 mb-2">System Info</p>

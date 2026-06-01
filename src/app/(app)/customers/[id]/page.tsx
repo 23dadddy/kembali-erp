@@ -72,11 +72,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [invoiceMonth, setInvoiceMonth] = useState(new Date().toISOString().slice(0, 7))
   const [enablingPortal, setEnablingPortal] = useState(false)
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
+  const [salesStaff, setSalesStaff] = useState<{ id: string; name: string; crm_role: string | null }[]>([])
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
       const sb = createClient()
+      const { data: staffData } = await sb.from('staff').select('id, name, crm_role').in('role', ['sales', 'manager']).eq('active', true)
+      setSalesStaff(staffData ?? [])
       const [cust, addrs, conts, nts, bal] = await Promise.all([
         getCustomer(id),
         getCustomerAddresses(id),
@@ -324,6 +327,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       <Input type="number" min="0" value={(editForm as any).bottle_discrepancy_limit ?? 5} onChange={e => setEditForm({ ...editForm, bottle_discrepancy_limit: Number(e.target.value) } as any)} />
                       <p className="text-xs text-slate-400 mt-0.5">Max bottles lost/damaged before charges apply</p>
                     </div>
+                    <div>
+                      <Label>Account Executive</Label>
+                      <select className="w-full border rounded-md px-3 py-2 text-sm" value={(editForm as any).assigned_to ?? ''} onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value || null } as any)}>
+                        <option value="">— Unassigned —</option>
+                        {salesStaff.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}{s.crm_role === 'manager' ? ' (Manager)' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div><Label>Notes</Label><Textarea value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2} /></div>
                     <div className="flex gap-2">
                       <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSaveCustomer}><Check className="w-4 h-4 mr-1" />Save</Button>
@@ -342,6 +354,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       ['Payment Terms', `${customer.payment_terms_days ?? 30} days`],
                       ['Credit Limit', customer.credit_limit > 0 ? idr(customer.credit_limit) : '—'],
                       ['Source', customer.source ?? '—'],
+                      ['Account Executive', salesStaff.find(s => s.id === (customer as any).assigned_to)?.name ?? '—'],
                       ['Customer Since', new Date(customer.created_at).toLocaleDateString()],
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between gap-2">

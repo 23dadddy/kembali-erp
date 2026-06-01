@@ -152,7 +152,11 @@ export function generateInvoicePDF(invoice: Invoice, customer: Customer) {
   doc.text('Payment Instructions', 20, noteY + 8)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(71, 85, 105)
-  doc.text('Bank Transfer: BCA · Account: 123-456-7890 · Account Name: PT Kembali Air Bali', 20, noteY + 15)
+  const invSettings = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('invoice_settings') || '{}') : {}
+  const bankName = invSettings.bank_name || 'BCA'
+  const bankAccount = invSettings.bank_account || '123-456-7890'
+  const bankHolder = invSettings.bank_holder || 'PT Kembali Air Bali'
+  doc.text(`Bank Transfer: ${bankName} · Account: ${bankAccount} · Account Name: ${bankHolder}`, 20, noteY + 15)
   doc.text('Please include invoice number as payment reference. Thank you for your business!', 20, noteY + 21)
 
   // Footer
