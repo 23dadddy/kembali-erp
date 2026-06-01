@@ -20,7 +20,7 @@ import type { Customer, CustomerAddress, CustomerContact, CustomerNote, Invoice,
 import {
   ChevronLeft, MapPin, Phone, Mail, User, Plus, Edit2, Check, X,
   Package, FileText, Truck, MessageSquare, Building2, Star,
-  AlertTriangle, Loader2,
+  AlertTriangle, Loader2, Globe, ExternalLink,
 } from 'lucide-react'
 
 type Tab = 'overview' | 'addresses' | 'contacts' | 'deliveries' | 'invoices' | 'notes'
@@ -70,6 +70,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [newContact, setNewContact] = useState<Partial<CustomerContact>>({ is_primary: false, receives_invoices: false, receives_delivery_notices: false })
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [invoiceMonth, setInvoiceMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [enablingPortal, setEnablingPortal] = useState(false)
+  const [portalStatus, setPortalStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -98,6 +100,29 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
     load()
   }, [id])
+
+  const handleEnablePortal = async () => {
+    if (!customer) return
+    const email = customer.contact_email
+    if (!email) { setPortalStatus('No contact email — add one first'); return }
+    setEnablingPortal(true)
+    setPortalStatus(null)
+    try {
+      const sb = createClient()
+      // Mark portal as enabled so login page allows access
+      await sb.from('customers').update({ portal_enabled: true }).eq('id', customer.id)
+      // Send magic link invitation
+      await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/customer/dashboard`, shouldCreateUser: true },
+      })
+      setPortalStatus(`✓ Invitation sent to ${email}`)
+      setCustomer({ ...customer, portal_enabled: true } as any)
+    } catch (e: any) {
+      setPortalStatus(`Error: ${e.message}`)
+    }
+    setEnablingPortal(false)
+  }
 
   const handleSaveCustomer = async () => {
     if (!customer) return
@@ -205,9 +230,24 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   )}
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => { setEditingCustomer(true); setTab('overview') }}>
-                <Edit2 className="w-3 h-3 mr-1.5" /> Edit
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {(customer as any).portal_enabled ? (
+                  <a href="/customer/dashboard" target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
+                    <Globe className="w-3.5 h-3.5" /> Portal Active <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <button onClick={handleEnablePortal} disabled={enablingPortal}
+                    className="inline-flex items-center gap-1.5 text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 px-3 py-1.5 rounded-lg hover:bg-cyan-100 disabled:opacity-60 transition-colors">
+                    {enablingPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                    Enable Portal
+                  </button>
+                )}
+                {portalStatus && <span className="text-xs text-slate-500">{portalStatus}</span>}
+                <Button variant="outline" size="sm" onClick={() => { setEditingCustomer(true); setTab('overview') }}>
+                  <Edit2 className="w-3 h-3 mr-1.5" /> Edit
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-100">

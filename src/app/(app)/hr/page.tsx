@@ -175,7 +175,7 @@ export default function HRPage() {
                     <div>
                       <Label>Role *</Label>
                       <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as any })}>
-                        {['driver', 'cleaner', 'manager', 'admin'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                        {['driver', 'cleaner', 'manager', 'admin', 'sales'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                       </select>
                     </div>
                   </div>
@@ -205,6 +205,15 @@ export default function HRPage() {
                     <div><Label>Emergency Contact</Label><Input value={form.emergency_contact ?? ''} onChange={e => setForm({ ...form, emergency_contact: e.target.value })} /></div>
                   </div>
                   <div><Label>Emergency Phone</Label><Input value={form.emergency_phone ?? ''} onChange={e => setForm({ ...form, emergency_phone: e.target.value })} /></div>
+                  {(form.role === 'sales' || form.role === 'manager') && (
+                    <div>
+                      <Label>CRM Access Level</Label>
+                      <select className="w-full border rounded-md px-3 py-2 text-sm" value={(form as any).crm_role ?? 'ae'} onChange={e => setForm({ ...form, crm_role: e.target.value } as any)}>
+                        <option value="ae">Account Executive — sees only assigned partners</option>
+                        <option value="manager">Sales Manager — sees full CRM</option>
+                      </select>
+                    </div>
+                  )}
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="checkbox" checked={!!form.active} onChange={e => setForm({ ...form, active: e.target.checked })} />
                     Active employee

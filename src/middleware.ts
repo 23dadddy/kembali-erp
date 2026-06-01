@@ -26,7 +26,29 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public paths that never require auth
+  // ── Customer portal routes (/customer/*) ──────────────────────────────────
+  if (pathname.startsWith('/customer/')) {
+    const isCustomerPublic = pathname === '/customer/login'
+
+    if (!isCustomerPublic && !user) {
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = '/customer/login'
+      loginUrl.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Logged-in user on customer login → send to portal dashboard
+    if (isCustomerPublic && user) {
+      return NextResponse.redirect(new URL('/customer/dashboard', request.url))
+    }
+
+    return supabaseResponse
+  }
+
+  // ── Driver routes (/deliver/*, /portal, /checklist) ──────────────────────
+  // These are accessible without auth (drivers use direct links from TrakOps)
+
+  // ── Admin ERP routes ─────────────────────────────────────────────────────
   const isPublic =
     pathname === '/login' ||
     pathname.startsWith('/api/') ||
@@ -40,7 +62,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect logged-in users away from login page
+  // Redirect logged-in admin users away from login page
   if (pathname === '/login' && user) {
     const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/dashboard'
     return NextResponse.redirect(new URL(redirectTo, request.url))
