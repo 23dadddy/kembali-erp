@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, Truck, Package, FileText,
-  UserCog, MapPin, Settings, Droplets, BarChart3, Smartphone,
+  UserCog, MapPin, Settings, BarChart3, Smartphone,
   DollarSign, TrendingUp, Target, Sparkles, RefreshCw, Factory,
   Route, ShoppingCart, PieChart, Tag, Shield, Star, Banknote,
   ScrollText, MessageSquare, ClipboardCheck, RotateCcw, CalendarDays, BookOpen,
@@ -91,24 +91,19 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-60 min-h-screen bg-slate-900 text-white flex flex-col">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-700">
-        <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
-          <Droplets className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <div className="font-bold text-sm leading-tight">Kembali Water</div>
-          <div className="text-xs text-slate-400">Operations Hub</div>
-        </div>
+    <aside className="w-56 min-h-screen flex flex-col" style={{ background: '#0F172A' }}>
+      {/* Wordmark */}
+      <div className="px-5 py-5 border-b border-slate-800">
+        <div className="font-semibold text-white tracking-tight" style={{ fontSize: '15px' }}>Kembali Water</div>
+        <div className="text-slate-500 mt-0.5" style={{ fontSize: '11px' }}>Operations Hub</div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
         {groups.map((group, gi) => (
           <div key={gi}>
             {group.label && (
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+              <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
                 {group.label}
               </p>
             )}
@@ -120,13 +115,14 @@ export function Sidebar() {
                     key={href}
                     href={href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors',
                       active
-                        ? 'bg-cyan-600 text-white'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        ? 'text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     )}
+                    style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
                     {label}
                   </Link>
                 )
@@ -136,15 +132,16 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-slate-700 space-y-1">
+      <div className="px-2 py-4 border-t border-slate-800 space-y-0.5">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+          style={{ fontSize: '13px' }}
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
+          <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
           Sign Out
         </button>
-        <p className="text-xs text-slate-600 px-3">Kembali ERP v1.0</p>
+        <p className="text-slate-600 px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v1.0</p>
       </div>
     </aside>
   )
