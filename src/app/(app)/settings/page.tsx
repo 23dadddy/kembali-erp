@@ -384,7 +384,7 @@ export default function SettingsPage() {
                 </div>
                 <ol className="text-xs text-slate-500 space-y-1 ml-1">
                   <li>1. Create a free account at <span className="text-cyan-600 font-medium">postmarkapp.com</span></li>
-                  <li>2. Add an Inbound domain (e.g. <code>support@kembaliwater.com</code>)</li>
+                  <li>2. Add an Inbound domain (e.g. <code>contact@kembaliwater.com</code>)</li>
                   <li>3. Set the Inbound Webhook URL to the URL above</li>
                   <li>4. Add <code>x-webhook-secret</code> as a custom header with the value above</li>
                   <li>5. Emails sent to that address automatically create support tickets</li>
