@@ -156,7 +156,10 @@ export default function SupportPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-800 text-sm truncate">{ticket.subject}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">{ticket.customer?.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {ticket.customer?.name ?? (ticket as any).from_email ?? 'Unknown'}
+                        {(ticket as any).source === 'email' && <span className="ml-1.5 text-cyan-500">✉ email</span>}
+                      </p>
                     </div>
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${priCfg.color}`}>{priCfg.label}</span>
                   </div>
@@ -188,9 +191,17 @@ export default function SupportPage() {
                   <div className="flex-1">
                     <h2 className="text-lg font-bold text-slate-800">{selected.subject}</h2>
                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-                      <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{selected.customer?.name}</span>
+                      {selected.customer?.name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{selected.customer.name}</span>}
+                      {(selected as any).from_email && (
+                        <span className="flex items-center gap-1 text-cyan-600">
+                          ✉ {(selected as any).from_name ? `${(selected as any).from_name} <${(selected as any).from_email}>` : (selected as any).from_email}
+                        </span>
+                      )}
                       <span>{CATEGORY_LABELS[selected.category] ?? selected.category}</span>
                       <span>{fmtDate(selected.created_at)} at {fmtTime(selected.created_at)}</span>
+                      {(selected as any).source && (selected as any).source !== 'manual' && (
+                        <span className="bg-cyan-50 text-cyan-600 px-1.5 py-0.5 rounded-full capitalize">{(selected as any).source}</span>
+                      )}
                     </div>
                     <div className="flex gap-2 mt-3">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_CONFIG[selected.status]?.color}`}>

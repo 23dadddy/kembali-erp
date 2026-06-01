@@ -360,6 +360,38 @@ export default function SettingsPage() {
               <p className="text-xs text-slate-400 mt-2">Get a key at <span className="text-cyan-600">console.anthropic.com</span></p>
             </div>
 
+            {/* Email-to-Ticket */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Bell className="w-5 h-5 text-cyan-500" />
+                <p className="font-semibold text-slate-800">Email → Support Ticket</p>
+              </div>
+              <p className="text-sm text-slate-600 mb-3">
+                Set up Postmark Inbound to automatically convert customer emails into support tickets.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Webhook URL (paste into Postmark)</p>
+                  <div className="bg-slate-50 rounded-xl p-3 font-mono text-xs text-slate-700 break-all select-all">
+                    https://kembali-erp.vercel.app/api/inbound-email
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Webhook Secret Header</p>
+                  <div className="bg-slate-50 rounded-xl p-3 font-mono text-xs text-slate-700">
+                    x-webhook-secret: kembali-webhook-f96855513063069c96fb59e62fd79759
+                  </div>
+                </div>
+                <ol className="text-xs text-slate-500 space-y-1 ml-1">
+                  <li>1. Create a free account at <span className="text-cyan-600 font-medium">postmarkapp.com</span></li>
+                  <li>2. Add an Inbound domain (e.g. <code>support@kembaliwater.com</code>)</li>
+                  <li>3. Set the Inbound Webhook URL to the URL above</li>
+                  <li>4. Add <code>x-webhook-secret</code> as a custom header with the value above</li>
+                  <li>5. Emails sent to that address automatically create support tickets</li>
+                </ol>
+              </div>
+            </div>
+
             {/* Version */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <p className="font-semibold text-slate-800 mb-2">System Info</p>
