@@ -19,6 +19,7 @@ const groups = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Executive View', href: '/executive', icon: PieChart },
+      { label: 'AI Command Center', href: '/ai', icon: Sparkles },
     ],
   },
   {
@@ -61,12 +62,6 @@ const groups = [
       { label: 'Safety', href: '/safety', icon: Shield },
       { label: 'Driver App', href: '/portal', icon: Smartphone },
       { label: 'Driver Checklist', href: '/checklist', icon: ClipboardCheck },
-    ],
-  },
-  {
-    label: 'AI',
-    items: [
-      { label: 'AI Command Center', href: '/ai', icon: Sparkles },
     ],
   },
   {
