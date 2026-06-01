@@ -51,6 +51,7 @@ export async function middleware(request: NextRequest) {
   // ── Admin ERP routes ─────────────────────────────────────────────────────
   const isPublic =
     pathname === '/login' ||
+    pathname.startsWith('/auth/') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon')

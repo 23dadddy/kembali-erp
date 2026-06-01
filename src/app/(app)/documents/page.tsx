@@ -220,12 +220,20 @@ export default function DocumentsPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">File (optional)</label>
                   <div
                     onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-cyan-400', 'bg-cyan-50') }}
+                    onDragLeave={e => { e.currentTarget.classList.remove('border-cyan-400', 'bg-cyan-50') }}
+                    onDrop={e => {
+                      e.preventDefault()
+                      e.currentTarget.classList.remove('border-cyan-400', 'bg-cyan-50')
+                      const dropped = e.dataTransfer.files?.[0]
+                      if (dropped) setFile(dropped)
+                    }}
                     className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-50 transition-colors"
                   >
                     {file ? (
                       <p className="text-sm font-medium text-cyan-700">{file.name} ({formatSize(file.size)})</p>
                     ) : (
-                      <p className="text-sm text-slate-400"><Upload className="w-4 h-4 inline mr-1.5" />Click to browse or drag file here</p>
+                      <p className="text-sm text-slate-400"><Upload className="w-4 h-4 inline mr-1.5" />Click to browse or drag & drop file here</p>
                     )}
                   </div>
                   <input ref={fileInputRef} type="file" className="hidden"
