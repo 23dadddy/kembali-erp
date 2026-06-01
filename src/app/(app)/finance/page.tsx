@@ -237,6 +237,19 @@ export default function FinancePage() {
                     <div><Label>Amount (IDR) *</Label><Input type="number" value={expenseForm.amount ?? 0} onChange={e => setExpenseForm({ ...expenseForm, amount: Number(e.target.value) })} /></div>
                     <div><Label>Vendor</Label><Input value={expenseForm.vendor ?? ''} onChange={e => setExpenseForm({ ...expenseForm, vendor: e.target.value })} /></div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Payment Method *</Label>
+                      <select className="w-full border rounded-md px-3 py-2 text-sm" value={(expenseForm as any).payment_method ?? ''} onChange={e => setExpenseForm({ ...expenseForm, payment_method: e.target.value } as any)}>
+                        <option value="">Select method…</option>
+                        {['Cash','Bank Transfer','Company Card','BCA','Mandiri','BRI','GoPay','OVO','Dana','Other'].map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Account / Cost Center</Label>
+                      <Input placeholder="e.g. Operations, Fleet, Admin" value={(expenseForm as any).account_label ?? ''} onChange={e => setExpenseForm({ ...expenseForm, account_label: e.target.value } as any)} />
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSaveExpense} disabled={saving}>
                       {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1" />Save Expense</>}
@@ -261,9 +274,11 @@ export default function FinancePage() {
                             <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{e.category}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[e.status]}`}>{e.status}</span>
                           </div>
-                          <div className="flex gap-3 text-xs text-slate-400 mt-0.5">
+                          <div className="flex gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
                             <span>{new Date(e.expense_date).toLocaleDateString()}</span>
                             {e.vendor && <span>{e.vendor}</span>}
+                            {(e as any).payment_method && <span className="text-cyan-600">💳 {(e as any).payment_method}</span>}
+                            {(e as any).account_label && <span className="text-slate-500">📁 {(e as any).account_label}</span>}
                           </div>
                         </div>
                         <p className="font-bold text-red-600">{idr(Number(e.amount))}</p>

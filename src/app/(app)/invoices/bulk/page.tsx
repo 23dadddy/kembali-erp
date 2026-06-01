@@ -104,14 +104,22 @@ export default function BulkInvoicePage() {
               </Button>
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1 text-slate-600">
-              <p>For each active customer, this will:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-slate-500 ml-2">
-                <li>Total up all completed deliveries for <strong>{monthLabel}</strong></li>
-                <li>Calculate any lost bottle charges above the 8% threshold</li>
-                <li>Create a draft invoice (KW-XXXXX) in IDR</li>
+            <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-2 text-slate-600">
+              <p className="font-medium text-slate-700">For each active customer, this will:</p>
+              <ul className="list-disc list-inside space-y-1 text-slate-500 ml-2">
+                <li>Total up all <strong>completed deliveries</strong> for <strong>{monthLabel}</strong></li>
+                <li>Apply current pricing per bottle size (350ml / 750ml)</li>
+                <li>
+                  Add <strong>lost/damaged bottle surcharges</strong> — bottles outstanding beyond
+                  the per-customer discrepancy limit are charged at the standard bottle price
+                </li>
+                <li>Create a <strong>draft invoice</strong> (KW-XXXXX) in IDR — ready to review and send</li>
                 <li>Skip customers with no deliveries this month</li>
               </ul>
+              <div className="mt-2 text-xs text-slate-400 border-t pt-2">
+                💡 Discrepancy limits are set per customer in the Customers page.
+                Each customer&apos;s outstanding bottle balance is tracked in the Deliveries hub.
+              </div>
             </div>
 
             {preview && !done && (

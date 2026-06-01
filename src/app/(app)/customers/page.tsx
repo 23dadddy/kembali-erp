@@ -24,9 +24,21 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Search, Building2, Hotel, Utensils, TreePalm, Phone, Mail, Loader2 } from 'lucide-react'
+import { Plus, Search, Building2, Hotel, Utensils, TreePalm, Phone, Mail, Loader2, CalendarDays } from 'lucide-react'
 import { CustomerType, Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/lib/db'
+
+function subscriptionDuration(startDate: string | null | undefined): string {
+  if (!startDate) return '—'
+  const start = new Date(startDate)
+  const now = new Date()
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+  if (months < 1) return '< 1 month'
+  if (months < 12) return `${months} month${months !== 1 ? 's' : ''}`
+  const years = Math.floor(months / 12)
+  const rem = months % 12
+  return rem > 0 ? `${years}y ${rem}m` : `${years} year${years !== 1 ? 's' : ''}`
+}
 
 const typeIcons: Record<string, React.ReactNode> = {
   hotel: <Hotel className="w-4 h-4" />,
@@ -73,6 +85,7 @@ export default function CustomersPage() {
   const [form, setForm] = useState<CustomerForm>(emptyForm)
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [subStarts, setSubStarts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,8 +93,21 @@ export default function CustomersPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getCustomers()
+      const sb = (await import('@/lib/supabase/client')).createClient()
+      const [data, subsRes] = await Promise.all([
+        getCustomers(),
+        sb.from('customer_subscriptions')
+          .select('customer_id, start_date')
+          .eq('status', 'active')
+          .order('start_date', { ascending: true }),
+      ])
       setCustomers(data)
+      // Keep earliest active subscription start date per customer
+      const starts: Record<string, string> = {}
+      for (const s of (subsRes.data ?? []) as any[]) {
+        if (!starts[s.customer_id]) starts[s.customer_id] = s.start_date
+      }
+      setSubStarts(starts)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -238,19 +264,24 @@ export default function CustomersPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>City</TableHead>
                 <TableHead>Contact</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5" /> Sub Duration
+                  </div>
+                </TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12">
+                  <TableCell colSpan={6} className="text-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Building2 className="w-8 h-8 text-slate-200" />
                       <p className="font-medium">{search ? 'No results found' : 'No customers yet'}</p>
@@ -286,6 +317,16 @@ export default function CustomersPage() {
                           </div>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">
+                      {subStarts[c.id] ? (
+                        <div>
+                          <div className="font-medium text-slate-700">{subscriptionDuration(subStarts[c.id])}</div>
+                          <div className="text-xs text-slate-400">since {new Date(subStarts[c.id]).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-xs">No subscription</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge className={c.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>

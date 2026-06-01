@@ -61,9 +61,12 @@ export default function CRMPage() {
   const [saving, setSaving] = useState(false)
   const [converting, setConverting] = useState(false)
   const [filterStage, setFilterStage] = useState('active')
+  const [filterAE, setFilterAE] = useState('all')
   const [search, setSearch] = useState('')
   const [activityForm, setActivityForm] = useState({ type: 'call', summary: '', outcome: '' })
   const [savingActivity, setSavingActivity] = useState(false)
+  // Current user's staff record (for AE restriction)
+  const [myStaff, setMyStaff] = useState<{ id: string; crm_role: string; name: string } | null>(null)
 
   useEffect(() => { loadAll() }, [])
   useEffect(() => { if (selected) loadActivities(selected.id) }, [selected])
@@ -71,12 +74,24 @@ export default function CRMPage() {
   const loadAll = async () => {
     setLoading(true)
     const sb = createClient()
-    const [leadsRes, staffRes] = await Promise.all([
+    const { data: { user } } = await sb.auth.getUser()
+
+    const [leadsRes, staffRes, myStaffRes] = await Promise.all([
       sb.from('leads').select('*').order('created_at', { ascending: false }),
-      sb.from('staff').select('id, name').eq('active', true).order('name'),
+      sb.from('staff').select('id, name, crm_role').eq('active', true).order('name'),
+      user ? sb.from('staff').select('id, name, crm_role').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
     ])
-    setLeads(leadsRes.data ?? [])
+
+    const me = (myStaffRes as any).data as { id: string; crm_role: string; name: string } | null
+    setMyStaff(me)
     setStaff(staffRes.data ?? [])
+
+    // AEs can only see leads assigned to them
+    let allLeads = leadsRes.data ?? []
+    if (me && me.crm_role === 'ae') {
+      allLeads = allLeads.filter((l: any) => l.assigned_to === me.id)
+    }
+    setLeads(allLeads)
     setLoading(false)
   }
 
@@ -161,6 +176,11 @@ export default function CRMPage() {
     if (filterStage !== 'all') return l.status === filterStage
     return true
   }).filter(l => !search || l.name?.toLowerCase().includes(search.toLowerCase()) || l.contact_name?.toLowerCase().includes(search.toLowerCase()))
+  .filter(l => {
+    // Managers can filter by AE; AEs always see only their own (enforced in loadAll)
+    if (filterAE === 'all') return true
+    return l.assigned_to === filterAE
+  })
 
   const pipeline = leads.filter(l => !['won', 'lost'].includes(l.status))
   const pipelineValue = pipeline.reduce((s, l) => s + Number(l.estimated_monthly_value ?? 0) * 12 * (l.probability ?? 50) / 100, 0)
@@ -190,6 +210,16 @@ export default function CRMPage() {
             </div>
           </div>
 
+          {/* AE role badge */}
+          {myStaff?.crm_role === 'ae' && (
+            <div className="px-3 py-2 border-b border-slate-100">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-xs text-amber-700 flex items-center gap-2">
+                <Users className="w-3.5 h-3.5" />
+                Showing your assigned leads only
+              </div>
+            </div>
+          )}
+
           {/* Search + filter */}
           <div className="px-3 py-2 space-y-2 border-b border-slate-100">
             <input className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-400"
@@ -202,6 +232,16 @@ export default function CRMPage() {
                 </button>
               ))}
             </div>
+            {/* Managers can filter by AE */}
+            {(!myStaff || myStaff.crm_role !== 'ae') && (
+              <select className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
+                value={filterAE} onChange={e => setFilterAE(e.target.value)}>
+                <option value="all">All Account Executives</option>
+                {staff.filter((s: any) => s.crm_role === 'ae' || !s.crm_role).map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Add button */}

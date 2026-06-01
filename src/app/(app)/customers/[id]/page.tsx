@@ -279,6 +279,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     <div><Label>Address</Label><Input value={editForm.address ?? ''} onChange={e => setEditForm({ ...editForm, address: e.target.value })} /></div>
                     <div><Label>City</Label><Input value={editForm.city ?? 'Bali'} onChange={e => setEditForm({ ...editForm, city: e.target.value })} /></div>
                     <div><Label>Tax ID (NPWP)</Label><Input value={editForm.tax_id ?? ''} onChange={e => setEditForm({ ...editForm, tax_id: e.target.value })} /></div>
+                    <div>
+                      <Label>Bottle Discrepancy Limit</Label>
+                      <Input type="number" min="0" value={(editForm as any).bottle_discrepancy_limit ?? 5} onChange={e => setEditForm({ ...editForm, bottle_discrepancy_limit: Number(e.target.value) } as any)} />
+                      <p className="text-xs text-slate-400 mt-0.5">Max bottles lost/damaged before charges apply</p>
+                    </div>
                     <div><Label>Notes</Label><Textarea value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2} /></div>
                     <div className="flex gap-2">
                       <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSaveCustomer}><Check className="w-4 h-4 mr-1" />Save</Button>

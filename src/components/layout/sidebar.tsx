@@ -9,7 +9,7 @@ import {
   DollarSign, TrendingUp, Target, Sparkles, RefreshCw, Factory,
   Route, ShoppingCart, PieChart, Tag, Shield, Star, Banknote,
   ScrollText, MessageSquare, ClipboardCheck, RotateCcw, CalendarDays, BookOpen,
-  LogOut,
+  LogOut, MessagesSquare, FolderOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -67,6 +67,13 @@ const groups = [
     label: 'AI',
     items: [
       { label: 'AI Command Center', href: '/ai', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Workspace',
+    items: [
+      { label: 'Team Chat', href: '/chat', icon: MessagesSquare },
+      { label: 'Documents', href: '/documents', icon: FolderOpen },
     ],
   },
   {
