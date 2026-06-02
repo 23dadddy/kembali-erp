@@ -108,58 +108,49 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chat_messages])
 
-  // Realtime subscription
+  // Realtime subscription — unique channel name prevents conflicts on re-subscribe
   useEffect(() => {
     const sb = createClient()
+    const viewKey = dmTarget ? `dm-${dmTarget.id}` : `ch-${channel}`
     const sub = sb
-      .channel('chat-realtime')
+      .channel(`chat-realtime-${viewKey}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
       }, (payload) => {
         const msg = payload.new as Message
-        // Only add if relevant to current view
         const isChannelMsg = !msg.recipient_id && msg.channel === channel && !dmTarget
         const isDM = dmTarget && myStaff && (
           (msg.sender_id === myStaff.id && msg.recipient_id === dmTarget.id) ||
           (msg.sender_id === dmTarget.id && msg.recipient_id === myStaff.id)
         )
         if (isChannelMsg || isDM) {
-          // Fetch with sender name
-          sb.from('chat_messages').select('*, sender:staff!sender_id(name)').eq('id', msg.id).single()
-            .then(({ data }) => {
-              if (data) setMessages(prev => [...prev, data as Message])
-            })
+          // Resolve sender name from already-loaded staff list — no extra DB round-trip
+          const senderName = [...staff, ...(myStaff ? [myStaff] : [])].find(s => s.id === msg.sender_id)?.name ?? null
+          const enriched: Message = { ...msg, sender: senderName ? { name: senderName } : null }
+          setMessages(prev => {
+            // Deduplicate: skip if a message with same id already exists
+            if (prev.some(m => m.id === enriched.id)) return prev
+            return [...prev, enriched]
+          })
         }
       })
       .subscribe()
     return () => { sb.removeChannel(sub) }
-  }, [channel, dmTarget, myStaff])
+  }, [channel, dmTarget, myStaff, staff])
 
   const sendMessage = () => {
     const text = input.trim()
     if (!text) return
     setInput('')
     inputRef.current?.focus()
-
-    // Optimistic: show immediately
-    const optimistic: Message = {
-      id: `tmp-${Date.now()}`,
+    // No optimistic insert — realtime echo arrives in <200ms and avoids duplicates
+    const sb = createClient()
+    sb.from('chat_messages').insert({
       channel: dmTarget ? 'dm' : channel,
       sender_id: myStaff?.id ?? null,
       recipient_id: dmTarget?.id ?? null,
-      content: text,
-      created_at: new Date().toISOString(),
-      sender: myStaff ? { name: myStaff.name } : null,
-    }
-    setMessages(prev => [...prev, optimistic])
-
-    const sb = createClient()
-    sb.from('chat_messages').insert({
-      channel: optimistic.channel,
-      sender_id: optimistic.sender_id,
-      recipient_id: optimistic.recipient_id,
       content: text,
     })
   }
