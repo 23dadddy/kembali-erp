@@ -53,7 +53,11 @@ export default function ChatPage() {
         sb.from('staff').select('id, name, role').eq('active', true).order('name'),
         user ? sb.from('staff').select('id, name, role').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
       ])
-      const myStaffData = (myRes as any).data as StaffMember | null
+      let myStaffData = (myRes as any).data as StaffMember | null
+      // Fallback: if no staff record linked, create a display-only identity from auth email
+      if (!myStaffData && user) {
+        myStaffData = { id: user.id, name: user.email?.split('@')[0] ?? 'Me', role: '' }
+      }
       setStaff((staffRes.data ?? []) as StaffMember[])
       setMyStaff(myStaffData)
 
