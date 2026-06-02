@@ -32,9 +32,9 @@ interface StaffMember {
 export default function ChatPage() {
   const [channel, setChannel] = useState('general')
   const [dmTarget, setDmTarget] = useState<StaffMember | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [chat_messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
+
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [myStaff, setMyStaff] = useState<StaffMember | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,13 +78,13 @@ export default function ChatPage() {
   const loadMessages = useCallback(async () => {
     setLoading(true)
     const sb = createClient()
-    let q = sb.from('messages')
+    let q = sb.from('chat_messages')
       .select('*, sender:staff!sender_id(name)')
       .order('created_at', { ascending: true })
       .limit(100)
 
     if (dmTarget) {
-      // DM: messages between me and target in both directions
+      // DM: chat_messages between me and target in both directions
       if (myStaff) {
         q = q.or(
           `and(sender_id.eq.${myStaff.id},recipient_id.eq.${dmTarget.id}),and(sender_id.eq.${dmTarget.id},recipient_id.eq.${myStaff.id})`
@@ -103,10 +103,10 @@ export default function ChatPage() {
 
   useEffect(() => { loadMessages() }, [loadMessages])
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new chat_messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [chat_messages])
 
   // Realtime subscription
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function ChatPage() {
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'messages',
+        table: 'chat_messages',
       }, (payload) => {
         const msg = payload.new as Message
         // Only add if relevant to current view
@@ -127,7 +127,7 @@ export default function ChatPage() {
         )
         if (isChannelMsg || isDM) {
           // Fetch with sender name
-          sb.from('messages').select('*, sender:staff!sender_id(name)').eq('id', msg.id).single()
+          sb.from('chat_messages').select('*, sender:staff!sender_id(name)').eq('id', msg.id).single()
             .then(({ data }) => {
               if (data) setMessages(prev => [...prev, data as Message])
             })
@@ -137,20 +137,31 @@ export default function ChatPage() {
     return () => { sb.removeChannel(sub) }
   }, [channel, dmTarget, myStaff])
 
-  const sendMessage = async () => {
+  const sendMessage = () => {
     const text = input.trim()
     if (!text) return
-    setSending(true)
-    const sb = createClient()
-    await sb.from('messages').insert({
+    setInput('')
+    inputRef.current?.focus()
+
+    // Optimistic: show immediately
+    const optimistic: Message = {
+      id: `tmp-${Date.now()}`,
       channel: dmTarget ? 'dm' : channel,
       sender_id: myStaff?.id ?? null,
       recipient_id: dmTarget?.id ?? null,
       content: text,
+      created_at: new Date().toISOString(),
+      sender: myStaff ? { name: myStaff.name } : null,
+    }
+    setMessages(prev => [...prev, optimistic])
+
+    const sb = createClient()
+    sb.from('chat_messages').insert({
+      channel: optimistic.channel,
+      sender_id: optimistic.sender_id,
+      recipient_id: optimistic.recipient_id,
+      content: text,
     })
-    setInput('')
-    setSending(false)
-    inputRef.current?.focus()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -169,9 +180,9 @@ export default function ChatPage() {
       : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  // Group messages by date
+  // Group chat_messages by date
   const groupedMessages: { date: string; msgs: Message[] }[] = []
-  for (const msg of messages) {
+  for (const msg of chat_messages) {
     const date = new Date(msg.created_at).toDateString()
     const last = groupedMessages[groupedMessages.length - 1]
     if (last && last.date === date) {
@@ -253,10 +264,10 @@ export default function ChatPage() {
               <div className="flex justify-center pt-8">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
               </div>
-            ) : messages.length === 0 ? (
+            ) : chat_messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <MessageSquare className="w-10 h-10 text-slate-200 mb-3" />
-                <p className="font-medium text-slate-400">No messages yet</p>
+                <p className="font-medium text-slate-400">No chat_messages yet</p>
                 <p className="text-sm text-slate-300 mt-1">Be the first to say something in {currentTitle}</p>
               </div>
             ) : (
@@ -323,10 +334,10 @@ export default function ChatPage() {
               />
               <button
                 onClick={sendMessage}
-                disabled={sending || !input.trim()}
+                disabled={!input.trim()}
                 className="text-cyan-600 hover:text-cyan-700 disabled:text-slate-300 transition-colors"
               >
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <Send className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs text-slate-400 mt-1.5 text-center">Press Enter to send · Shift+Enter for new line</p>
