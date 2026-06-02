@@ -30,9 +30,11 @@ interface StaffMember {
 }
 
 export default function ChatPage() {
+  // Single stable client for the component lifetime
+  const sb = useRef(createClient()).current
   const [channel, setChannel] = useState('general')
   const [dmTarget, setDmTarget] = useState<StaffMember | null>(null)
-  const [chat_messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
 
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -44,9 +46,8 @@ export default function ChatPage() {
 
   // Load staff and current user, then set up presence
   useEffect(() => {
-    let presenceChannel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null
+    let presenceChannel: ReturnType<typeof sb.channel> | null = null
     const init = async () => {
-      const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       const [staffRes, myRes] = await Promise.all([
         sb.from('staff').select('id, name, role').eq('active', true).order('name'),
@@ -77,7 +78,6 @@ export default function ChatPage() {
 
   const loadMessages = useCallback(async () => {
     setLoading(true)
-    const sb = createClient()
     let q = sb.from('chat_messages')
       .select('*, sender:staff!sender_id(name)')
       .order('created_at', { ascending: true })
@@ -103,14 +103,12 @@ export default function ChatPage() {
 
   useEffect(() => { loadMessages() }, [loadMessages])
 
-  // Scroll to bottom on new chat_messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chat_messages])
+  }, [messages])
 
   // Realtime subscription — unique channel name prevents conflicts on re-subscribe
   useEffect(() => {
-    const sb = createClient()
     const viewKey = dmTarget ? `dm-${dmTarget.id}` : `ch-${channel}`
     const sub = sb
       .channel(`chat-realtime-${viewKey}`)
@@ -137,22 +135,28 @@ export default function ChatPage() {
         }
       })
       .subscribe()
-    return () => { sb.removeChannel(sub) }
-  }, [channel, dmTarget, myStaff, staff])
+    return () => { sub.unsubscribe() }
+  }, [channel, dmTarget, myStaff, staff, sb])
 
-  const sendMessage = () => {
+  const [sendError, setSendError] = useState<string | null>(null)
+
+  const sendMessage = async () => {
     const text = input.trim()
     if (!text) return
     setInput('')
+    setSendError(null)
     inputRef.current?.focus()
-    // No optimistic insert — realtime echo arrives in <200ms and avoids duplicates
-    const sb = createClient()
-    sb.from('chat_messages').insert({
-      channel: dmTarget ? 'dm' : channel,
+    const { error } = await sb.from('chat_messages').insert({
+      channel: dmTarget ? null : channel,
       sender_id: myStaff?.id ?? null,
       recipient_id: dmTarget?.id ?? null,
       content: text,
     })
+    if (error) {
+      console.error('[chat] insert failed:', error)
+      setSendError(error.message)
+      setInput(text) // restore so user can retry
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -171,9 +175,9 @@ export default function ChatPage() {
       : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  // Group chat_messages by date
+  // Group messages by date
   const groupedMessages: { date: string; msgs: Message[] }[] = []
-  for (const msg of chat_messages) {
+  for (const msg of messages) {
     const date = new Date(msg.created_at).toDateString()
     const last = groupedMessages[groupedMessages.length - 1]
     if (last && last.date === date) {
@@ -255,10 +259,10 @@ export default function ChatPage() {
               <div className="flex justify-center pt-8">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
               </div>
-            ) : chat_messages.length === 0 ? (
+            ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <MessageSquare className="w-10 h-10 text-slate-200 mb-3" />
-                <p className="font-medium text-slate-400">No chat_messages yet</p>
+                <p className="font-medium text-slate-400">No messages yet</p>
                 <p className="text-sm text-slate-300 mt-1">Be the first to say something in {currentTitle}</p>
               </div>
             ) : (
@@ -314,6 +318,9 @@ export default function ChatPage() {
 
           {/* Input */}
           <div className="border-t px-4 py-3">
+            {sendError && (
+              <p className="text-xs text-red-500 mb-2 px-1">Failed to send: {sendError}</p>
+            )}
             <div className="flex items-center gap-3 bg-slate-50 rounded-xl border px-4 py-2.5">
               <input
                 ref={inputRef}
