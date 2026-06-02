@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_KEY}` },
         body: JSON.stringify({
-          from: 'Kembali Water <noreply@kembaliwater.com>',
+          from: process.env.RESEND_FROM_EMAIL ?? 'Kembali Water <onboarding@resend.dev>',
           to,
           subject: subject || 'Message from Kembali Water',
           html: `<div style="font-family:Inter,sans-serif;max-width:600px;padding:24px">${msgBody.replace(/\n/g,'<br>')}</div>`,

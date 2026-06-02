@@ -4,7 +4,9 @@
  * Logs every send to email_log table.
  */
 
-const FROM = 'Kembali Water <noreply@kembaliwater.com>'
+// Use resend.dev domain until kembaliwater.com DNS is verified
+// Switch to 'Kembali Water <noreply@kembaliwater.com>' after DNS propagates
+const FROM = process.env.RESEND_FROM_EMAIL ?? 'Kembali Water <onboarding@resend.dev>'
 const RESEND_KEY = process.env.RESEND_API_KEY
 
 async function sendEmail(payload: {
