@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { swr, cacheWrite, cacheInvalidate } from '@/lib/cache'
 import type {
   Customer, CustomerAddress, CustomerContact, CustomerNote, SupportTicket, Contract,
   CustomerSubscription, Staff, Route, Order, Delivery, BottleInventory, InventoryItem,
@@ -7,18 +8,22 @@ import type {
 } from '@/types'
 
 // ── Customers ──────────────────────────────────────────────────────────────────
-export async function getCustomers() {
-  const sb = createClient()
-  const { data, error } = await sb.from('customers').select('*').order('name')
-  if (error) throw error
-  return data as Customer[]
+export async function getCustomers(onFresh?: (d: Customer[]) => void) {
+  return swr('customers', async () => {
+    const sb = createClient()
+    const { data, error } = await sb.from('customers').select('*').order('name')
+    if (error) throw error
+    return data as Customer[]
+  }, 60_000, onFresh)
 }
 
 export async function getCustomer(id: string) {
-  const sb = createClient()
-  const { data, error } = await sb.from('customers').select('*').eq('id', id).single()
-  if (error) throw error
-  return data as Customer
+  return swr(`customer:${id}`, async () => {
+    const sb = createClient()
+    const { data, error } = await sb.from('customers').select('*').eq('id', id).single()
+    if (error) throw error
+    return data as Customer
+  }, 30_000)
 }
 
 export async function createCustomer(payload: Partial<Customer>) {
@@ -171,11 +176,13 @@ export async function upsertSubscription(payload: Partial<CustomerSubscription>)
 }
 
 // ── Staff ──────────────────────────────────────────────────────────────────────
-export async function getStaff() {
-  const sb = createClient()
-  const { data, error } = await sb.from('staff').select('*').order('name')
-  if (error) throw error
-  return data as Staff[]
+export async function getStaff(onFresh?: (d: Staff[]) => void) {
+  return swr('staff', async () => {
+    const sb = createClient()
+    const { data, error } = await sb.from('staff').select('*').order('name')
+    if (error) throw error
+    return data as Staff[]
+  }, 60_000, onFresh)
 }
 
 export async function getStaffMember(id: string) {
@@ -287,14 +294,16 @@ export async function createFuelLog(payload: Partial<FuelLog>) {
 }
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
-export async function getRoutes() {
-  const sb = createClient()
-  const { data, error } = await sb
-    .from('routes')
-    .select('*, driver:staff(*), stops:route_stops(*, customer:customers(*))')
-    .order('name')
-  if (error) throw error
-  return data as Route[]
+export async function getRoutes(onFresh?: (d: Route[]) => void) {
+  return swr('routes', async () => {
+    const sb = createClient()
+    const { data, error } = await sb
+      .from('routes')
+      .select('*, driver:staff(*), stops:route_stops(*, customer:customers(*))')
+      .order('name')
+    if (error) throw error
+    return data as Route[]
+  }, 60_000, onFresh)
 }
 
 export async function createRoute(payload: {
@@ -506,14 +515,16 @@ export async function getCustomerBottleBalance(customerId: string) {
 }
 
 // ── Invoices ───────────────────────────────────────────────────────────────────
-export async function getInvoices() {
-  const sb = createClient()
-  const { data, error } = await sb
-    .from('invoices')
-    .select('*, customer:customers(*), items:invoice_items(*)')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data as Invoice[]
+export async function getInvoices(onFresh?: (d: Invoice[]) => void) {
+  return swr('invoices', async () => {
+    const sb = createClient()
+    const { data, error } = await sb
+      .from('invoices')
+      .select('*, customer:customers(*), items:invoice_items(*)')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data as Invoice[]
+  }, 30_000, onFresh)
 }
 
 export async function createInvoice(payload: {
@@ -669,10 +680,12 @@ export async function updateExpense(id: string, payload: Partial<Expense>) {
 
 // ── Pricing ────────────────────────────────────────────────────────────────────
 export async function getPricing() {
-  const sb = createClient()
-  const { data, error } = await sb.from('pricing').select('*').eq('active', true)
-  if (error) throw error
-  return data as Pricing[]
+  return swr('pricing', async () => {
+    const sb = createClient()
+    const { data, error } = await sb.from('pricing').select('*').eq('active', true)
+    if (error) throw error
+    return data as Pricing[]
+  }, 120_000) // pricing rarely changes
 }
 
 export async function setPricing(bottleSize: string, pricePerUnit: number) {
@@ -682,11 +695,13 @@ export async function setPricing(bottleSize: string, pricePerUnit: number) {
 }
 
 // ── Leads / CRM ────────────────────────────────────────────────────────────────
-export async function getLeads() {
-  const sb = createClient()
-  const { data, error } = await sb.from('leads').select('*').order('created_at', { ascending: false })
-  if (error) throw error
-  return data as Lead[]
+export async function getLeads(onFresh?: (d: Lead[]) => void) {
+  return swr('leads', async () => {
+    const sb = createClient()
+    const { data, error } = await sb.from('leads').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    return data as Lead[]
+  }, 30_000, onFresh)
 }
 
 export async function createLead(payload: Partial<Lead>) {

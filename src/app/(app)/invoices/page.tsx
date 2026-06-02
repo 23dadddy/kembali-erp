@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
 import { Plus, Search, FileText, DollarSign, Loader2, ExternalLink, Download } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { idr } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Invoice, Customer, InvoiceStatus } from '@/types'
@@ -58,7 +59,11 @@ export default function InvoicesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [inv, cust, price] = await Promise.all([getInvoices(), getCustomers(), getPricing()])
+      const [inv, cust, price] = await Promise.all([
+        getInvoices(fresh => setInvoices(fresh)),
+        getCustomers(fresh => setCustomers(fresh)),
+        getPricing(),
+      ])
       setInvoices(inv)
       setCustomers(cust)
       const pm: Record<string, number> = {}
@@ -271,7 +276,7 @@ export default function InvoicesPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" /></TableCell></TableRow>
+                <SkeletonRows cols={7} rows={8} />
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-400">

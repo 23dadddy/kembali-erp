@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Search, Building2, Hotel, Utensils, TreePalm, Phone, Mail, Loader2, CalendarDays } from 'lucide-react'
+import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { CustomerType, Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/lib/db'
 
@@ -95,14 +96,13 @@ export default function CustomersPage() {
     try {
       const sb = (await import('@/lib/supabase/client')).createClient()
       const [data, subsRes] = await Promise.all([
-        getCustomers(),
+        getCustomers(fresh => setCustomers(fresh)), // stale-while-revalidate: update silently when fresh arrives
         sb.from('customer_subscriptions')
           .select('customer_id, start_date')
           .eq('status', 'active')
           .order('start_date', { ascending: true }),
       ])
       setCustomers(data)
-      // Keep earliest active subscription start date per customer
       const starts: Record<string, string> = {}
       for (const s of (subsRes.data ?? []) as any[]) {
         if (!starts[s.customer_id]) starts[s.customer_id] = s.start_date
@@ -274,11 +274,7 @@ export default function CustomersPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" />
-                  </TableCell>
-                </TableRow>
+                <SkeletonRows cols={6} rows={10} />
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-slate-400">

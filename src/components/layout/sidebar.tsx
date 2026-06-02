@@ -12,6 +12,8 @@ import {
   LogOut, MessagesSquare, FolderOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useEffect } from 'react'
+import { getCustomers, getInvoices, getStaff, getLeads } from '@/lib/db'
 
 const groups = [
   {
@@ -83,6 +85,16 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
+  // Warm the cache for the most-visited pages as soon as the sidebar mounts
+  useEffect(() => {
+    // Fire in sequence with small delays to avoid hammering Supabase on initial load
+    const t1 = setTimeout(() => getCustomers(), 200)
+    const t2 = setTimeout(() => getInvoices(), 600)
+    const t3 = setTimeout(() => getStaff(), 1000)
+    const t4 = setTimeout(() => getLeads(), 1400)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4) }
+  }, [])
+
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -114,6 +126,7 @@ export function Sidebar() {
                   <Link
                     key={href}
                     href={href}
+                    prefetch={true}
                     className={cn(
                       'flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors',
                       active
