@@ -24,9 +24,10 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_KEY}` },
         body: JSON.stringify({
           from: process.env.RESEND_FROM_EMAIL ?? 'Kembali Water <onboarding@resend.dev>',
+          reply_to: 'contact@kembaliwater.com',
           to,
           subject: subject || 'Message from Kembali Water',
-          html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f8fafc"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc"><tr><td align="center" style="padding:32px 16px"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;border:1px solid #e2e8f0"><tr><td style="padding:32px"><p style="margin:0 0 16px 0;font-family:Inter,Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a;letter-spacing:0.01em">${msgBody.replace(/\n/g, '</p><p style="margin:0 0 16px 0;font-family:Inter,Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a;letter-spacing:0.01em">')}</p><hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"><p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:12px;color:#64748b">Kembali Water · Jakarta</p></td></tr></table></td></tr></table></body></html>`,
+          html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#222">${msgBody.replace(/\n/g, '<br>')}<br><br>--<br><span style="color:#888;font-size:13px">Kembali Water</span></div>`,
           text: msgBody,
         }),
       })
