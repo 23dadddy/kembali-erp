@@ -85,6 +85,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Log to unified communications inbox
+  await supabase.from('communications').insert({
+    channel: 'email',
+    direction: 'inbound',
+    customer_id: customer?.id ?? null,
+    thread_id: messageId ?? `email-${fromEmail}-${Date.now()}`,
+    from_address: fromEmail,
+    from_name: fromName || null,
+    subject,
+    body: description.slice(0, 10000),
+    html_body: htmlBody.slice(0, 50000) || null,
+    status: 'unread',
+    external_id: messageId,
+  })
+
   // Create new ticket
   const { data: ticket, error } = await supabase
     .from('support_tickets')

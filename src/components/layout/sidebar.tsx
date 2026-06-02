@@ -73,6 +73,7 @@ const groups = [
   {
     label: 'Workspace',
     items: [
+      { label: 'Communications', href: '/communications', icon: MessageSquare },
       { label: 'Team Chat', href: '/chat', icon: MessagesSquare },
       { label: 'Documents', href: '/documents', icon: FolderOpen },
     ],
