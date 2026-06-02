@@ -15,7 +15,7 @@ function guessPriority(subject: string, body: string): 'low' | 'normal' | 'high'
   if (/urgent|asap|emergency|broken|not working|no water|stop/i.test(text)) return 'urgent'
   if (/issue|problem|wrong|missing|damaged|complaint/i.test(text)) return 'high'
   if (/question|help|how|when|where/i.test(text)) return 'low'
-  return 'normal'
+  return 'medium'
 }
 
 function guessCategory(subject: string, body: string): string {
