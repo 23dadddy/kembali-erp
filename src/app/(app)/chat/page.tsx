@@ -186,9 +186,9 @@ export default function ChatPage() {
     : `#${CHANNELS.find(c => c.id === channel)?.label ?? channel}`
 
   return (
-    <>
+    <div className="flex flex-col flex-1 overflow-hidden">
       <Topbar title="Team Chat" />
-      <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
 
         {/* Sidebar */}
         <div className="w-56 bg-slate-900 text-white flex flex-col flex-shrink-0">
@@ -333,6 +333,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }

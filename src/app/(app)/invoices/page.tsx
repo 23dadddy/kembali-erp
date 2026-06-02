@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Search, FileText, DollarSign, Loader2, ExternalLink, Download } from 'lucide-react'
+import { Plus, Search, FileText, DollarSign, Loader2, ExternalLink, Download, Mail, Send } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { idr } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
@@ -120,6 +120,34 @@ export default function InvoicesPage() {
   }
   const overdueEligible = invoices.filter(i => i.status === 'sent' && i.due_date < new Date().toISOString().split('T')[0]).length
 
+  const sendInvoiceEmail = async (inv: Invoice) => {
+    const customer = (inv.customer as any)
+    if (!customer?.contact_email) { alert('No contact email on file for this customer'); return }
+    await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'invoice', payload: { ...inv, customer } }),
+    })
+    // Move to sent if still draft
+    if (inv.status === 'draft') changeStatus(inv.id, 'sent')
+  }
+
+  const sendOverdueReminders = async () => {
+    const today = new Date()
+    const overdue = invoices.filter(i => i.status === 'overdue' || (i.status === 'sent' && i.due_date < today.toISOString().split('T')[0]))
+    for (const inv of overdue) {
+      const customer = (inv.customer as any)
+      if (!customer?.contact_email) continue
+      const daysOverdue = Math.floor((today.getTime() - new Date(inv.due_date).getTime()) / 86400000)
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'overdue_reminder', payload: { ...inv, customer, daysOverdue } }),
+      })
+    }
+    alert(`Sent reminders to ${overdue.length} customers`)
+  }
+
   const counts = {
     draft: invoices.filter((i) => i.status === 'draft').length,
     sent: invoices.filter((i) => i.status === 'sent').length,
@@ -200,9 +228,14 @@ export default function InvoicesPage() {
           </div>
           <div className="flex gap-2">
             {overdueEligible > 0 && (
-              <button onClick={markOverdue} className="inline-flex items-center gap-2 rounded-md border bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm font-medium px-3 py-2 transition-colors">
-                Mark {overdueEligible} Overdue
-              </button>
+              <>
+                <button onClick={markOverdue} className="inline-flex items-center gap-2 rounded-md border bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm font-medium px-3 py-2 transition-colors">
+                  Mark {overdueEligible} Overdue
+                </button>
+                <button onClick={sendOverdueReminders} className="inline-flex items-center gap-2 rounded-md border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium px-3 py-2 transition-colors">
+                  <Mail className="w-4 h-4" /> Send Reminders
+                </button>
+              </>
             )}
             <button onClick={exportCSV} disabled={filtered.length === 0} className="inline-flex items-center gap-2 rounded-md border bg-white text-slate-600 hover:bg-slate-50 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-40">
               <Download className="w-4 h-4" /> Export CSV
@@ -324,6 +357,13 @@ export default function InvoicesPage() {
                             className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg transition-colors"
                             title="Mark as paid — creates payment record">
                             <DollarSign className="w-3 h-3" />Paid
+                          </button>
+                        )}
+                        {['draft', 'sent', 'overdue'].includes(inv.status) && (
+                          <button onClick={() => sendInvoiceEmail(inv)}
+                            className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-lg transition-colors"
+                            title="Send invoice by email">
+                            <Send className="w-3 h-3" />Email
                           </button>
                         )}
                         <button onClick={() => router.push(`/invoices/${inv.id}`)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="View invoice">

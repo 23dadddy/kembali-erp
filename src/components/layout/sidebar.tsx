@@ -47,6 +47,7 @@ const groups = [
     label: 'Finance',
     items: [
       { label: 'Invoices', href: '/invoices', icon: FileText },
+      { label: 'Credit Notes', href: '/credit-notes', icon: FileText },
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Payroll', href: '/payroll', icon: Banknote },
       { label: 'Pricing', href: '/pricing', icon: DollarSign },

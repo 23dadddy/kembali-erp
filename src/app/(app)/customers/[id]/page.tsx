@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,8 @@ import type { Customer, CustomerAddress, CustomerContact, CustomerNote, Invoice,
 import {
   ChevronLeft, MapPin, Phone, Mail, User, Plus, Edit2, Check, X,
   Package, FileText, Truck, MessageSquare, Building2, Star,
-  AlertTriangle, Loader2, Globe, ExternalLink, Clock,
+  AlertTriangle, Loader2, Globe, ExternalLink, Clock, Paperclip, RefreshCw,
+  Upload, Trash2, Calendar,
 } from 'lucide-react'
 
 interface FieldHistory {
@@ -32,7 +33,7 @@ interface FieldHistory {
   changed_by_name?: string | null
 }
 
-type Tab = 'overview' | 'addresses' | 'contacts' | 'deliveries' | 'invoices' | 'notes' | 'history'
+type Tab = 'overview' | 'addresses' | 'contacts' | 'deliveries' | 'invoices' | 'notes' | 'history' | 'documents' | 'subscription'
 
 const TIER_COLORS: Record<string, string> = {
   standard: 'bg-slate-100 text-slate-600',
@@ -84,6 +85,12 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [salesStaff, setSalesStaff] = useState<{ id: string; name: string; crm_role: string | null }[]>([])
   const [fieldHistory, setFieldHistory] = useState<FieldHistory[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [documents, setDocuments] = useState<any[]>([])
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [subscription, setSubscription] = useState<any | null>(null)
+  const [editingSub, setEditingSub] = useState(false)
+  const [subForm, setSubForm] = useState<any>({ qty_350ml: 0, qty_750ml: 0, delivery_days: [], special_instructions: '', status: 'active' })
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -98,9 +105,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         getCustomerNotes(id),
         getCustomerBottleBalance(id),
       ])
-      const [{ data: dels }, { data: invs }] = await Promise.all([
+      const [{ data: dels }, { data: invs }, { data: docs }, { data: subData }] = await Promise.all([
         sb.from('deliveries').select('*').eq('customer_id', id).order('delivery_date', { ascending: false }).limit(30),
         sb.from('invoices').select('*, items:invoice_items(*)').eq('customer_id', id).order('created_at', { ascending: false }),
+        sb.from('customer_documents').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+        sb.from('customer_subscriptions').select('*').eq('customer_id', id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
       ])
       setCustomer(cust)
       setEditForm(cust)
@@ -110,6 +119,10 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       setBalance(bal)
       setDeliveries(dels ?? [])
       setInvoices(invs ?? [])
+      setDocuments(docs ?? [])
+      const sub = subData?.[0] ?? null
+      setSubscription(sub)
+      if (sub) setSubForm({ qty_350ml: sub.qty_350ml ?? 0, qty_750ml: sub.qty_750ml ?? 0, delivery_days: sub.delivery_days ?? [], special_instructions: sub.special_instructions ?? '', status: sub.status })
       setLoading(false)
     }
     load()
@@ -221,6 +234,76 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     loadHistory()
   }
 
+  const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!customer || !e.target.files?.length) return
+    setUploadingDoc(true)
+    const sb = createClient()
+    for (const file of Array.from(e.target.files)) {
+      try {
+        const path = `customers/${customer.id}/${Date.now()}-${file.name}`
+        let file_url: string | null = null
+        const { error: uploadError } = await sb.storage.from('kembali-docs').upload(path, file)
+        if (!uploadError) {
+          const { data: urlData } = sb.storage.from('kembali-docs').getPublicUrl(path)
+          file_url = urlData.publicUrl
+        }
+        const { data: doc } = await sb.from('customer_documents').insert({
+          customer_id: customer.id,
+          name: file.name,
+          file_url,
+          file_size: file.size,
+          mime_type: file.type,
+        }).select().single()
+        if (doc) setDocuments(prev => [doc, ...prev])
+      } catch { /* continue */ }
+    }
+    setUploadingDoc(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    const sb = createClient()
+    await sb.from('customer_documents').delete().eq('id', docId)
+    setDocuments(prev => prev.filter(d => d.id !== docId))
+  }
+
+  const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+  const handleSaveSubscription = async () => {
+    if (!customer) return
+    const sb = createClient()
+    if (subscription) {
+      await sb.from('customer_subscriptions').update({ ...subForm, updated_at: new Date().toISOString() }).eq('id', subscription.id)
+      setSubscription({ ...subscription, ...subForm })
+    } else {
+      const { data } = await sb.from('customer_subscriptions').insert({
+        customer_id: customer.id,
+        ...subForm,
+        start_date: new Date().toISOString().split('T')[0],
+        status: 'active',
+      }).select().single()
+      setSubscription(data)
+    }
+    setEditingSub(false)
+  }
+
+  const handleCreateDelivery = async () => {
+    if (!customer) return
+    const sb = createClient()
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await sb.from('deliveries').insert({
+      customer_id: customer.id,
+      delivery_date: today,
+      status: 'pending',
+      delivered_350ml: subscription?.qty_350ml ?? 0,
+      delivered_750ml: subscription?.qty_750ml ?? 0,
+      collected_350ml: 0, collected_750ml: 0,
+      damaged_350ml: 0, damaged_750ml: 0,
+    }).select().single()
+    if (data) setDeliveries(prev => [data, ...prev])
+    setTab('deliveries')
+  }
+
   const handleGenerateInvoice = async () => {
     if (!customer) return
     setGeneratingInvoice(true)
@@ -260,6 +343,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     { id: 'deliveries', label: `Deliveries (${deliveries.length})`, icon: Truck },
     { id: 'invoices', label: `Invoices (${invoices.length})`, icon: FileText },
     { id: 'notes', label: `Notes (${notes.length})`, icon: MessageSquare },
+    { id: 'documents', label: `Documents (${documents.length})`, icon: Paperclip },
+    { id: 'subscription', label: 'Delivery Schedule', icon: RefreshCw },
     { id: 'history', label: 'Edit History', icon: Clock },
   ]
 
@@ -663,6 +748,202 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
           </CardContent></Card>
+        )}
+
+        {/* DOCUMENTS */}
+        {tab === 'documents' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500">Attach contracts, permits, ID copies, or any files to this customer account.</p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingDoc}
+                className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {uploadingDoc ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload File
+              </button>
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUploadDocument} />
+            </div>
+            {documents.length === 0 ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-200 rounded-xl py-14 text-center cursor-pointer hover:border-cyan-300 hover:bg-cyan-50/50 transition-colors"
+              >
+                <Paperclip className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-400">Click or drag files here</p>
+                <p className="text-xs text-slate-300 mt-1">Contracts, permits, IDs, invoices — any file type</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map(doc => (
+                  <div key={doc.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
+                    <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">{doc.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB · ` : ''}
+                        {new Date(doc.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {doc.file_url && (
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Open file">
+                          <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                        </a>
+                      )}
+                      <button onClick={() => handleDeleteDocument(doc.id)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-400" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DELIVERY SCHEDULE / SUBSCRIPTION */}
+        {tab === 'subscription' && (
+          <div className="space-y-4">
+            {/* Quick-create delivery button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-800">Delivery Schedule</h3>
+                <p className="text-sm text-slate-500 mt-0.5">Set delivery days and quantities. Monthly invoice is auto-generated on the 1st.</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleCreateDelivery}
+                  className="inline-flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <Truck className="w-3.5 h-3.5" /> Schedule Delivery Now
+                </button>
+                <button onClick={() => setEditingSub(!editingSub)}
+                  className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <Edit2 className="w-3.5 h-3.5" /> {subscription ? 'Edit Schedule' : 'Set Up Schedule'}
+                </button>
+              </div>
+            </div>
+
+            {editingSub ? (
+              <Card><CardContent className="pt-5 space-y-5">
+                <div>
+                  <Label className="mb-2 block font-medium">Delivery Days</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <button key={day}
+                        onClick={() => setSubForm((f: any) => ({
+                          ...f,
+                          delivery_days: f.delivery_days.includes(day)
+                            ? f.delivery_days.filter((d: string) => d !== day)
+                            : [...f.delivery_days, day]
+                        }))}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                          subForm.delivery_days.includes(day)
+                            ? 'bg-cyan-600 text-white border-cyan-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-400'
+                        }`}>
+                        {day.slice(0,3).charAt(0).toUpperCase() + day.slice(1,3)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1.5">Select all days this customer receives deliveries</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>350ml bottles per delivery</Label>
+                    <Input type="number" min="0" value={subForm.qty_350ml}
+                      onChange={e => setSubForm((f: any) => ({ ...f, qty_350ml: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                  <div>
+                    <Label>750ml bottles per delivery</Label>
+                    <Input type="number" min="0" value={subForm.qty_750ml}
+                      onChange={e => setSubForm((f: any) => ({ ...f, qty_750ml: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Special instructions</Label>
+                  <Textarea value={subForm.special_instructions}
+                    onChange={e => setSubForm((f: any) => ({ ...f, special_instructions: e.target.value }))}
+                    placeholder="Access notes, contact on arrival, loading dock info..." rows={2} />
+                </div>
+                <div className="flex gap-2">
+                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSaveSubscription}>Save Schedule</Button>
+                  <Button variant="outline" onClick={() => setEditingSub(false)}>Cancel</Button>
+                </div>
+              </CardContent></Card>
+            ) : subscription ? (
+              <Card><CardContent className="pt-5">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Delivery Days</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                        <span key={day} className={`px-3 py-1.5 rounded-lg text-sm font-medium border capitalize ${
+                          subscription.delivery_days?.includes(day)
+                            ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                            : 'bg-slate-50 text-slate-300 border-slate-100'
+                        }`}>
+                          {day.slice(0,3).charAt(0).toUpperCase() + day.slice(1,3)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400">350ml per delivery</p>
+                      <p className="text-2xl font-bold text-slate-700">{subscription.qty_350ml ?? 0}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400">750ml per delivery</p>
+                      <p className="text-2xl font-bold text-slate-700">{subscription.qty_750ml ?? 0}</p>
+                    </div>
+                  </div>
+                  {subscription.special_instructions && (
+                    <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800">
+                      📋 {subscription.special_instructions}
+                    </div>
+                  )}
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="text-xs text-slate-400">
+                      <Calendar className="w-3 h-3 inline mr-1" />
+                      Monthly invoice auto-generates on the 1st of each month based on completed deliveries.
+                    </p>
+                  </div>
+                </div>
+              </CardContent></Card>
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                <RefreshCw className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                <p className="font-medium">No delivery schedule set</p>
+                <p className="text-sm mt-1">Click "Set Up Schedule" to configure recurring deliveries</p>
+              </div>
+            )}
+
+            {/* Recent deliveries mini-table */}
+            {deliveries.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Recent Deliveries</p>
+                <div className="space-y-1">
+                  {deliveries.slice(0, 5).map(d => (
+                    <div key={d.id} className="flex items-center gap-3 text-sm bg-white border border-slate-100 rounded-lg px-3 py-2">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        d.status === 'completed' ? 'bg-emerald-500' : d.status === 'in_transit' ? 'bg-blue-500' : d.status === 'failed' ? 'bg-red-500' : 'bg-amber-400'
+                      }`} />
+                      <span className="flex-1 text-slate-600">{new Date(d.delivery_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                      <span className="text-slate-400">{d.delivered_350ml}×350ml · {d.delivered_750ml}×750ml</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                        d.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : d.status === 'failed' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'
+                      }`}>{d.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* HISTORY */}
