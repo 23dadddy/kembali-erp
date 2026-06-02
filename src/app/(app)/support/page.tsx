@@ -103,41 +103,44 @@ export default function SupportPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [comments])
 
-  const updateTicket = async (id: string, updates: Record<string, any>) => {
-    setSaving(true)
-    const sb = createClient()
-    await sb.from('support_tickets').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
+  const updateTicket = (id: string, updates: Record<string, any>) => {
+    // Optimistic — update state instantly, sync in background
     setTickets(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
     if (selected?.id === id) setSelected((t: any) => ({ ...t, ...updates }))
-    setSaving(false)
+    const sb = createClient()
+    sb.from('support_tickets').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
   }
 
-  const sendReply = async () => {
+  const sendReply = () => {
     if (!replyText.trim() || !selected) return
-    setSendingReply(true)
-    const sb = createClient()
-    const { data } = await sb.from('ticket_comments').insert({
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
       ticket_id: selected.id,
       author_id: myStaff?.id ?? null,
+      author: myStaff ? { name: myStaff.name } : null,
       content: replyText.trim(),
       is_internal: isInternal,
-    }).select('*, author:staff!author_id(name)').single()
-    if (data) setComments(prev => [...prev, data])
-    // Auto-move to in_progress if open
-    if (selected.status === 'open') updateTicket(selected.id, { status: 'in_progress' })
+      created_at: new Date().toISOString(),
+    }
+    setComments(prev => [...prev, optimistic as any])
     setReplyText('')
-    setSendingReply(false)
+    if (selected.status === 'open') updateTicket(selected.id, { status: 'in_progress' })
+    const sb = createClient()
+    sb.from('ticket_comments').insert({
+      ticket_id: selected.id,
+      author_id: myStaff?.id ?? null,
+      content: optimistic.content,
+      is_internal: isInternal,
+    })
   }
 
   const createTicket = async () => {
     if (!newForm.customer_id || !newForm.subject) return
-    setSaving(true)
+    setShowNewForm(false)
     const sb = createClient()
     const { data } = await sb.from('support_tickets').insert({ ...newForm, source: 'manual' }).select('*, customer:customers(name, city, contact_phone)').single()
     if (data) { setTickets(prev => [data, ...prev]); setSelected(data) }
-    setShowNewForm(false)
     setNewForm({ customer_id: '', subject: '', description: '', priority: 'medium', category: 'other' })
-    setSaving(false)
   }
 
   const filtered = tickets.filter(t => {

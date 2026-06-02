@@ -100,19 +100,20 @@ export default function TrakOpsPage() {
 
   const handleCreateRoute = async () => {
     setSavingRoute(true)
+    setRouteOpen(false)
     try {
-      await createRoute({ name: routeForm.name, driver_id: routeForm.driver_id || null, day_of_week: routeForm.days })
-      setRouteOpen(false)
+      const newRoute = await createRoute({ name: routeForm.name, driver_id: routeForm.driver_id || null, day_of_week: routeForm.days })
       setRouteForm({ name: '', driver_id: '', days: [] })
-      await load()
+      if (newRoute) setRoutes(prev => [...prev, newRoute])
     } finally { setSavingRoute(false) }
   }
 
   const handleCreateDelivery = async () => {
     if (!deliveryForm.customer_id) return
     setSavingDelivery(true)
+    setDeliveryOpen(false)
     try {
-      await createDelivery({
+      const newDel = await createDelivery({
         customer_id: deliveryForm.customer_id,
         driver_id: deliveryForm.driver_id || null,
         route_id: null, order_id: null,
@@ -125,8 +126,7 @@ export default function TrakOpsPage() {
         driver_notes: null, signature_data: null,
         signature_confirmed_by: null,
       })
-      setDeliveryOpen(false)
-      await load()
+      if (newDel) setDeliveries(prev => [newDel, ...prev])
     } finally { setSavingDelivery(false) }
   }
 
@@ -184,7 +184,7 @@ export default function TrakOpsPage() {
           ? `All ${(subs ?? []).length} subscription deliveries already exist for today`
           : `Created ${created} delivery${created !== 1 ? 'ies' : ''} from subscriptions`
       )
-      await load()
+      load() // refresh in background after bulk create
     } catch (e: any) {
       setGenerateResult(`Error: ${e.message}`)
     } finally {
@@ -192,22 +192,22 @@ export default function TrakOpsPage() {
     }
   }
 
-  const markInTransit = async (id: string) => {
-    await updateDeliveryStatus(id, 'in_transit')
-    await load()
+  const markInTransit = (id: string) => {
+    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'in_transit' as const } : d))
+    updateDeliveryStatus(id, 'in_transit')
   }
 
-  const markCompleted = async (id: string) => {
+  const markCompleted = (id: string) => {
+    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'completed' as const } : d))
     const sb = createClient()
-    await sb.from('deliveries').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id)
-    await load()
+    sb.from('deliveries').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id)
   }
 
-  const markFailed = async (id: string) => {
+  const markFailed = (id: string) => {
     const reason = prompt('Reason for failure (optional):') ?? ''
+    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'failed' as const } : d))
     const sb = createClient()
-    await sb.from('deliveries').update({ status: 'failed', failure_reason: reason || null }).eq('id', id)
-    await load()
+    sb.from('deliveries').update({ status: 'failed', failure_reason: reason || null }).eq('id', id)
   }
 
   return (

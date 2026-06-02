@@ -106,34 +106,42 @@ export default function CRMPage() {
 
   const saveLead = async () => {
     if (!form.name) return
-    setSaving(true)
+    setShowForm(false)
     const sb = createClient()
     if (editingId) {
-      const { data } = await sb.from('leads').update(form).eq('id', editingId).select().single()
-      if (data) setLeads(leads.map(l => l.id === editingId ? data : l))
-      if (selected?.id === editingId) setSelected(data)
+      setLeads(leads.map(l => l.id === editingId ? { ...l, ...form } : l))
+      if (selected?.id === editingId) setSelected((s: any) => ({ ...s, ...form }))
+      sb.from('leads').update(form).eq('id', editingId)
     } else {
+      const optimistic = { id: `tmp-${Date.now()}`, ...form, created_at: new Date().toISOString() }
+      setLeads([optimistic as any, ...leads])
       const { data } = await sb.from('leads').insert(form).select().single()
-      if (data) setLeads([data, ...leads])
+      if (data) setLeads(prev => prev.map(l => l.id === optimistic.id ? data : l))
     }
-    setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_LEAD)
-    setSaving(false)
   }
 
-  const updateStage = async (leadId: string, status: Stage) => {
+  const updateStage = (leadId: string, status: Stage) => {
+    setLeads(leads.map(l => l.id === leadId ? { ...l, status } : l))
+    if (selected?.id === leadId) setSelected((s: any) => ({ ...s, status }))
     const sb = createClient()
-    const { data } = await sb.from('leads').update({ status }).eq('id', leadId).select().single()
-    if (data) {
-      setLeads(leads.map(l => l.id === leadId ? data : l))
-      if (selected?.id === leadId) setSelected(data)
-    }
+    sb.from('leads').update({ status }).eq('id', leadId)
   }
 
   const logActivity = async () => {
     if (!selected || !activityForm.summary) return
-    setSavingActivity(true)
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      lead_id: selected.id,
+      type: activityForm.type,
+      summary: activityForm.summary,
+      outcome: activityForm.outcome || null,
+      creator: null,
+      created_at: new Date().toISOString(),
+    }
+    setActivities([optimistic as any, ...activities])
+    setActivityForm({ type: 'call', summary: '', outcome: '' })
     const sb = createClient()
     const { data } = await sb.from('lead_activities').insert({
       lead_id: selected.id,
@@ -141,9 +149,7 @@ export default function CRMPage() {
       summary: activityForm.summary,
       outcome: activityForm.outcome || null,
     }).select('*, creator:staff!created_by(name)').single()
-    if (data) setActivities([data, ...activities])
-    setActivityForm({ type: 'call', summary: '', outcome: '' })
-    setSavingActivity(false)
+    if (data) setActivities(prev => prev.map(a => a.id === optimistic.id ? data : a))
   }
 
   const convertLead = async () => {

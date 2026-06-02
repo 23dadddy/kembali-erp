@@ -72,25 +72,27 @@ export default function InvoicesPage() {
   const handleSave = async () => {
     if (!form.customer_id) return
     setSaving(true)
+    setOpen(false)
     try {
       const items = []
       if (form.qty_350ml > 0) items.push({ description: '350ml Glass Bottle', bottle_size: '350ml', quantity: form.qty_350ml, unit_price: pricing['350ml'] ?? 0 })
       if (form.qty_750ml > 0) items.push({ description: '750ml Glass Bottle', bottle_size: '750ml', quantity: form.qty_750ml, unit_price: pricing['750ml'] ?? 0 })
-      await createInvoice({ customer_id: form.customer_id, due_date: form.due_date, notes: form.notes, items })
-      setOpen(false)
+      const newInv = await createInvoice({ customer_id: form.customer_id, due_date: form.due_date, notes: form.notes, items })
       setForm(emptyForm)
-      await load()
+      if (newInv) setInvoices(prev => [newInv, ...prev])
     } finally { setSaving(false) }
   }
 
-  const changeStatus = async (id: string, status: string) => {
-    await updateInvoiceStatus(id, status)
-    await load()
+  // Optimistic: update local state immediately, sync DB in background
+  const changeStatus = (id: string, status: string) => {
+    setInvoices(prev => prev.map(i => i.id === id ? { ...i, status: status as any } : i))
+    updateInvoiceStatus(id, status)
   }
 
-  const markAsPaid = async (inv: Invoice) => {
+  const markAsPaid = (inv: Invoice) => {
+    setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' as any } : i))
     const sb = createClient()
-    await Promise.all([
+    Promise.all([
       sb.from('invoices').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', inv.id),
       sb.from('payments').insert({
         customer_id: inv.customer_id,
@@ -102,15 +104,14 @@ export default function InvoicesPage() {
         notes: `Auto-recorded when marked paid for invoice ${(inv as any).invoice_number}`,
       }),
     ])
-    await load()
   }
 
-  const markOverdue = async () => {
+  const markOverdue = () => {
     const today = new Date().toISOString().split('T')[0]
     const toMark = invoices.filter(i => i.status === 'sent' && i.due_date < today)
     if (toMark.length === 0) return
-    await Promise.all(toMark.map(i => updateInvoiceStatus(i.id, 'overdue')))
-    await load()
+    setInvoices(prev => prev.map(i => toMark.find(m => m.id === i.id) ? { ...i, status: 'overdue' as any } : i))
+    Promise.all(toMark.map(i => updateInvoiceStatus(i.id, 'overdue')))
   }
   const overdueEligible = invoices.filter(i => i.status === 'sent' && i.due_date < new Date().toISOString().split('T')[0]).length
 

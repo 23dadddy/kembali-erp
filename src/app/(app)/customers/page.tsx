@@ -119,12 +119,12 @@ export default function CustomersPage() {
 
   const handleSave = async () => {
     if (!form.name || !form.address || !form.city) return
+    setOpen(false)
     setSaving(true)
     try {
-      await createCustomer({ ...form, active: true })
-      setOpen(false)
+      const newCust = await createCustomer({ ...form, active: true })
       setForm(emptyForm)
-      await load()
+      if (newCust) setCustomers(prev => [newCust as any, ...prev])
     } catch (e: any) {
       setError(e.message)
     } finally {
