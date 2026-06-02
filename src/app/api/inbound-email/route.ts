@@ -43,14 +43,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Postmark inbound email payload
-  // https://postmarkapp.com/developer/webhooks/inbound-webhook
-  const fromEmail = (body.FromFull?.Email ?? body.From ?? '').toLowerCase().trim()
-  const fromName = body.FromFull?.Name ?? body.FromName ?? ''
-  const subject = body.Subject ?? '(No subject)'
-  const textBody = body.TextBody ?? body.StrippedTextReply ?? ''
-  const htmlBody = body.HtmlBody ?? ''
-  const messageId = body.MessageID ?? body.Headers?.find((h: any) => h.Name === 'Message-ID')?.Value ?? null
+  // Supports both Postmark webhook format and Gmail Apps Script format
+  const rawFrom: string = body.FromFull?.Email ?? body.From ?? body.from ?? ''
+  const fromName: string = body.FromFull?.Name ?? body.FromName ?? body.fromName ?? ''
+  // Parse "Name <email>" format if needed
+  const emailMatch = rawFrom.match(/<([^>]+)>/)
+  const fromEmail = (emailMatch ? emailMatch[1] : rawFrom).toLowerCase().trim()
+  const subject: string = body.Subject ?? body.subject ?? '(No subject)'
+  const textBody: string = body.TextBody ?? body.StrippedTextReply ?? body.body ?? body.textBody ?? body.plainBody ?? ''
+  const htmlBody: string = body.HtmlBody ?? body.htmlBody ?? ''
+  const messageId: string | null = body.MessageID ?? body.messageId ?? body.id ?? body.Headers?.find((h: any) => h.Name === 'Message-ID')?.Value ?? null
 
   if (!fromEmail) {
     return NextResponse.json({ error: 'No sender email' }, { status: 400 })
