@@ -22,9 +22,9 @@ function guessCategory(subject: string, body: string): string {
   const text = (subject + ' ' + body).toLowerCase()
   if (/deliver|late|missing delivery|not arrived/i.test(text)) return 'delivery'
   if (/invoice|payment|charge|billing|price/i.test(text)) return 'billing'
-  if (/bottle|broken|damage|crack|leak/i.test(text)) return 'product'
-  if (/cancel|pause|stop|end|subscription/i.test(text)) return 'subscription'
-  return 'general'
+  if (/bottle|broken|damage|crack|leak/i.test(text)) return 'bottles'
+  if (/cancel|pause|stop|end|subscription/i.test(text)) return 'other'
+  return 'other'
 }
 
 export async function POST(req: NextRequest) {
