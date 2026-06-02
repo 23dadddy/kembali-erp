@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 )
 
-function guessPriority(subject: string, body: string): 'low' | 'normal' | 'high' | 'urgent' {
+function guessPriority(subject: string, body: string): 'low' | 'medium' | 'high' | 'urgent' {
   const text = (subject + ' ' + body).toLowerCase()
   if (/urgent|asap|emergency|broken|not working|no water|stop/i.test(text)) return 'urgent'
   if (/issue|problem|wrong|missing|damaged|complaint/i.test(text)) return 'high'
