@@ -539,6 +539,9 @@ export async function createInvoice(payload: {
   const lastNum = maxRow?.invoice_number ? parseInt(maxRow.invoice_number.replace('KW-', ''), 10) : 0
   const invoiceNumber = `KW-${String(lastNum + 1).padStart(5, '0')}`
   const subtotal = payload.items.reduce((s, i) => s + i.quantity * i.unit_price, 0)
+  const tax_rate = 11 // PPN 11%
+  const tax_amount = Math.round(subtotal * tax_rate / 100)
+  const total = subtotal + tax_amount
 
   const { data: inv, error } = await sb
     .from('invoices')
@@ -548,8 +551,9 @@ export async function createInvoice(payload: {
       due_date: payload.due_date,
       notes: payload.notes,
       subtotal,
-      tax: 0,
-      total: subtotal,
+      tax_rate,
+      tax_amount,
+      total,
     })
     .select().single()
   if (error) throw error

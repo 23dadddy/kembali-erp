@@ -25,9 +25,12 @@ export default async function DashboardPage() {
   const monthStart = thirtyDaysAgo.toISOString().split('T')[0]
   const monthEnd = today
 
+  const currentPeriod = now.toISOString().slice(0, 7)
+
   const [
     customersRes, deliveriesRes, inventoryRes, invoicesRes, todayDeliveriesRes,
-    overdueRes, monthInvoicesRes, vehiclesRes, staffRes, bottleAlertRes,
+    overdueRes, monthInvoicesRes, vehiclesRes, staffRes, bottleAlertRes, kpiRes,
+    monthDeliveriesRes, newCustomersRes,
   ] = await Promise.all([
     sb.from('customers').select('*', { count: 'exact', head: true }).eq('active', true),
     sb.from('deliveries').select('*', { count: 'exact', head: true }).eq('delivery_date', today),
@@ -39,6 +42,9 @@ export default async function DashboardPage() {
     sb.from('vehicles').select('status, registration_expiry, insurance_expiry, name, plate_number'),
     sb.from('staff').select('role, active, license_expiry, name').eq('active', true),
     sb.from('customer_bottle_balance').select('*').gt('chargeable_lost_350ml', 0).limit(5),
+    sb.from('kpi_targets').select('*').eq('period', currentPeriod),
+    sb.from('deliveries').select('*', { count: 'exact', head: true }).gte('delivery_date', monthStart).lte('delivery_date', monthEnd).eq('status', 'completed'),
+    sb.from('customers').select('*', { count: 'exact', head: true }).gte('created_at', `${monthStart}-01`),
   ])
 
   const inventory = (inventoryRes.data ?? []) as BottleInventory[]
@@ -63,6 +69,10 @@ export default async function DashboardPage() {
   const expiringLicenses = staff.filter(s => s.role === 'driver' && s.license_expiry && new Date(s.license_expiry) < thirtyDays)
 
   const bottleAlerts = (bottleAlertRes.data ?? []) as any[]
+  const kpiTargets: Record<string, number> = {}
+  for (const k of (kpiRes.data ?? [])) kpiTargets[k.metric] = Number(k.target)
+  const monthDeliveries = monthDeliveriesRes.count ?? 0
+  const newCustomers = newCustomersRes.count ?? 0
 
   // Build inventory map
   const invMap: Record<string, { qty_350: number; qty_750: number }> = {}
@@ -126,6 +136,39 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        {/* KPI Targets vs Actuals */}
+        {Object.keys(kpiTargets).length > 0 && (
+          <div className="bg-white rounded-xl border p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-cyan-600" />Monthly Targets — {currentPeriod}</h3>
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+              {[
+                { metric: 'revenue', label: 'Revenue', actual: monthRevenue, format: (n: number) => formatIDR(n) },
+                { metric: 'deliveries', label: 'Deliveries', actual: monthDeliveries, format: (n: number) => n.toString() },
+                { metric: 'new_customers', label: 'New Customers', actual: newCustomers, format: (n: number) => n.toString() },
+              ].filter(k => kpiTargets[k.metric]).map(({ metric, label, actual, format }) => {
+                const target = kpiTargets[metric]
+                const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
+                const color = pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-400' : 'bg-red-400'
+                return (
+                  <div key={metric} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">{label}</span>
+                      <span className="font-semibold text-slate-700">{pct}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span>{format(actual)}</span>
+                      <span>Target: {format(target)}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Revenue + Overdue */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

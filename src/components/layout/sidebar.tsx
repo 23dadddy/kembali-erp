@@ -9,7 +9,7 @@ import {
   DollarSign, TrendingUp, Target, Sparkles, RefreshCw, Factory,
   Route, ShoppingCart, PieChart, Tag, Shield, Star, Banknote,
   ScrollText, MessageSquare, ClipboardCheck, RotateCcw, CalendarDays, BookOpen,
-  LogOut, MessagesSquare, FolderOpen,
+  LogOut, MessagesSquare, FolderOpen, Receipt, Clock, ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect } from 'react'
@@ -48,6 +48,8 @@ const groups = [
     items: [
       { label: 'Invoices', href: '/invoices', icon: FileText },
       { label: 'Credit Notes', href: '/credit-notes', icon: FileText },
+      { label: 'Purchase Orders', href: '/purchase-orders', icon: ClipboardList },
+      { label: 'Expenses', href: '/expenses', icon: Receipt },
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Payroll', href: '/payroll', icon: Banknote },
       { label: 'Pricing', href: '/pricing', icon: DollarSign },
@@ -60,6 +62,7 @@ const groups = [
     label: 'Team',
     items: [
       { label: 'HR & Drivers', href: '/hr', icon: UserCog },
+      { label: 'Attendance', href: '/attendance', icon: Clock },
       { label: 'Fleet', href: '/fleet', icon: Truck },
       { label: 'Performance', href: '/performance', icon: Star },
       { label: 'Safety', href: '/safety', icon: Shield },

@@ -10,7 +10,7 @@ import {
 import { getPricing, setPricing } from '@/lib/db'
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<'pricing' | 'company' | 'locations' | 'invoice' | 'system'>('pricing')
+  const [tab, setTab] = useState<'pricing' | 'company' | 'locations' | 'invoice' | 'system' | 'kpi'>('pricing')
 
   // Pricing
   const [price350, setPrice350] = useState('')
@@ -157,6 +157,7 @@ export default function SettingsPage() {
             { key: 'invoice', label: 'Invoice' },
             { key: 'locations', label: 'Locations' },
             { key: 'company', label: 'Company' },
+            { key: 'kpi', label: 'KPI Targets' },
             { key: 'system', label: 'System' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -355,6 +356,10 @@ export default function SettingsPage() {
           </Section>
         )}
 
+        {tab === 'kpi' && (
+          <KpiTargetsSection />
+        )}
+
         {tab === 'system' && (
           <div className="space-y-4">
             {/* Database */}
@@ -447,5 +452,64 @@ export default function SettingsPage() {
         )}
       </div>
     </>
+  )
+}
+
+function KpiTargetsSection() {
+  const METRICS = [
+    { key: 'revenue', label: 'Monthly Revenue (IDR)', placeholder: '50000000' },
+    { key: 'deliveries', label: 'Completed Deliveries', placeholder: '500' },
+    { key: 'new_customers', label: 'New Customers', placeholder: '10' },
+    { key: 'support_resolved', label: 'Support Tickets Resolved', placeholder: '50' },
+  ]
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7))
+  const [targets, setTargets] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      const sb = createClient()
+      const { data } = await sb.from('kpi_targets').select('*').eq('period', period)
+      const t: Record<string, string> = {}
+      for (const row of (data ?? [])) t[row.metric] = String(row.target)
+      setTargets(t)
+      setLoading(false)
+    }
+    load()
+  }, [period])
+
+  const save = async () => {
+    const sb = createClient()
+    for (const { key } of METRICS) {
+      if (!targets[key]) continue
+      await sb.from('kpi_targets').upsert({ metric: key, period, target: parseFloat(targets[key]) }, { onConflict: 'metric,period' })
+    }
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-slate-800">KPI Targets</h3>
+        <input type="month" value={period} onChange={e => setPeriod(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm" />
+      </div>
+      <p className="text-sm text-slate-500">Set monthly targets. Progress bars appear on the dashboard when targets are configured.</p>
+      {loading ? <Loader2 className="w-5 h-5 animate-spin text-slate-300 mx-auto" /> : (
+        <div className="space-y-3">
+          {METRICS.map(({ key, label, placeholder }) => (
+            <div key={key} className="flex items-center gap-3">
+              <label className="text-sm text-slate-600 w-56 flex-shrink-0">{label}</label>
+              <input type="number" min="0" value={targets[key] ?? ''} onChange={e => setTargets(t => ({ ...t, [key]: e.target.value }))}
+                placeholder={placeholder} className="border rounded-lg px-3 py-1.5 text-sm flex-1" />
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={save} className="bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+        {saved ? <><CheckCircle2 className="w-4 h-4" />Saved!</> : 'Save Targets'}
+      </button>
+    </div>
   )
 }
