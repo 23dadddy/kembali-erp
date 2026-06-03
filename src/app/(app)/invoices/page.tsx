@@ -64,6 +64,26 @@ export default function InvoicesPage() {
   const [sendingStmts, setSendingStmts] = useState(false)
   const [stmtResult, setStmtResult] = useState<any>(null)
   const [sendingReminders, setSendingReminders] = useState(false)
+  const [pendingPayments, setPendingPayments] = useState<any[]>([])
+
+  const loadPendingPayments = useCallback(async () => {
+    const sb = createClient()
+    const { data } = await sb.from('payments')
+      .select('*, invoice:invoices(invoice_number, total), customer:customers(name)')
+      .eq('status', 'pending_verification')
+      .order('created_at', { ascending: false })
+    setPendingPayments(data ?? [])
+  }, [])
+
+  const verifyPayment = async (paymentId: string, invoiceId: string, customerId: string) => {
+    const sb = createClient()
+    await Promise.all([
+      sb.from('payments').update({ status: 'verified' }).eq('id', paymentId),
+      sb.from('invoices').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', invoiceId),
+    ])
+    setPendingPayments(prev => prev.filter(p => p.id !== paymentId))
+    setInvoices(prev => prev.map(i => i.id === invoiceId ? { ...i, status: 'paid' as any } : i))
+  }
 
   const generateMonthlyInvoices = async (dryRun = false) => {
     setGenerating(true)
@@ -100,7 +120,7 @@ export default function InvoicesPage() {
     } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(); loadPendingPayments() }, [load, loadPendingPayments])
 
   const handleSave = async () => {
     if (!form.customer_id) return
@@ -249,6 +269,32 @@ export default function InvoicesPage() {
     <>
       <Topbar title="Invoices" />
       <div className="p-6 space-y-4">
+        {pendingPayments.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <p className="text-sm font-semibold text-emerald-800">{pendingPayments.length} Customer Payment Notification{pendingPayments.length > 1 ? 's' : ''} — needs verification</p>
+            </div>
+            <div className="space-y-2">
+              {pendingPayments.map(p => (
+                <div key={p.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-800">{(p.customer as any)?.name}</span>
+                    <span className="text-slate-400 mx-2">·</span>
+                    <span className="text-slate-600">{(p.invoice as any)?.invoice_number}</span>
+                    {p.notes && <span className="text-slate-400 ml-2 text-xs">{p.notes}</span>}
+                  </div>
+                  <span className="text-emerald-700 font-semibold">{idr(Number(p.amount))}</span>
+                  <button onClick={() => verifyPayment(p.id, p.invoice_id, p.customer_id)}
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Verify & Mark Paid
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Draft', value: counts.draft, color: 'text-slate-600' },

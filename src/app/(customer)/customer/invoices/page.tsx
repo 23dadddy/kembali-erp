@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getPortalCustomer } from '@/lib/customer-auth'
-import { FileText, Download, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { FileText, Download, CheckCircle2, Clock, AlertCircle, Loader2, CreditCard, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function CustomerInvoicesPage() {
@@ -14,6 +14,10 @@ export default function CustomerInvoicesPage() {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all')
   const [downloading, setDownloading] = useState<string | null>(null)
   const [bankSettings, setBankSettings] = useState({ bank_name: 'BCA', bank_account: '—', bank_holder: 'PT Kembali Air Bali' })
+  const [payNotifInv, setPayNotifInv] = useState<any | null>(null)
+  const [payForm, setPayForm] = useState({ transfer_date: new Date().toISOString().split('T')[0], bank_name: 'BCA', notes: '' })
+  const [paySubmitting, setPaySubmitting] = useState(false)
+  const [payDone, setPayDone] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -42,6 +46,25 @@ export default function CustomerInvoicesPage() {
       downloadInvoicePDF(invoice, customer)
     } catch (e) { console.error(e) }
     setDownloading(null)
+  }
+
+  const submitPaymentNotification = async () => {
+    if (!payNotifInv || !customer) return
+    setPaySubmitting(true)
+    const sb = createClient()
+    await sb.from('payments').insert({
+      customer_id: customer.id,
+      invoice_id: payNotifInv.id,
+      amount: payNotifInv.total,
+      currency: 'IDR',
+      method: 'bank_transfer',
+      payment_date: payForm.transfer_date,
+      status: 'pending_verification',
+      notes: `Customer payment notification. Bank: ${payForm.bank_name}. ${payForm.notes}`.trim(),
+    })
+    setPayDone(payNotifInv.id)
+    setPayNotifInv(null)
+    setPaySubmitting(false)
   }
 
   const fmt = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
@@ -134,11 +157,25 @@ export default function CustomerInvoicesPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <button onClick={() => handleDownload(inv)} disabled={downloading === inv.id}
-                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-cyan-600 transition-colors disabled:opacity-50">
-                        {downloading === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        PDF
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleDownload(inv)} disabled={downloading === inv.id}
+                          className="flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-600 transition-colors disabled:opacity-50">
+                          {downloading === inv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                          PDF
+                        </button>
+                        {['sent', 'overdue'].includes(inv.status) && (
+                          payDone === inv.id ? (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                              <CheckCircle2 className="w-3 h-3" /> Notified
+                            </span>
+                          ) : (
+                            <button onClick={() => { setPayNotifInv(inv); setPayForm({ transfer_date: new Date().toISOString().split('T')[0], bank_name: 'BCA', notes: '' }) }}
+                              className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-700 font-medium bg-cyan-50 hover:bg-cyan-100 px-2 py-1 rounded-lg transition-colors">
+                              <CreditCard className="w-3 h-3" /> I've Paid
+                            </button>
+                          )
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -161,8 +198,53 @@ export default function CustomerInvoicesPage() {
             <p className="text-slate-600">Use your invoice number as payment reference</p>
           </div>
         </div>
-        <p className="text-xs text-slate-400 mt-3">After payment, send proof to <a href="mailto:contact@kembaliwater.com" className="text-cyan-600">contact@kembaliwater.com</a></p>
+        <p className="text-xs text-slate-400 mt-3">Click <strong>"I've Paid"</strong> on an invoice to notify us, or email proof to <a href="mailto:contact@kembaliwater.com" className="text-cyan-600">contact@kembaliwater.com</a></p>
       </div>
+
+      {/* Payment notification modal */}
+      {payNotifInv && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800">Notify Payment</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{payNotifInv.invoice_number} · {fmt(payNotifInv.total)}</p>
+              </div>
+              <button onClick={() => setPayNotifInv(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-600">Tell us about your transfer so we can verify and update your account quickly.</p>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Transfer Date</label>
+                <input type="date" value={payForm.transfer_date} onChange={e => setPayForm({ ...payForm, transfer_date: e.target.value })}
+                  className="border rounded-xl px-3 py-2 text-sm w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Bank Used</label>
+                <select value={payForm.bank_name} onChange={e => setPayForm({ ...payForm, bank_name: e.target.value })}
+                  className="border rounded-xl px-3 py-2 text-sm w-full">
+                  {['BCA', 'BNI', 'BRI', 'Mandiri', 'CIMB', 'Danamon', 'OCBC', 'Other'].map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Notes (optional)</label>
+                <input type="text" value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })}
+                  placeholder="e.g. transfer reference number, amount paid..."
+                  className="border rounded-xl px-3 py-2 text-sm w-full" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setPayNotifInv(null)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                  Cancel
+                </button>
+                <button onClick={submitPaymentNotification} disabled={paySubmitting}
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2">
+                  {paySubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Notify Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
