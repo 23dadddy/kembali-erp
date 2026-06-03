@@ -751,13 +751,36 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             ) : (
               <div className="space-y-1">
                 {invoices.map(inv => (
-                  <div key={inv.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 text-sm cursor-pointer" onClick={() => router.push(`/invoices/${inv.id}`)}>
-                    <div className="flex-1">
+                  <div key={inv.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 text-sm">
+                    <div className="flex-1 cursor-pointer" onClick={() => router.push(`/invoices/${inv.id}`)}>
                       <p className="font-medium text-slate-700">{inv.invoice_number}</p>
                       <p className="text-xs text-slate-400">Due {new Date(inv.due_date).toLocaleDateString()}</p>
                     </div>
                     <p className="font-bold text-slate-800">{idr(Number(inv.total))}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'overdue' ? 'bg-red-100 text-red-600' : inv.status === 'sent' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{inv.status}</span>
+                    {['draft', 'sent'].includes(inv.status) && customer.contact_email && (
+                      <button onClick={async () => {
+                        await fetch('/api/email', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'invoice', payload: { ...inv, customer: { name: customer.name, contact_email: customer.contact_email, contact_name: customer.contact_name } } }) })
+                        const sb = createClient()
+                        await sb.from('invoices').update({ status: 'sent' }).eq('id', inv.id)
+                        setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'sent' as any } : i))
+                      }} className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100">
+                        Email
+                      </button>
+                    )}
+                    {['sent', 'overdue'].includes(inv.status) && (
+                      <button onClick={async () => {
+                        const sb = createClient()
+                        await Promise.all([
+                          sb.from('invoices').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', inv.id),
+                          sb.from('payments').insert({ customer_id: customer.id, invoice_id: inv.id, amount: inv.total, currency: 'IDR', method: 'bank_transfer', payment_date: new Date().toISOString().split('T')[0], status: 'verified' }),
+                        ])
+                        setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' as any } : i))
+                      }} className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100">
+                        Paid
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
