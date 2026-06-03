@@ -69,20 +69,50 @@ export default function PayrollPage() {
 
     if (!run) { setSaving(false); return }
 
+    // Pull attendance data for this period to auto-fill days_worked / days_absent
+    const { data: attendanceLogs } = await sb
+      .from('attendance_logs')
+      .select('staff_id, status, hours_worked')
+      .gte('date', runForm.period_start)
+      .lte('date', runForm.period_end)
+
+    const attMap: Record<string, { worked: number; absent: number; hours: number }> = {}
+    for (const log of (attendanceLogs ?? [])) {
+      if (!attMap[log.staff_id]) attMap[log.staff_id] = { worked: 0, absent: 0, hours: 0 }
+      if (['present', 'late'].includes(log.status)) {
+        attMap[log.staff_id].worked++
+        attMap[log.staff_id].hours += Number(log.hours_worked ?? 0)
+      } else if (log.status === 'half_day') {
+        attMap[log.staff_id].worked += 0.5
+        attMap[log.staff_id].hours += Number(log.hours_worked ?? 0)
+      } else if (log.status === 'absent') {
+        attMap[log.staff_id].absent++
+      }
+    }
+
     // Auto-populate with all active staff
-    const payrollItems = staff.map(s => ({
-      payroll_run_id: run.id,
-      employee_id: s.id,
-      base_salary: s.salary ?? 0,
-      allowances: 0,
-      overtime: 0,
-      bonus: 0,
-      deductions: 0,
-      tax: 0,
-      net_pay: s.salary ?? 0,
-      days_worked: 0,
-      days_absent: 0,
-    }))
+    const payrollItems = staff.map(s => {
+      const att = attMap[s.id] ?? { worked: 0, absent: 0, hours: 0 }
+      const baseSalary = s.salary ?? 0
+      // For daily workers: pay = (days_worked / working_days_in_period) * salary
+      const workingDays = att.worked + att.absent || 1
+      const earnedBase = s.salary_type === 'daily' && att.worked > 0
+        ? Math.round((att.worked / workingDays) * baseSalary)
+        : baseSalary
+      return {
+        payroll_run_id: run.id,
+        employee_id: s.id,
+        base_salary: earnedBase,
+        allowances: 0,
+        overtime: 0,
+        bonus: 0,
+        deductions: 0,
+        tax: 0,
+        net_pay: earnedBase,
+        days_worked: att.worked,
+        days_absent: att.absent,
+      }
+    })
 
     if (payrollItems.length > 0) {
       await sb.from('payroll_items').insert(payrollItems)

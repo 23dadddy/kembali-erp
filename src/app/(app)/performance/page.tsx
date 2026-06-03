@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
 import {
   TrendingUp, Star, Truck, Package, CheckCircle2,
-  AlertTriangle, Loader2, Plus, Check, X, User, BarChart3
+  AlertTriangle, Loader2, Plus, Check, X, User, BarChart3, Zap
 } from 'lucide-react'
 
 export default function PerformancePage() {
@@ -14,6 +14,7 @@ export default function PerformancePage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [autoCalcing, setAutoCalcing] = useState(false)
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
 
   const [form, setForm] = useState({
@@ -86,6 +87,56 @@ export default function PerformancePage() {
     setSaving(false)
   }
 
+  const autoCalculate = async () => {
+    setAutoCalcing(true)
+    const sb = createClient()
+    const monthStart = `${period}-01`
+    const monthEnd = new Date(parseInt(period.split('-')[0]), parseInt(period.split('-')[1]), 0).toISOString().split('T')[0]
+
+    // Pull all completed deliveries for this period grouped by driver
+    const { data: deliveries } = await sb
+      .from('deliveries')
+      .select('driver_id, status, delivered_350ml, delivered_750ml, collected_350ml, collected_750ml')
+      .gte('delivery_date', monthStart)
+      .lte('delivery_date', monthEnd)
+      .not('driver_id', 'is', null)
+
+    // Aggregate
+    const byDriver: Record<string, { completed: number; failed: number; del350: number; del750: number; col350: number; col750: number }> = {}
+    for (const d of (deliveries ?? [])) {
+      if (!byDriver[d.driver_id]) byDriver[d.driver_id] = { completed: 0, failed: 0, del350: 0, del750: 0, col350: 0, col750: 0 }
+      if (d.status === 'completed') {
+        byDriver[d.driver_id].completed++
+        byDriver[d.driver_id].del350 += d.delivered_350ml ?? 0
+        byDriver[d.driver_id].del750 += d.delivered_750ml ?? 0
+        byDriver[d.driver_id].col350 += d.collected_350ml ?? 0
+        byDriver[d.driver_id].col750 += d.collected_750ml ?? 0
+      } else if (d.status === 'failed') {
+        byDriver[d.driver_id].failed++
+      }
+    }
+
+    // Upsert one record per driver per month
+    for (const [driverId, totals] of Object.entries(byDriver)) {
+      const bottlesDelivered = totals.del350 + totals.del750
+      const bottlesCollected = totals.col350 + totals.col750
+      const collectionRate = bottlesDelivered > 0 ? Math.round((bottlesCollected / bottlesDelivered) * 100) : 0
+      await sb.from('driver_performance').upsert({
+        driver_id: driverId,
+        period_date: monthStart,
+        deliveries_completed: totals.completed,
+        deliveries_failed: totals.failed,
+        bottles_delivered: bottlesDelivered,
+        bottles_collected: bottlesCollected,
+        collection_rate: collectionRate,
+      }, { onConflict: 'driver_id,period_date' })
+    }
+
+    await loadAll()
+    setAutoCalcing(false)
+    alert(`Auto-calculated performance for ${Object.keys(byDriver).length} drivers from delivery data.`)
+  }
+
   // Aggregate by driver for the selected period
   const driverSummary = staff.map(s => {
     const driverRecords = records.filter(r => r.driver_id === s.id)
@@ -128,6 +179,10 @@ export default function PerformancePage() {
               value={period} onChange={e => setPeriod(e.target.value)} />
           </div>
           <div className="flex-1" />
+          <button onClick={autoCalculate} disabled={autoCalcing}
+            className="flex items-center gap-2 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+            {autoCalcing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Auto-Calculate
+          </button>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
             <Plus className="w-4 h-4" /> Log Performance
