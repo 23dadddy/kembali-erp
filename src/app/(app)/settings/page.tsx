@@ -562,7 +562,7 @@ function EmailLogSection() {
   const load = async () => {
     setLoading(true)
     const sb = createClient()
-    const { data } = await sb.from('email_log').select('*').order('sent_at', { ascending: false }).limit(30)
+    const { data } = await sb.from('email_log').select('*').order('created_at', { ascending: false }).limit(30)
     setLogs(data ?? [])
     setLoading(false)
   }
@@ -591,7 +591,7 @@ function EmailLogSection() {
               </div>
               <div className="text-right flex-shrink-0">
                 <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${log.status === 'sent' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>{log.status}</span>
-                <p className="text-slate-300 mt-0.5">{new Date(log.sent_at).toLocaleDateString()}</p>
+                <p className="text-slate-300 mt-0.5">{new Date(log.created_at).toLocaleDateString()}</p>
               </div>
             </div>
           ))}
