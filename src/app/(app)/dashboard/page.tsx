@@ -305,13 +305,13 @@ export default async function DashboardPage() {
         {/* Quick Links */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Bulk Invoice', desc: 'Generate all monthly invoices', href: '/invoices/bulk', icon: FileText },
-            { label: 'Import Customers', desc: 'Upload CSV customer list', href: '/customers/import', icon: Users },
-            { label: 'CRM Pipeline', desc: 'View sales leads', href: '/crm', icon: Target },
-            { label: 'Fleet Status', desc: 'Vehicles & maintenance', href: '/fleet', icon: Wrench },
-          ].map(({ label, desc, href, icon: Icon }) => (
+            { label: 'Generate Invoices', desc: 'Create monthly invoices from deliveries', href: '/invoices', icon: FileText, accent: 'border-violet-200 hover:border-violet-400 hover:bg-violet-50/30' },
+            { label: 'TrakOps Board', desc: "Manage today's deliveries", href: '/trakops', icon: Truck, accent: 'border-cyan-200 hover:border-cyan-400 hover:bg-cyan-50/30' },
+            { label: 'CRM Pipeline', desc: 'View & advance sales leads', href: '/crm', icon: Target, accent: 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/30' },
+            { label: 'Fleet Status', desc: 'Vehicles & maintenance', href: '/fleet', icon: Wrench, accent: 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/30' },
+          ].map(({ label, desc, href, icon: Icon, accent }) => (
             <Link key={href} href={href}>
-              <div className="border border-slate-200 rounded-xl p-4 hover:border-cyan-300 hover:bg-cyan-50/30 transition-colors cursor-pointer">
+              <div className={`border rounded-xl p-4 transition-colors cursor-pointer ${accent}`}>
                 <Icon className="w-5 h-5 text-slate-400 mb-2" />
                 <p className="text-sm font-semibold text-slate-700">{label}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{desc}</p>

@@ -41,11 +41,14 @@ export function NotificationsBell() {
     const todayStr = today.toISOString().split('T')[0]
     const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-    const [overdueRes, bottleRes, vehicleRes, staffRes] = await Promise.all([
+    const [overdueRes, bottleRes, vehicleRes, staffRes, ticketsRes, stockRes, todayDelivRes] = await Promise.all([
       sb.from('invoices').select('id, invoice_number, total, customer:customers(name)').eq('status', 'overdue').limit(20),
       sb.from('customer_bottle_balance').select('customer_id, chargeable_lost_350ml, chargeable_lost_750ml').filter('is_chargeable', 'eq', true).limit(20),
       sb.from('vehicles').select('id, name, plate_number, registration_expiry, insurance_expiry').or(`registration_expiry.lte.${in30Days},insurance_expiry.lte.${in30Days}`).not('registration_expiry', 'is', null),
       sb.from('staff').select('id, name, license_expiry').not('license_expiry', 'is', null).lte('license_expiry', in30Days).eq('active', true),
+      sb.from('support_tickets').select('id').eq('status', 'open').limit(50),
+      sb.from('inventory_items').select('id, name, quantity, reorder_point').not('reorder_point', 'is', null).gt('reorder_point', 0).limit(20),
+      sb.from('deliveries').select('id, status').eq('delivery_date', todayStr),
     ])
 
     const items: Notification[] = []
@@ -116,6 +119,51 @@ export function NotificationsBell() {
         body: `${s.name} — ${daysLeft <= 0 ? 'EXPIRED' : `${daysLeft} days left`}`,
         href: '/hr',
       })
+    }
+
+    // Open support tickets
+    const openTickets = ticketsRes.data ?? []
+    if (openTickets.length > 0) {
+      items.push({
+        id: 'open-tickets',
+        type: 'low_stock',
+        severity: openTickets.length >= 5 ? 'high' : 'medium',
+        title: `${openTickets.length} Open Support Ticket${openTickets.length > 1 ? 's' : ''}`,
+        body: 'Unresolved customer issues need attention',
+        href: '/support',
+      })
+    }
+
+    // Low stock procurement items
+    const stockItems = stockRes.data ?? []
+    const lowStock = stockItems.filter((i: any) => i.quantity <= i.reorder_point)
+    if (lowStock.length > 0) {
+      items.push({
+        id: 'low-stock',
+        type: 'low_stock',
+        severity: 'medium',
+        title: `${lowStock.length} Item${lowStock.length > 1 ? 's' : ''} Below Reorder Point`,
+        body: lowStock.slice(0, 2).map((i: any) => i.name).join(', ') + (lowStock.length > 2 ? ` +${lowStock.length - 2} more` : ''),
+        href: '/procurement',
+      })
+    }
+
+    // Today's delivery progress (if deliveries exist and completion is low)
+    const todayDeliveries = todayDelivRes.data ?? []
+    if (todayDeliveries.length > 0) {
+      const completed = todayDeliveries.filter((d: any) => d.status === 'completed').length
+      const rate = Math.round((completed / todayDeliveries.length) * 100)
+      if (rate < 50 && today.getHours() >= 14) {
+        // Only alert in the afternoon if less than 50% done
+        items.push({
+          id: 'delivery-progress',
+          type: 'low_stock',
+          severity: 'high',
+          title: `Only ${rate}% of Today's Deliveries Done`,
+          body: `${completed}/${todayDeliveries.length} completed — ${todayDeliveries.length - completed} still pending`,
+          href: '/trakops',
+        })
+      }
     }
 
     setNotifications(items)
