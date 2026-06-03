@@ -270,11 +270,10 @@ export default function GmailPage() {
 
       {/* ── TOP BAR (Gmail style) ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#f6f8fc', flexShrink: 0, borderBottom: '1px solid #e0e0e0' }}>
-        {/* Gmail wordmark */}
+        {/* Kembali wordmark */}
         <div style={{ width: SIDEBAR_W - 24, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg height="28" viewBox="0 0 75 28" style={{ flexShrink: 0 }}>
-            <g fill="none"><path d="M58.182 5.144c-3.36 0-5.844 1.176-7.98 3.024l2.28 2.712c1.548-1.38 3.288-2.244 5.58-2.244 3.708 0 6.468 2.4 6.468 6.816v.432c-1.344-.936-3.072-1.584-5.448-1.584-4.848 0-8.268 2.664-8.268 6.72 0 3.972 3.18 6.564 7.38 6.564 3.024 0 5.244-1.26 6.696-3.168v2.784h3.564V15.38c0-6.24-3.888-10.236-10.272-10.236zm.744 18.864c-2.256 0-4.14-1.26-4.14-3.384 0-2.196 1.884-3.528 4.86-3.528 2.016 0 3.648.468 4.788 1.224-.468 3.108-2.784 5.688-5.508 5.688zM43.2 5.52h-3.6v21.648h3.6V5.52zM28.8 27.168h3.6V5.52h-3.6v21.648zM21.6.48c-1.56 0-3.024.384-4.32 1.032L3.072 12.48A8.4 8.4 0 0 0 .48 18.96v2.4C.48 25.512 3.456 28 6.96 28h14.64c4.56 0 7.2-2.64 7.2-7.2V7.68C28.8 3.12 26.16.48 21.6.48zm3.6 20.32c0 2.64-1.44 3.6-3.6 3.6H6.96c-1.944 0-2.88-.984-2.88-2.88v-2.4c0-1.752.744-3.36 2.04-4.488L19.2 4.08c.744-.384 1.56-.6 2.4-.6 1.56 0 3.6.84 3.6 3.12v14.2z" fill="#EA4335"/></g>
-          </svg>
+          <span style={{ fontSize: 18, fontWeight: 600, color: '#0EA5A4', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.3px' }}>Kembali</span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: '#5f6368', background: '#e8f0fe', borderRadius: 4, padding: '2px 6px' }}>Mail</span>
         </div>
 
         {/* Search bar */}
