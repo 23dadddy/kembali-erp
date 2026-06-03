@@ -102,6 +102,10 @@ function WhatsAppTab() {
   const [newName, setNewName] = useState('')
   const [customers, setCustomers] = useState<any[]>([])
   const [newCustomerId, setNewCustomerId] = useState('')
+  const [showBroadcast, setShowBroadcast] = useState(false)
+  const [broadcastMsg, setBroadcastMsg] = useState('')
+  const [broadcasting, setBroadcasting] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState<{sent: number; failed: number} | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const sb = createClient()
@@ -198,6 +202,24 @@ function WhatsAppTab() {
     return !s || (c.contact_name?.toLowerCase().includes(s) || c.phone.includes(s) || (c.customer as any)?.name?.toLowerCase().includes(s))
   })
 
+  const sendBroadcast = async () => {
+    if (!broadcastMsg.trim() || broadcasting) return
+    setBroadcasting(true)
+    try {
+      const res = await fetch('/api/whatsapp/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: broadcastMsg }),
+      })
+      const data = await res.json()
+      setBroadcastResult({ sent: data.sent, failed: data.failed })
+      setBroadcastMsg('')
+      await loadConversations()
+    } finally {
+      setBroadcasting(false)
+    }
+  }
+
   const WA_GREEN = '#25D366'
   const WA_DARK = '#111b21'
   const WA_MID = '#202c33'
@@ -223,6 +245,9 @@ function WhatsAppTab() {
               <p style={{ margin: 0, fontSize: 12, color: WA_MUTED }}>Kembali Water</p>
             </div>
           </div>
+          <button onClick={() => { setShowBroadcast(true); setBroadcastResult(null) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 8, borderRadius: '50%' }} title="Broadcast to all">
+            <Send size={18} color={WA_MUTED} />
+          </button>
           <button onClick={() => setShowNew(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 8, borderRadius: '50%', color: WA_MUTED }} title="New conversation">
             <Plus size={20} color={WA_MUTED} />
           </button>
@@ -382,6 +407,41 @@ function WhatsAppTab() {
               style={{ background: WA_GREEN, border: 'none', cursor: msgInput.trim() ? 'pointer' : 'default', padding: 10, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: msgInput.trim() ? 1 : 0.5 }}>
               {sending ? <Loader2 size={20} color="#fff" className="animate-spin" /> : <Send size={20} color="#fff" />}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast modal */}
+      {showBroadcast && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div style={{ background: '#233138', borderRadius: 12, padding: 24, width: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: WA_TEXT, fontSize: 17, fontWeight: 600 }}>📢 Broadcast Message</h3>
+              <button onClick={() => setShowBroadcast(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <X size={18} color={WA_MUTED} />
+              </button>
+            </div>
+            <p style={{ color: WA_MUTED, fontSize: 13, marginBottom: 16 }}>
+              Send a message to <strong style={{ color: WA_TEXT }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</strong>. Use for announcements, price changes, holiday notices, etc.
+            </p>
+            <textarea value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)}
+              placeholder="Type your broadcast message..."
+              rows={4}
+              style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '10px 12px', color: WA_TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+            {broadcastResult && (
+              <div style={{ background: broadcastResult.failed > 0 ? '#2a1a1a' : '#1a2a1a', borderRadius: 8, padding: '10px 12px', marginTop: 12 }}>
+                <p style={{ margin: 0, fontSize: 13, color: broadcastResult.failed > 0 ? '#f6bf26' : WA_GREEN }}>
+                  ✅ Sent to {broadcastResult.sent} contacts{broadcastResult.failed > 0 ? ` · ❌ ${broadcastResult.failed} failed` : ''}
+                </p>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button onClick={() => setShowBroadcast(false)} style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: WA_MUTED, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={sendBroadcast} disabled={!broadcastMsg.trim() || broadcasting}
+                style={{ padding: '10px 20px', borderRadius: 8, background: WA_GREEN, border: 'none', color: '#fff', cursor: broadcastMsg.trim() && !broadcasting ? 'pointer' : 'default', fontSize: 14, fontWeight: 600, opacity: broadcastMsg.trim() && !broadcasting ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {broadcasting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send Broadcast
+              </button>
+            </div>
           </div>
         </div>
       )}
