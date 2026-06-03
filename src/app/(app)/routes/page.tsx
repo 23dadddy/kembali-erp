@@ -6,7 +6,7 @@ import { Topbar } from '@/components/layout/topbar'
 import {
   MapPin, Plus, Loader2, Check, X, Truck, User, Clock,
   ChevronRight, GripVertical, Trash2, Play, Edit2, Route,
-  Calendar, Navigation
+  Calendar, Navigation, Zap
 } from 'lucide-react'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -157,6 +157,43 @@ export default function RoutesPage() {
     alert(`Generated ${created} deliveries for ${selectedRoute.name} today. ${stops.length - created} already existed.`)
   }
 
+  const generateAllRoutes = async () => {
+    if (!confirm('Generate deliveries for ALL active routes today?')) return
+    setGenerating(true)
+    const sb = createClient()
+    const today = new Date().toISOString().split('T')[0]
+    const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+
+    const { data: allRoutes } = await sb.from('routes').select('id, name').eq('active', true)
+    const { data: allStops } = await sb.from('route_stops')
+      .select('customer_id, route_id, default_350ml, default_750ml, stop_order')
+      .in('route_id', (allRoutes ?? []).map(r => r.id))
+      .order('stop_order')
+
+    let totalCreated = 0
+    for (const stop of (allStops ?? [])) {
+      const { data: existing } = await sb.from('deliveries')
+        .select('id').eq('customer_id', stop.customer_id).eq('delivery_date', today).limit(1)
+      if (existing && existing.length > 0) continue
+
+      await sb.from('deliveries').insert({
+        customer_id: stop.customer_id,
+        route_id: stop.route_id,
+        delivery_date: today,
+        status: 'pending',
+        delivered_350ml: stop.default_350ml ?? 0,
+        delivered_750ml: stop.default_750ml ?? 0,
+        collected_350ml: 0,
+        collected_750ml: 0,
+        damaged_350ml: 0,
+        damaged_750ml: 0,
+      })
+      totalCreated++
+    }
+    setGenerating(false)
+    alert(`Generated ${totalCreated} deliveries across all active routes for today.`)
+  }
+
   const toggleDay = (day: string) => {
     setRouteForm(f => ({
       ...f,
@@ -170,10 +207,14 @@ export default function RoutesPage() {
       <div className="flex h-[calc(100vh-57px)]">
         {/* Routes List Panel */}
         <div className="w-72 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-slate-100 space-y-2">
             <button onClick={() => setShowRouteForm(true)}
               className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-xl text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" /> New Route
+            </button>
+            <button onClick={generateAllRoutes} disabled={generating}
+              className="w-full flex items-center justify-center gap-2 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Generate All Today
             </button>
           </div>
 
