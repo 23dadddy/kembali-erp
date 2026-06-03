@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
         }),
       })
       const data = await res.json()
+      // Resend returns an `id` — store as external_id so inbound In-Reply-To can match it
       if (res.ok) externalId = data.id
       else error = data.message ?? 'Send failed'
     }

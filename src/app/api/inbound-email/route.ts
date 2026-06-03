@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
   const textBody: string = body.TextBody ?? body.StrippedTextReply ?? body.body ?? body.textBody ?? body.plainBody ?? ''
   const htmlBody: string = body.HtmlBody ?? body.htmlBody ?? ''
   const messageId: string | null = body.MessageID ?? body.messageId ?? body.id ?? body.Headers?.find((h: any) => h.Name === 'Message-ID')?.Value ?? null
+  const inReplyTo: string | null = body.inReplyTo ?? body.in_reply_to ?? body.Headers?.find((h: any) => h.Name === 'In-Reply-To')?.Value ?? null
+  const gmailThreadId: string | null = body.gmailThreadId ?? null
 
   if (!fromEmail) {
     return NextResponse.json({ error: 'No sender email' }, { status: 400 })
@@ -67,32 +69,38 @@ export async function POST(req: NextRequest) {
     .ilike('contact_email', fromEmail)
     .single()
 
-  // Check if this is a reply to an existing ticket (same thread)
-  if (messageId) {
-    const { data: existing } = await supabase
-      .from('support_tickets')
-      .select('id, description')
-      .eq('email_thread_id', messageId)
-      .single()
+  // ── Thread matching: find existing conversation to reply into ──────────────
+  let resolvedThreadId: string = messageId ?? `email-${fromEmail}-${Date.now()}`
 
-    if (existing) {
-      // Append reply to existing ticket description
-      const updated = existing.description + `\n\n--- Reply from ${fromName || fromEmail} ---\n${description}`
-      await supabase
-        .from('support_tickets')
-        .update({ description: updated, status: 'open', updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
-
-      return NextResponse.json({ ok: true, action: 'appended', ticketId: existing.id })
-    }
+  // 1. Match by In-Reply-To → look for a communications row with that external_id
+  if (inReplyTo) {
+    const { data: parentMsg } = await supabase
+      .from('communications')
+      .select('thread_id')
+      .eq('external_id', inReplyTo.replace(/^<|>$/g, ''))
+      .limit(1)
+      .maybeSingle()
+    if (parentMsg) resolvedThreadId = parentMsg.thread_id
   }
 
-  // Log to unified communications inbox
+  // 2. Fallback: match by Gmail thread ID stored in metadata
+  if (resolvedThreadId === (messageId ?? `email-${fromEmail}-${Date.now()}`) && gmailThreadId) {
+    const { data: gmailThread } = await supabase
+      .from('communications')
+      .select('thread_id')
+      .eq('channel', 'email')
+      .contains('metadata', { gmailThreadId })
+      .limit(1)
+      .maybeSingle()
+    if (gmailThread) resolvedThreadId = gmailThread.thread_id
+  }
+
+  // ── Log to unified communications inbox ───────────────────────────────────
   await supabase.from('communications').insert({
     channel: 'email',
     direction: 'inbound',
     customer_id: customer?.id ?? null,
-    thread_id: messageId ?? `email-${fromEmail}-${Date.now()}`,
+    thread_id: resolvedThreadId,
     from_address: fromEmail,
     from_name: fromName || null,
     subject,
@@ -100,6 +108,7 @@ export async function POST(req: NextRequest) {
     html_body: htmlBody.slice(0, 50000) || null,
     status: 'unread',
     external_id: messageId,
+    metadata: gmailThreadId ? { gmailThreadId } : {},
   })
 
   // Create new ticket
