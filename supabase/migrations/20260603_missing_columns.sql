@@ -133,3 +133,32 @@ ALTER TABLE promotions ADD COLUMN IF NOT EXISTS uses_count int DEFAULT 0;
 ALTER TABLE promotions ADD COLUMN IF NOT EXISTS start_date date;
 ALTER TABLE promotions ADD COLUMN IF NOT EXISTS end_date date;
 ALTER TABLE promotions ADD COLUMN IF NOT EXISTS active boolean DEFAULT true;
+
+-- Fix customer_bottle_balance view to include is_chargeable column
+CREATE OR REPLACE VIEW customer_bottle_balance AS
+SELECT
+  c.id AS customer_id,
+  c.name AS customer_name,
+  c.type AS customer_type,
+  c.city,
+  COALESCE(SUM(d.delivered_350ml), 0) AS total_delivered_350ml,
+  COALESCE(SUM(d.collected_350ml), 0) AS total_returned_350ml,
+  COALESCE(SUM(d.damaged_350ml), 0) AS total_damaged_350ml,
+  COALESCE(SUM(d.delivered_350ml), 0) - COALESCE(SUM(d.collected_350ml), 0) AS outstanding_350ml,
+  COALESCE(SUM(d.delivered_750ml), 0) AS total_delivered_750ml,
+  COALESCE(SUM(d.collected_750ml), 0) AS total_returned_750ml,
+  COALESCE(SUM(d.damaged_750ml), 0) AS total_damaged_750ml,
+  COALESCE(SUM(d.delivered_750ml), 0) - COALESCE(SUM(d.collected_750ml), 0) AS outstanding_750ml,
+  ROUND(COALESCE(SUM(d.delivered_350ml), 0) * 0.08) AS threshold_350ml,
+  ROUND(COALESCE(SUM(d.delivered_750ml), 0) * 0.08) AS threshold_750ml,
+  GREATEST(0, COALESCE(SUM(d.delivered_350ml), 0) - COALESCE(SUM(d.collected_350ml), 0) - ROUND(COALESCE(SUM(d.delivered_350ml), 0) * 0.08)) AS chargeable_lost_350ml,
+  GREATEST(0, COALESCE(SUM(d.delivered_750ml), 0) - COALESCE(SUM(d.collected_750ml), 0) - ROUND(COALESCE(SUM(d.delivered_750ml), 0) * 0.08)) AS chargeable_lost_750ml,
+  -- is_chargeable: true if any bottles are above the 8% threshold
+  (
+    GREATEST(0, COALESCE(SUM(d.delivered_350ml), 0) - COALESCE(SUM(d.collected_350ml), 0) - ROUND(COALESCE(SUM(d.delivered_350ml), 0) * 0.08)) > 0
+    OR
+    GREATEST(0, COALESCE(SUM(d.delivered_750ml), 0) - COALESCE(SUM(d.collected_750ml), 0) - ROUND(COALESCE(SUM(d.delivered_750ml), 0) * 0.08)) > 0
+  ) AS is_chargeable
+FROM customers c
+LEFT JOIN deliveries d ON d.customer_id = c.id AND d.status = 'completed'
+GROUP BY c.id, c.name, c.type, c.city;
