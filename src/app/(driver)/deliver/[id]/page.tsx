@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { getDelivery, completeDelivery } from '@/lib/db'
+import { getDelivery } from '@/lib/db'
 import { idr } from '@/lib/format'
 import type { Delivery } from '@/types'
 import {
@@ -105,7 +105,13 @@ export default function DeliverPage({ params }: { params: Promise<{ id: string }
     setSaving(true)
     try {
       const signatureData = canvas.toDataURL('image/png')
-      await completeDelivery(id, { ...form, signature_data: signatureData })
+      // Use server-side API so inventory RPCs + confirmation email fire server-side
+      const res = await fetch('/api/deliveries/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...form, signature_data: signatureData }),
+      })
+      if (!res.ok) throw new Error('Failed to complete delivery')
       setStep('done')
     } catch (e) {
       console.error(e)

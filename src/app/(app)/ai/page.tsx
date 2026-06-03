@@ -15,13 +15,17 @@ interface Message {
 
 const SUGGESTIONS = [
   "Which customers haven't paid their invoices?",
-  "How many bottles are currently at customer sites?",
-  "Who are my top 5 customers by deliveries this month?",
-  "What's my total revenue this month?",
+  "Who are my top 5 customers by revenue this month?",
+  "What's my total revenue this month vs last month?",
   "Which customers have exceeded the 8% lost bottle threshold?",
   "How many deliveries were completed today?",
-  "Show me all overdue invoices",
+  "Show me all overdue invoices and their amounts",
   "What's the bottle recovery rate this month?",
+  "Which staff have the most deliveries this month?",
+  "Are there any open support tickets I should know about?",
+  "Which customers haven't had a delivery in 30+ days?",
+  "What's my total accounts receivable?",
+  "Which subscriptions are due for renewal soon?",
 ]
 
 function formatMessage(text: string) {
