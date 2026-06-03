@@ -59,6 +59,11 @@ export default function InvoicesPage() {
   const [genMonth, setGenMonth] = useState(new Date().toISOString().slice(0, 7))
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult] = useState<any>(null)
+  const [stmtOpen, setStmtOpen] = useState(false)
+  const [stmtMonth, setStmtMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [sendingStmts, setSendingStmts] = useState(false)
+  const [stmtResult, setStmtResult] = useState<any>(null)
+  const [sendingReminders, setSendingReminders] = useState(false)
 
   const generateMonthlyInvoices = async (dryRun = false) => {
     setGenerating(true)
@@ -177,19 +182,31 @@ export default function InvoicesPage() {
   }
 
   const sendOverdueReminders = async () => {
-    const today = new Date()
-    const overdue = invoices.filter(i => i.status === 'overdue' || (i.status === 'sent' && i.due_date < today.toISOString().split('T')[0]))
-    for (const inv of overdue) {
-      const customer = (inv.customer as any)
-      if (!customer?.contact_email) continue
-      const daysOverdue = Math.floor((today.getTime() - new Date(inv.due_date).getTime()) / 86400000)
-      await fetch('/api/email', {
+    if (!confirm(`Send overdue payment reminders to ${counts.overdue} customers?`)) return
+    setSendingReminders(true)
+    try {
+      const res = await fetch('/api/invoices/remind', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      const data = await res.json()
+      alert(`Reminders sent: ${data.sent} sent, ${data.skipped} skipped (no email), ${data.errors} errors`)
+    } finally {
+      setSendingReminders(false)
+    }
+  }
+
+  const sendMonthlyStatements = async () => {
+    setSendingStmts(true)
+    setStmtResult(null)
+    try {
+      const res = await fetch('/api/invoices/statement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'overdue_reminder', payload: { ...inv, customer, daysOverdue } }),
+        body: JSON.stringify({ month: stmtMonth }),
       })
+      const data = await res.json()
+      setStmtResult(data)
+    } finally {
+      setSendingStmts(false)
     }
-    alert(`Sent reminders to ${overdue.length} customers`)
   }
 
   const counts = {
@@ -276,8 +293,8 @@ export default function InvoicesPage() {
                 <button onClick={markOverdue} className="inline-flex items-center gap-2 rounded-md border bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm font-medium px-3 py-2 transition-colors">
                   Mark {overdueEligible} Overdue
                 </button>
-                <button onClick={sendOverdueReminders} className="inline-flex items-center gap-2 rounded-md border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium px-3 py-2 transition-colors">
-                  <Mail className="w-4 h-4" /> Send Reminders
+                <button onClick={sendOverdueReminders} disabled={sendingReminders} className="inline-flex items-center gap-2 rounded-md border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-50">
+                  {sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Send Reminders
                 </button>
               </>
             )}
@@ -288,6 +305,9 @@ export default function InvoicesPage() {
             )}
             <button onClick={exportCSV} disabled={filtered.length === 0} className="inline-flex items-center gap-2 rounded-md border bg-white text-slate-600 hover:bg-slate-50 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-40">
               <Download className="w-4 h-4" /> Export CSV
+            </button>
+            <button onClick={() => { setStmtOpen(true); setStmtResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-3 py-2 transition-colors">
+              <Mail className="w-4 h-4" /> Statements
             </button>
             <button onClick={() => { setGenOpen(true); setGenResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-3 py-2 transition-colors">
               <Zap className="w-4 h-4" /> Generate Monthly
@@ -489,6 +509,64 @@ export default function InvoicesPage() {
                 </button>
               </div>
               <p className="text-xs text-slate-400 text-center">Invoices are created as <strong>Draft</strong> — review before sending to customers.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Monthly Statements Modal */}
+      {stmtOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) setStmtOpen(false) }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Mail className="w-5 h-5 text-teal-500" />Send Monthly Statements</h2>
+                  <p className="text-sm text-slate-500 mt-1">Email account statements to all active customers with contact emails. Includes deliveries, invoices, payments, and bottle balance.</p>
+                </div>
+                <button onClick={() => setStmtOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><span className="text-xl">×</span></button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Statement Period</label>
+                <input type="month" value={stmtMonth} onChange={e => { setStmtMonth(e.target.value); setStmtResult(null) }}
+                  className="border rounded-lg px-3 py-2 text-sm w-full" />
+                <p className="text-xs text-slate-400 mt-1">Customers with no activity this month will be skipped automatically.</p>
+              </div>
+
+              {stmtResult && (
+                <div className={`rounded-xl p-4 ${stmtResult.sent > 0 ? 'bg-teal-50 border border-teal-200' : 'bg-slate-50 border border-slate-200'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {stmtResult.sent > 0 ? <CheckCircle2 className="w-4 h-4 text-teal-600" /> : <AlertCircle className="w-4 h-4 text-slate-400" />}
+                    <p className="text-sm font-semibold text-slate-800">
+                      {stmtResult.sent} sent · {stmtResult.skipped} skipped · {stmtResult.errors} errors
+                    </p>
+                  </div>
+                  {stmtResult.results?.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {stmtResult.results.map((r: any, i: number) => (
+                        <div key={i} className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${r.status === 'sent' ? 'bg-white text-slate-700' : 'text-slate-400'}`}>
+                          <span className="font-medium truncate flex-1">{r.name}</span>
+                          <span className={`ml-2 ${r.status === 'sent' ? 'text-teal-600 font-semibold' : r.status === 'error' ? 'text-red-500' : 'text-slate-400'}`}>
+                            {r.status === 'sent' ? '✓ Sent' : r.status === 'error' ? '✗ Error' : `Skipped: ${r.reason}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setStmtOpen(false)} className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                  Cancel
+                </button>
+                <button onClick={sendMonthlyStatements} disabled={sendingStmts}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">
+                  {sendingStmts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Send Statements
+                </button>
+              </div>
             </div>
           </div>
         </div>

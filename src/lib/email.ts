@@ -154,6 +154,149 @@ export async function sendDeliveryConfirmationEmail(delivery: {
   })
 }
 
+export async function sendMonthlyStatementEmail(data: {
+  customer: { id: string; name: string; contact_email: string; contact_name?: string }
+  month: string // YYYY-MM
+  deliveries: { delivery_date: string; delivered_350ml: number; delivered_750ml: number; status: string }[]
+  invoices: { invoice_number: string; total: number; status: string; due_date: string }[]
+  payments: { payment_date: string; amount: number; method: string }[]
+  bottleBalance: { outstanding_350ml: number; outstanding_750ml: number }
+  pricing: { p350: number; p750: number }
+}) {
+  const { customer, month, deliveries, invoices, payments, bottleBalance, pricing } = data
+  if (!customer.contact_email) return { ok: false, error: 'No email address' }
+  const idr = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+  const monthLabel = new Date(month + '-01').toLocaleString('en-US', { month: 'long', year: 'numeric' })
+
+  const totalDelivered = deliveries.filter(d => d.status === 'completed')
+  const totalBottles = totalDelivered.reduce((s, d) => s + d.delivered_350ml + d.delivered_750ml, 0)
+  const totalRevenue = totalDelivered.reduce((s, d) => s + d.delivered_350ml * pricing.p350 + d.delivered_750ml * pricing.p750, 0)
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
+  const totalInvoiced = invoices.reduce((s, i) => s + i.total, 0)
+  const outstanding = totalInvoiced - totalPaid
+
+  const deliveryRows = totalDelivered.slice(0, 10).map(d =>
+    `<tr><td>${new Date(d.delivery_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</td><td>${d.delivered_350ml > 0 ? `${d.delivered_350ml}×350ml` : ''}${d.delivered_350ml > 0 && d.delivered_750ml > 0 ? ' + ' : ''}${d.delivered_750ml > 0 ? `${d.delivered_750ml}×750ml` : ''}</td><td style="text-align:right">${idr(d.delivered_350ml * pricing.p350 + d.delivered_750ml * pricing.p750)}</td></tr>`
+  ).join('')
+
+  const invoiceRows = invoices.map(i =>
+    `<tr><td>${i.invoice_number}</td><td>${idr(i.total)}</td><td><span class="badge" style="background:${i.status === 'paid' ? '#DCFCE7' : i.status === 'overdue' ? '#FEE2E2' : '#DBEAFE'};color:${i.status === 'paid' ? '#16A34A' : i.status === 'overdue' ? '#DC2626' : '#1D4ED8'}">${i.status}</span></td><td>${i.due_date}</td></tr>`
+  ).join('')
+
+  const html = baseTemplate(`
+    <h2>Monthly Statement — ${monthLabel}</h2>
+    <p>Dear ${customer.contact_name || customer.name},</p>
+    <p>Please find your account summary for <strong>${monthLabel}</strong> below.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0">
+      <div style="background:#F0FDFA;border-radius:8px;padding:12px">
+        <p style="margin:0;font-size:12px;color:#0F766E">Deliveries this month</p>
+        <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#0F766E">${deliveries.filter(d => d.status === 'completed').length} <span style="font-size:13px">({totalBottles} bottles)</span></p>
+      </div>
+      <div style="background:${outstanding > 0 ? '#FFF7ED' : '#F0FDF4'};border-radius:8px;padding:12px">
+        <p style="margin:0;font-size:12px;color:${outstanding > 0 ? '#C2410C' : '#15803D'}">Outstanding balance</p>
+        <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:${outstanding > 0 ? '#C2410C' : '#15803D'}">${idr(Math.max(0, outstanding))}</p>
+      </div>
+    </div>
+
+    ${deliveryRows ? `<h3 style="margin:20px 0 8px;font-size:15px">Deliveries</h3>
+    <table class="table">
+      <thead><tr><th>Date</th><th>Items</th><th style="text-align:right">Value</th></tr></thead>
+      <tbody>${deliveryRows}</tbody>
+      ${totalDelivered.length > 10 ? `<tfoot><tr><td colspan="3" style="color:#94A3B8;font-size:12px">+ ${totalDelivered.length - 10} more deliveries · Total: ${idr(totalRevenue)}</td></tr></tfoot>` : ''}
+    </table>` : '<p style="color:#94A3B8">No completed deliveries this month.</p>'}
+
+    ${invoiceRows ? `<h3 style="margin:20px 0 8px;font-size:15px">Invoices</h3>
+    <table class="table">
+      <thead><tr><th>Invoice #</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
+      <tbody>${invoiceRows}</tbody>
+    </table>` : ''}
+
+    ${(bottleBalance.outstanding_350ml > 0 || bottleBalance.outstanding_750ml > 0) ? `
+    <div style="background:#FFFBEB;border-radius:8px;padding:12px;margin-top:16px;border-left:3px solid #F59E0B">
+      <p style="margin:0;font-weight:600;color:#92400E;font-size:13px">⚠️ Outstanding Bottles</p>
+      <p style="margin:4px 0 0;color:#92400E;font-size:13px">
+        ${bottleBalance.outstanding_350ml > 0 ? `${bottleBalance.outstanding_350ml}×350ml ` : ''}${bottleBalance.outstanding_750ml > 0 ? `${bottleBalance.outstanding_750ml}×750ml` : ''} awaiting return.
+        Unreturned bottles beyond 8% may be charged on your next invoice.
+      </p>
+    </div>` : ''}
+
+    ${outstanding > 0 ? `<p style="margin-top:20px">To settle your balance, please transfer to:<br><strong>Bank BCA · 1234567890 · PT Kembali Air Bersih</strong></p>
+    <p>Please send your transfer receipt to <a href="mailto:billing@kembaliwater.com">billing@kembaliwater.com</a>.</p>` : '<p style="margin-top:16px;color:#16A34A">✅ Your account is up to date. Thank you for your prompt payments!</p>'}
+  `)
+
+  return sendEmail({
+    to: customer.contact_email,
+    toName: customer.contact_name || customer.name,
+    subject: `Account Statement — ${monthLabel} · Kembali Water`,
+    html,
+    template: 'monthly_statement',
+    relatedType: 'customer',
+    relatedId: customer.id,
+  })
+}
+
+export async function sendDailySummaryEmail(data: {
+  date: string
+  deliveriesTotal: number
+  deliveriesCompleted: number
+  deliveriesCreatedByCron: number
+  invoicesMarkedOverdue: number
+  overdueReminders: number
+  overdueInvoicesTotal: number
+  overdueValue: number
+  lowStockItems: { name: string; quantity: number; reorder_point: number }[]
+  adminEmail?: string
+}) {
+  const adminEmail = data.adminEmail || process.env.ADMIN_EMAIL || 'admin@kembaliwater.com'
+  const idr = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+  const dateLabel = new Date(data.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+
+  const completionRate = data.deliveriesTotal > 0 ? Math.round((data.deliveriesCompleted / data.deliveriesTotal) * 100) : 0
+  const completionColor = completionRate >= 80 ? '#16A34A' : completionRate >= 50 ? '#D97706' : '#DC2626'
+
+  const lowStockHtml = data.lowStockItems.length > 0
+    ? `<div style="background:#FFFBEB;border-radius:8px;padding:12px;margin-top:16px;border-left:3px solid #F59E0B">
+        <p style="margin:0 0 6px;font-weight:600;color:#92400E;font-size:13px">⚠️ ${data.lowStockItems.length} item${data.lowStockItems.length > 1 ? 's' : ''} below reorder point</p>
+        ${data.lowStockItems.map(i => `<p style="margin:2px 0;color:#92400E;font-size:12px">• ${i.name}: ${i.quantity} in stock (reorder at ${i.reorder_point})</p>`).join('')}
+      </div>`
+    : ''
+
+  const html = baseTemplate(`
+    <h2>Daily Operations Summary</h2>
+    <p style="color:#94A3B8">${dateLabel}</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:20px 0">
+      <div style="background:#F0FDFA;border-radius:8px;padding:12px;text-align:center">
+        <p style="margin:0;font-size:24px;font-weight:700;color:${completionColor}">${data.deliveriesCompleted}/${data.deliveriesTotal}</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#64748B">Deliveries (${completionRate}%)</p>
+      </div>
+      <div style="background:${data.overdueInvoicesTotal > 0 ? '#FFF7ED' : '#F0FDF4'};border-radius:8px;padding:12px;text-align:center">
+        <p style="margin:0;font-size:24px;font-weight:700;color:${data.overdueInvoicesTotal > 0 ? '#C2410C' : '#16A34A'}">${data.overdueInvoicesTotal}</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#64748B">Overdue Invoices</p>
+        ${data.overdueInvoicesTotal > 0 ? `<p style="margin:2px 0 0;font-size:11px;color:#C2410C">${idr(data.overdueValue)}</p>` : ''}
+      </div>
+      <div style="background:#EFF6FF;border-radius:8px;padding:12px;text-align:center">
+        <p style="margin:0;font-size:24px;font-weight:700;color:#1D4ED8">${data.deliveriesCreatedByCron}</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#64748B">Auto-scheduled</p>
+      </div>
+    </div>
+
+    ${data.invoicesMarkedOverdue > 0 ? `<p>📋 ${data.invoicesMarkedOverdue} invoice${data.invoicesMarkedOverdue > 1 ? 's' : ''} marked overdue today — ${data.overdueReminders} reminder${data.overdueReminders > 1 ? 's' : ''} sent to customers.</p>` : '<p>✅ No new overdue invoices today.</p>'}
+
+    ${lowStockHtml}
+
+    <p style="margin-top:20px"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://kembali-erp.vercel.app'}/trakops" class="btn">View TrakOps Dashboard</a></p>
+  `)
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `☀️ Daily Summary — ${data.deliveriesCompleted}/${data.deliveriesTotal} deliveries · ${data.date}`,
+    html,
+    template: 'daily_summary',
+  })
+}
+
 export async function sendOverdueReminderEmail(invoice: {
   id: string; invoice_number: string; total: number; due_date: string
   daysOverdue: number

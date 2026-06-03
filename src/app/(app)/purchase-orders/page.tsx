@@ -69,11 +69,26 @@ export default function PurchaseOrdersPage() {
     setSaving(false)
   }
 
-  const updateStatus = (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
     const sb = createClient()
     const extra = status === 'received' ? { received_date: new Date().toISOString().split('T')[0] } : {}
-    sb.from('purchase_orders').update({ status, ...extra, updated_at: new Date().toISOString() }).eq('id', id)
+    await sb.from('purchase_orders').update({ status, ...extra, updated_at: new Date().toISOString() }).eq('id', id)
+
+    // When marked received, update inventory_items quantities from PO line items
+    if (status === 'received') {
+      const { data: items } = await sb.from('po_items').select('*').eq('po_id', id)
+      for (const item of (items ?? [])) {
+        // Try to match by description (case-insensitive partial match)
+        const { data: invItem } = await sb.from('inventory_items').select('id, quantity').ilike('name', `%${item.description.split(' ')[0]}%`).limit(1).single()
+        if (invItem) {
+          await sb.from('inventory_items').update({
+            quantity: (invItem.quantity ?? 0) + Number(item.quantity ?? 0),
+            updated_at: new Date().toISOString(),
+          }).eq('id', invItem.id)
+        }
+      }
+    }
   }
 
   const totalDraft = orders.filter(o => o.status === 'draft').reduce((s, o) => s + Number(o.total), 0)

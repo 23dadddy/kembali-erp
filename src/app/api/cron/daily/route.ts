@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendOverdueReminderEmail, sendDailySummaryEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,8 +44,29 @@ export async function GET(req: NextRequest) {
       .update({ status: 'overdue' })
       .in('id', toMarkOverdue.map(i => i.id))
     results.invoices_marked_overdue = toMarkOverdue.length
+
+    // Send overdue reminder emails for newly overdue invoices
+    const { data: newlyOverdue } = await sb
+      .from('invoices')
+      .select('id, invoice_number, total, due_date, customer:customers(name, contact_email, contact_name)')
+      .in('id', toMarkOverdue.map(i => i.id))
+
+    let remindersSent = 0
+    for (const inv of (newlyOverdue ?? [])) {
+      const customer = inv.customer as any
+      if (!customer?.contact_email) continue
+      const daysOverdue = Math.ceil((new Date(todayStr).getTime() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24))
+      await sendOverdueReminderEmail({
+        id: inv.id, invoice_number: inv.invoice_number,
+        total: Number(inv.total), due_date: inv.due_date, daysOverdue,
+        customer: { name: customer.name, contact_email: customer.contact_email, contact_name: customer.contact_name },
+      }).catch(() => {}) // non-blocking
+      remindersSent++
+    }
+    results.overdue_reminders_sent = remindersSent
   } else {
     results.invoices_marked_overdue = 0
+    results.overdue_reminders_sent = 0
   }
 
   // ── 2. Generate subscription deliveries for today ──────────────────────────
@@ -105,7 +127,48 @@ export async function GET(req: NextRequest) {
 
   results.deliveries_created = deliveriesCreated
 
-  // ── 3. Log run ──────────────────────────────────────────────────────────────
+  // ── 3. Fetch today's delivery completion count ──────────────────────────────
+  const { data: todayDeliveries } = await sb
+    .from('deliveries')
+    .select('id, status')
+    .eq('delivery_date', todayStr)
+
+  const completedToday = (todayDeliveries ?? []).filter(d => d.status === 'completed').length
+  const totalToday = (todayDeliveries ?? []).length
+
+  // ── 4. Fetch overdue invoice totals ─────────────────────────────────────────
+  const { data: allOverdue } = await sb
+    .from('invoices')
+    .select('total')
+    .eq('status', 'overdue')
+
+  const overdueValue = (allOverdue ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
+
+  // ── 5. Fetch low stock items ─────────────────────────────────────────────────
+  const { data: allStock } = await sb
+    .from('inventory_items')
+    .select('name, quantity, reorder_point')
+    .not('reorder_point', 'is', null)
+    .gt('reorder_point', 0)
+
+  const lowStock = (allStock ?? []).filter(i => Number(i.quantity ?? 0) <= Number(i.reorder_point ?? 0))
+
+  // ── 6. Send daily summary email to admin ─────────────────────────────────────
+  await sendDailySummaryEmail({
+    date: todayStr,
+    deliveriesTotal: totalToday,
+    deliveriesCompleted: completedToday,
+    deliveriesCreatedByCron: results.deliveries_created ?? 0,
+    invoicesMarkedOverdue: results.invoices_marked_overdue ?? 0,
+    overdueReminders: results.overdue_reminders_sent ?? 0,
+    overdueInvoicesTotal: (allOverdue ?? []).length,
+    overdueValue,
+    lowStockItems: lowStock as any[],
+  }).catch(e => console.error('[cron/daily] summary email failed:', e))
+
+  results.daily_summary_sent = true
+
+  // ── Log run ──────────────────────────────────────────────────────────────────
   console.log(`[cron/daily] ${todayStr}:`, results)
 
   return NextResponse.json({
