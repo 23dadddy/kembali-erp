@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
 import {
   TrendingUp, Star, Truck, Package, CheckCircle2,
-  AlertTriangle, Loader2, Plus, Check, X, User, BarChart3, Zap
+  AlertTriangle, Loader2, Plus, Check, X, User, BarChart3, Zap, Download
 } from 'lucide-react'
 
 export default function PerformancePage() {
@@ -179,6 +179,28 @@ export default function PerformancePage() {
               value={period} onChange={e => setPeriod(e.target.value)} />
           </div>
           <div className="flex-1" />
+          {driverSummary.some(d => d.records.length > 0) && (
+            <button onClick={() => {
+              const rows = driverSummary.filter(d => d.records.length > 0).map(d => ({
+                Driver: d.name, Role: d.role,
+                Total_Deliveries: d.total_deliveries,
+                Completed: d.total_completed,
+                Failed: d.total_failed,
+                'On_Time_%': d.avg_on_time,
+                'Collection_%': d.avg_collection,
+                Customer_Rating: d.avg_rating ?? '',
+                Incidents: d.total_incidents,
+                KM_Driven: d.total_km,
+              }))
+              const headers = Object.keys(rows[0])
+              const csv = [headers.join(','), ...rows.map(r => headers.map(h => (r as any)[h]).join(','))].join('\n')
+              const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+              a.download = `driver-performance-${period}.csv`; a.click()
+            }}
+              className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              <Download className="w-4 h-4" /> Export
+            </button>
+          )}
           <button onClick={autoCalculate} disabled={autoCalcing}
             className="flex items-center gap-2 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
             {autoCalcing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Auto-Calculate

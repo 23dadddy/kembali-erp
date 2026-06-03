@@ -292,9 +292,29 @@ export default function PayrollPage() {
 
               {/* Payroll Items Table */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100">
-                  <h3 className="font-semibold text-slate-800">Employee Breakdown</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{items.length} employees · edit inline then save</p>
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Employee Breakdown</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{items.length} employees · edit inline then save</p>
+                  </div>
+                  {items.length > 0 && (
+                    <button onClick={() => {
+                      const headers = ['Employee', 'Role', 'Base Salary', 'Allowances', 'Overtime', 'Bonus', 'Deductions', 'Tax', 'Days Worked', 'Net Pay']
+                      const rows = items.map(i => [
+                        i.employee?.name ?? '', i.employee?.role ?? '',
+                        i.base_salary ?? 0, i.allowances ?? 0, i.overtime ?? 0, i.bonus ?? 0,
+                        i.deductions ?? 0, i.tax ?? 0, i.days_worked ?? 0, i.net_pay ?? 0,
+                      ])
+                      const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                      a.download = `payroll-${selectedRun.period_start?.slice(0,7)}.csv`
+                      a.click()
+                    }}
+                      className="flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">
+                      <Download className="w-3.5 h-3.5" /> Export CSV
+                    </button>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
