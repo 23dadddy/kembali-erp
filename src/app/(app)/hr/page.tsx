@@ -14,7 +14,7 @@ import type { Staff, PtoRequest } from '@/types'
 import {
   Users, Plus, Edit2, Check, X, Phone, Mail, Loader2,
   Truck, UserCog, ChevronRight, Calendar, Clock, DollarSign,
-  Shield, AlertTriangle, Star
+  Shield, AlertTriangle, Star, Download
 } from 'lucide-react'
 
 type Tab = 'team' | 'pto'
@@ -161,9 +161,22 @@ export default function HRPage() {
                   </button>
                 ))}
               </div>
-              <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}>
-                <Plus className="w-4 h-4 mr-1.5" /> Add Staff
-              </Button>
+              <div className="flex gap-2">
+                {filtered.length > 0 && (
+                  <Button variant="outline" onClick={() => {
+                    const rows = filtered.map(s => ({ Name: s.name, Role: s.role, Phone: s.phone ?? '', Email: s.email ?? '', Employee_No: s.employee_number ?? '', Start_Date: s.start_date ?? '', Salary_Type: s.salary_type ?? '', Salary_IDR: s.salary ?? '', Active: s.active ? 'Yes' : 'No' }))
+                    const headers = Object.keys(rows[0])
+                    const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                    a.download = 'staff.csv'; a.click()
+                  }}>
+                    <Download className="w-4 h-4 mr-1.5" />Export
+                  </Button>
+                )}
+                <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}>
+                  <Plus className="w-4 h-4 mr-1.5" /> Add Staff
+                </Button>
+              </div>
             </div>
 
             {showForm && (
