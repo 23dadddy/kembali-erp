@@ -12,7 +12,7 @@ import { getStaff, getInventory, setInventoryQty } from '@/lib/db'
 import type { Staff, BottleInventory } from '@/types'
 import {
   Droplets, Plus, Check, X, Loader2, Package, Beaker,
-  CheckCircle2, Clock, AlertTriangle, TrendingUp
+  CheckCircle2, Clock, AlertTriangle, TrendingUp, Download
 } from 'lucide-react'
 
 type Tab = 'production' | 'cleaning'
@@ -217,7 +217,18 @@ export default function ProductionPage() {
         {/* PRODUCTION */}
         {tab === 'production' && (
           <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {runs.length > 0 && (
+                <Button variant="outline" onClick={() => {
+                  const rows = runs.map(r => ({ Date: r.run_date, Shift: r.shift, Filled_350ml: r.filled_350ml, Filled_750ml: r.filled_750ml, Rejected_350ml: r.rejected_350ml, Rejected_750ml: r.rejected_750ml, Water_Liters: r.water_liters, Quality_Check: r.quality_check ? 'Yes' : 'No', Batch: r.batch_number ?? '', Operator: r.operator?.name ?? '', Status: r.status }))
+                  const headers = Object.keys(rows[0])
+                  const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+                  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                  a.download = 'production-runs.csv'; a.click()
+                }}>
+                  <Download className="w-4 h-4 mr-1.5" />Export CSV
+                </Button>
+              )}
               <Button onClick={() => setShowRunForm(true)}><Plus className="w-4 h-4 mr-1.5" />Log Production Run</Button>
             </div>
 
