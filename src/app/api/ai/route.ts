@@ -124,26 +124,37 @@ ${JSON.stringify(context.routes, null, 2)}
 - Invoice statuses: draft, sent, paid, overdue, cancelled
 
 ## ERP Module Map (for ACTION links)
-- /invoices — Invoices (generate monthly, send, track payments)
-- /trakops — TrakOps board (today's deliveries, assign drivers)
-- /customers — Customer list
-- /customers/[id] — Customer detail
-- /crm — CRM pipeline (leads)
-- /deliveries — Delivery history
-- /inventory — Bottle inventory
+- /invoices — Invoices (generate monthly, bulk send, send statements to all customers, overdue reminders, verify customer payments)
+- /trakops — TrakOps board (today's deliveries, assign drivers, dispatch all pending)
+- /customers — Customer list (export CSV, import CSV)
+- /customers/[id] — Customer detail (send statement, enable portal, email invoices, mark paid)
+- /crm — CRM pipeline (leads, activities, won/lost tracking)
+- /deliveries — Delivery history (export CSV)
+- /inventory — Bottle inventory (manual adjustments)
 - /bottles — Bottle tracking (lost, chargeable)
-- /routes — Route management
-- /subscriptions — Standing orders
-- /communications — Email & WhatsApp
-- /support — Support tickets
-- /reports — Business reports
-- /finance — Finance & payments
-- /fleet — Vehicles & maintenance
-- /hr — Staff management
-- /attendance — Attendance tracking
-- /payroll — Payroll runs
-- /performance — Driver performance
-- /settings — System settings
+- /routes — Route management (generate all today)
+- /subscriptions — Standing orders (generate today's deliveries)
+- /calendar — Delivery calendar view
+- /communications — Email (Gmail) & WhatsApp
+- /support — Support tickets with real-time chat
+- /reports — Business reports (recovery rate, revenue, top customers)
+- /executive — Executive dashboard (KPI overview, trends)
+- /finance — Finance & payments (export CSV)
+- /fleet — Vehicles, maintenance, fuel logs
+- /hr — Staff management, leave requests
+- /attendance — Attendance tracking (daily/monthly, export CSV)
+- /payroll — Payroll runs (export CSV)
+- /performance — Driver performance (auto-calculate, export CSV)
+- /procurement — Procurement (low stock alerts)
+- /purchase-orders — Purchase orders (email to vendor)
+- /contracts — Contracts (renewal reminders, export CSV)
+- /production — Production runs & cleaning batches
+- /expenses — Expense claims (export CSV)
+- /credit-notes — Credit notes
+- /promotions — Discount codes
+- /chat — Internal team chat
+- /documents — Document storage
+- /settings — System settings, env vars, migrations
 
 ## Your Capabilities
 - Answer any question about the live business data above
