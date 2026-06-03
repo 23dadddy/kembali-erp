@@ -362,6 +362,27 @@ export default function SettingsPage() {
 
         {tab === 'system' && (
           <div className="space-y-4">
+            {/* Migration runner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Database className="w-5 h-5 text-blue-600" />
+                <p className="font-semibold text-blue-800">Database Setup — Run Migrations</p>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                Several modules need new tables (WhatsApp, Attendance, Production, Expenses, Credit Notes, Purchase Orders, Settings). Run this SQL once in Supabase to unlock full functionality.
+              </p>
+              <ol className="text-xs text-blue-700 space-y-1 mb-3">
+                <li>1. Open <span className="font-semibold">supabase.com → your project → SQL Editor</span></li>
+                <li>2. Click <span className="font-semibold">+ New Query</span></li>
+                <li>3. Paste the SQL from <code className="bg-blue-100 px-1 rounded">supabase/migrations/20260603_missing_tables.sql</code></li>
+                <li>4. Click <span className="font-semibold">Run</span> — all missing tables will be created</li>
+              </ol>
+              <a href="https://supabase.com/dashboard/project/oyingjtpontuoiyvkzxg/sql/new" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                Open Supabase SQL Editor ↗
+              </a>
+            </div>
+
             {/* Database */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">

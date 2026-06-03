@@ -9,14 +9,22 @@ async function getContext(sb: any) {
   const monthStart = new Date(); monthStart.setDate(1)
   const monthStartStr = monthStart.toISOString().split('T')[0]
 
-  const [customers, deliveries, invoices, inventory, staff, vehicles] = await Promise.all([
-    sb.from('customers').select('id, name, type, city, status, tier, active').eq('active', true).limit(200),
-    sb.from('deliveries').select('id, customer_id, delivery_date, status, delivered_350ml, delivered_750ml, collected_350ml, collected_750ml').gte('delivery_date', monthStartStr).limit(500),
+  const [customers, deliveries, invoices, inventory, staff, vehicles, payments, tickets, subscriptions, pricing, routes] = await Promise.all([
+    sb.from('customers').select('id, name, type, city, status, tier, active, created_at').eq('active', true).limit(200),
+    sb.from('deliveries').select('id, customer_id, delivery_date, status, delivered_350ml, delivered_750ml, collected_350ml, collected_750ml, driver_id').gte('delivery_date', monthStartStr).limit(500),
     sb.from('invoices').select('id, customer_id, invoice_number, status, total, due_date, issue_date').order('created_at', { ascending: false }).limit(200),
     sb.from('bottle_inventory').select('*'),
     sb.from('staff').select('id, name, role, active, phone').eq('active', true),
     sb.from('vehicles').select('id, name, plate_number, status, type'),
+    sb.from('payments').select('id, customer_id, amount, payment_date, method').gte('payment_date', monthStartStr).limit(100),
+    sb.from('support_tickets').select('id, subject, status, priority, category, created_at').order('created_at', { ascending: false }).limit(50),
+    sb.from('customer_subscriptions').select('id, customer_id, status, plan_name, frequency_days').eq('status', 'active').limit(100),
+    sb.from('pricing').select('*').eq('active', true),
+    sb.from('routes').select('id, name, driver_id, active').eq('active', true).limit(20),
   ])
+
+  const overdue = (invoices.data ?? []).filter((i: any) => i.status === 'overdue')
+  const revenueThisMonth = (payments.data ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0)
 
   return {
     customers: customers.data ?? [],
@@ -25,8 +33,23 @@ async function getContext(sb: any) {
     inventory: inventory.data ?? [],
     staff: staff.data ?? [],
     vehicles: vehicles.data ?? [],
+    payments: payments.data ?? [],
+    tickets: tickets.data ?? [],
+    subscriptions: subscriptions.data ?? [],
+    pricing: pricing.data ?? [],
+    routes: routes.data ?? [],
     today,
     monthStart: monthStartStr,
+    summary: {
+      activeCustomers: (customers.data ?? []).length,
+      deliveriesThisMonth: (deliveries.data ?? []).length,
+      completedDeliveries: (deliveries.data ?? []).filter((d: any) => d.status === 'completed').length,
+      overdueInvoices: overdue.length,
+      overdueValue: overdue.reduce((s: number, i: any) => s + Number(i.total), 0),
+      revenueThisMonth,
+      activeSubscriptions: (subscriptions.data ?? []).length,
+      openTickets: (tickets.data ?? []).filter((t: any) => t.status === 'open').length,
+    },
   }
 }
 
@@ -47,26 +70,48 @@ export async function POST(req: NextRequest) {
 
 You have full access to live business data and can answer questions, analyze trends, and provide actionable insights.
 
-## Current Business Data
-- Today: ${context.today}
-- Active customers: ${context.customers.length}
-- Active staff: ${context.staff.length}
-- Vehicles: ${context.vehicles.length}
+## LIVE BUSINESS SUMMARY
+- Today: ${context.today} (Month starts: ${context.monthStart})
+- Active customers: ${context.summary.activeCustomers}
+- Active staff: ${context.staff.length} | Vehicles: ${context.vehicles.length}
+- Deliveries this month: ${context.summary.deliveriesThisMonth} (${context.summary.completedDeliveries} completed)
+- Revenue this month: Rp ${context.summary.revenueThisMonth.toLocaleString('id-ID')}
+- Overdue invoices: ${context.summary.overdueInvoices} (Rp ${context.summary.overdueValue.toLocaleString('id-ID')} outstanding)
+- Active subscriptions: ${context.summary.activeSubscriptions}
+- Open support tickets: ${context.summary.openTickets}
 
 ## Customers (${context.customers.length} active)
-${JSON.stringify(context.customers.slice(0, 50), null, 2)}
+${JSON.stringify(context.customers.slice(0, 60), null, 2)}
 
 ## This Month's Deliveries (${context.deliveries.length} total)
 ${JSON.stringify(context.deliveries.slice(0, 100), null, 2)}
 
 ## Recent Invoices (${context.invoices.length} total)
-${JSON.stringify(context.invoices.slice(0, 50), null, 2)}
+${JSON.stringify(context.invoices.slice(0, 60), null, 2)}
+
+## This Month's Payments (${context.payments.length} total)
+${JSON.stringify(context.payments, null, 2)}
+
+## Support Tickets (recent ${context.tickets.length})
+${JSON.stringify(context.tickets.slice(0, 20), null, 2)}
+
+## Active Subscriptions (${context.subscriptions.length})
+${JSON.stringify(context.subscriptions.slice(0, 50), null, 2)}
+
+## Pricing
+${JSON.stringify(context.pricing, null, 2)}
 
 ## Bottle Inventory
 ${JSON.stringify(context.inventory, null, 2)}
 
 ## Staff
 ${JSON.stringify(context.staff, null, 2)}
+
+## Vehicles
+${JSON.stringify(context.vehicles, null, 2)}
+
+## Routes
+${JSON.stringify(context.routes, null, 2)}
 
 ## Business Rules
 - Bottle sizes: 350ml (Rp 6,000) and 750ml (Rp 10,000)
