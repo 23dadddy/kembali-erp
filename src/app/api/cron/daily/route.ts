@@ -51,6 +51,20 @@ export async function GET(req: NextRequest) {
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   const todayDayName = dayNames[today.getDay()]
 
+  // Build a customer → driver map from active routes
+  const { data: routeStops } = await sb
+    .from('route_stops')
+    .select('customer_id, route:routes(driver_id)')
+    .not('routes', 'is', null)
+
+  const customerDriverMap: Record<string, string> = {}
+  for (const stop of (routeStops ?? [])) {
+    const driverId = (stop.route as any)?.driver_id
+    if (driverId && stop.customer_id) {
+      customerDriverMap[stop.customer_id] = driverId
+    }
+  }
+
   const { data: activeSubs } = await sb
     .from('customer_subscriptions')
     .select('id, customer_id, qty_350ml, qty_750ml, delivery_days, frequency_days')
@@ -76,6 +90,7 @@ export async function GET(req: NextRequest) {
 
     await sb.from('deliveries').insert({
       customer_id: sub.customer_id,
+      driver_id: customerDriverMap[sub.customer_id] ?? null, // auto-assign from route
       delivery_date: todayStr,
       status: 'pending',
       delivered_350ml: sub.qty_350ml ?? 0,
