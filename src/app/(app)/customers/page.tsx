@@ -176,6 +176,21 @@ export default function CustomersPage() {
               </SelectContent>
             </Select>
           </div>
+          <button onClick={() => {
+            const rows = filtered.map(c => ({
+              Name: c.name, Type: c.type, City: c.city,
+              Contact_Email: c.contact_email ?? '', Contact_Phone: c.contact_phone ?? '',
+              Address: c.address ?? '', Status: c.active ? 'Active' : 'Inactive',
+            }))
+            const headers = Object.keys(rows[0] ?? {})
+            const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+            a.download = 'customers.csv'; a.click()
+          }} disabled={filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-40">
+            <Download className="w-4 h-4" /> Export
+          </button>
           <Link href="/customers/import" className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 transition-colors">
             <Upload className="w-4 h-4" /> Import CSV
           </Link>

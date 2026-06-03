@@ -141,8 +141,9 @@ export default function FinancePage() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-200">
+        {/* Tabs + Export */}
+        <div className="flex items-end justify-between gap-3 border-b border-slate-200 pb-0">
+          <div className="flex gap-1">
           {[
             { id: 'overview' as Tab, label: 'Overview' },
             { id: 'expenses' as Tab, label: `Expenses (${monthExpenses.length})` },
@@ -153,6 +154,20 @@ export default function FinancePage() {
               {label}
             </button>
           ))}
+          </div>
+          <button onClick={() => {
+            const rows = tab === 'expenses'
+              ? monthExpenses.map(e => ({ Date: e.expense_date, Category: e.category, Description: e.description, Amount_IDR: e.amount, Status: e.status }))
+              : monthPayments.map(p => ({ Date: p.payment_date, Customer: (customers.find(c => c.id === p.customer_id) as any)?.name ?? p.customer_id, Amount_IDR: p.amount, Method: p.method, Notes: p.notes ?? '' }))
+            if (rows.length === 0) return
+            const headers = Object.keys(rows[0])
+            const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+            a.download = `finance-${tab}-${filterMonth}.csv`; a.click()
+          }} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg mb-1 bg-white hover:bg-slate-50">
+            <ArrowUpRight className="w-3.5 h-3.5" /> Export CSV
+          </button>
         </div>
 
         {/* OVERVIEW */}
