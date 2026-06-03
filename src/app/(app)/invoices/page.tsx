@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Search, FileText, DollarSign, Loader2, ExternalLink, Download, Mail, Send } from 'lucide-react'
+import { Plus, Search, FileText, DollarSign, Loader2, ExternalLink, Download, Mail, Send, Zap, CheckCircle2, AlertCircle } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { idr } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
@@ -55,6 +55,29 @@ export default function InvoicesPage() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<InvoiceForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [genOpen, setGenOpen] = useState(false)
+  const [genMonth, setGenMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [generating, setGenerating] = useState(false)
+  const [genResult, setGenResult] = useState<any>(null)
+
+  const generateMonthlyInvoices = async (dryRun = false) => {
+    setGenerating(true)
+    setGenResult(null)
+    try {
+      const res = await fetch('/api/invoices/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: genMonth, dryRun }),
+      })
+      const data = await res.json()
+      setGenResult(data)
+      if (!dryRun && data.created > 0) {
+        await load() // refresh invoice list
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -119,6 +142,27 @@ export default function InvoicesPage() {
     Promise.all(toMark.map(i => updateInvoiceStatus(i.id, 'overdue')))
   }
   const overdueEligible = invoices.filter(i => i.status === 'sent' && i.due_date < new Date().toISOString().split('T')[0]).length
+
+  const [bulkSending, setBulkSending] = useState(false)
+  const bulkSendDrafts = async () => {
+    const drafts = invoices.filter(i => i.status === 'draft')
+    const withEmail = drafts.filter(i => (i.customer as any)?.contact_email)
+    if (withEmail.length === 0) { alert('No draft invoices with customer email addresses'); return }
+    if (!confirm(`Send ${withEmail.length} invoice email${withEmail.length > 1 ? 's' : ''} now?`)) return
+    setBulkSending(true)
+    let sent = 0
+    for (const inv of withEmail) {
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'invoice', payload: { ...inv, customer: inv.customer } }),
+      })
+      changeStatus(inv.id, 'sent')
+      sent++
+    }
+    setBulkSending(false)
+    alert(`Sent ${sent} invoice${sent > 1 ? 's' : ''} successfully`)
+  }
 
   const sendInvoiceEmail = async (inv: Invoice) => {
     const customer = (inv.customer as any)
@@ -237,8 +281,16 @@ export default function InvoicesPage() {
                 </button>
               </>
             )}
+            {invoices.filter(i => i.status === 'draft').length > 0 && (
+              <button onClick={bulkSendDrafts} disabled={bulkSending} className="inline-flex items-center gap-2 rounded-md border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-50">
+                {bulkSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send All Drafts ({invoices.filter(i => i.status === 'draft').length})
+              </button>
+            )}
             <button onClick={exportCSV} disabled={filtered.length === 0} className="inline-flex items-center gap-2 rounded-md border bg-white text-slate-600 hover:bg-slate-50 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-40">
               <Download className="w-4 h-4" /> Export CSV
+            </button>
+            <button onClick={() => { setGenOpen(true); setGenResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-3 py-2 transition-colors">
+              <Zap className="w-4 h-4" /> Generate Monthly
             </button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2 transition-colors">
@@ -378,6 +430,69 @@ export default function InvoicesPage() {
           </Table>
         </div>
       </div>
+
+      {/* Generate Monthly Invoices Modal */}
+      {genOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) setGenOpen(false) }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Zap className="w-5 h-5 text-violet-500" />Generate Monthly Invoices</h2>
+                  <p className="text-sm text-slate-500 mt-1">Auto-creates invoices from completed deliveries. Skips customers already invoiced for the period.</p>
+                </div>
+                <button onClick={() => setGenOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><span className="text-xl">×</span></button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Billing Period</label>
+                <input type="month" value={genMonth} onChange={e => { setGenMonth(e.target.value); setGenResult(null) }}
+                  className="border rounded-lg px-3 py-2 text-sm w-full" />
+                <p className="text-xs text-slate-400 mt-1">Counts all completed deliveries in this month. Includes bottle loss charges where applicable.</p>
+              </div>
+
+              {genResult && (
+                <div className={`rounded-xl p-4 ${genResult.created > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {genResult.created > 0 ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-slate-400" />}
+                    <p className="text-sm font-semibold text-slate-800">
+                      {genResult.dryRun ? 'Preview: ' : ''}{genResult.created} invoice{genResult.created !== 1 ? 's' : ''} {genResult.dryRun ? 'would be created' : 'created'}, {genResult.skipped} skipped
+                    </p>
+                  </div>
+                  {genResult.results?.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {genResult.results.map((r: any, i: number) => (
+                        <div key={i} className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${r.skipped ? 'text-slate-400' : 'text-slate-700 bg-white'}`}>
+                          <span className="font-medium truncate flex-1">{r.customerName}</span>
+                          {r.skipped ? (
+                            <span className="text-slate-400 text-xs ml-2">{r.reason ?? 'Skipped'}</span>
+                          ) : (
+                            <span className="font-bold text-emerald-700 ml-2">{idr(r.total)}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {genResult.message && <p className="text-xs text-slate-500 mt-1">{genResult.message}</p>}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => generateMonthlyInvoices(true)} disabled={generating}
+                  className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 flex items-center justify-center gap-2">
+                  {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Preview
+                </button>
+                <button onClick={() => generateMonthlyInvoices(false)} disabled={generating}
+                  className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">
+                  {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Generate Invoices
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 text-center">Invoices are created as <strong>Draft</strong> — review before sending to customers.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
