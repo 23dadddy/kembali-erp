@@ -41,7 +41,7 @@ export function NotificationsBell() {
     const todayStr = today.toISOString().split('T')[0]
     const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-    const [overdueRes, bottleRes, vehicleRes, staffRes, ticketsRes, stockRes, todayDelivRes] = await Promise.all([
+    const [overdueRes, bottleRes, vehicleRes, staffRes, ticketsRes, stockRes, todayDelivRes, contractsRes] = await Promise.all([
       sb.from('invoices').select('id, invoice_number, total, customer:customers(name)').eq('status', 'overdue').limit(20),
       sb.from('customer_bottle_balance').select('customer_id, chargeable_lost_350ml, chargeable_lost_750ml').filter('is_chargeable', 'eq', true).limit(20),
       sb.from('vehicles').select('id, name, plate_number, registration_expiry, insurance_expiry').or(`registration_expiry.lte.${in30Days},insurance_expiry.lte.${in30Days}`).not('registration_expiry', 'is', null),
@@ -49,6 +49,7 @@ export function NotificationsBell() {
       sb.from('support_tickets').select('id').eq('status', 'open').limit(50),
       sb.from('inventory_items').select('id, name, quantity, reorder_point').not('reorder_point', 'is', null).gt('reorder_point', 0).limit(20),
       sb.from('deliveries').select('id, status').eq('delivery_date', todayStr),
+      sb.from('contracts').select('id, title, end_date, customer:customers(name)').not('end_date', 'is', null).lte('end_date', in30Days).in('status', ['active']).limit(10),
     ])
 
     const items: Notification[] = []
@@ -164,6 +165,20 @@ export function NotificationsBell() {
           href: '/trakops',
         })
       }
+    }
+
+    // Contract expiries
+    const expiringContracts = contractsRes.data ?? []
+    for (const c of expiringContracts) {
+      const daysLeft = Math.ceil((new Date(c.end_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      items.push({
+        id: `contract-${c.id}`,
+        type: 'vehicle_expiry',
+        severity: daysLeft <= 7 ? 'high' : 'medium',
+        title: `Contract Expiring`,
+        body: `${(c.customer as any)?.name ?? 'Unknown'} — ${c.title ?? 'Contract'} · ${daysLeft <= 0 ? 'EXPIRED' : `${daysLeft} days left`}`,
+        href: '/contracts',
+      })
     }
 
     setNotifications(items)
