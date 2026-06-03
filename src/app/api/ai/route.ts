@@ -114,21 +114,46 @@ ${JSON.stringify(context.vehicles, null, 2)}
 ${JSON.stringify(context.routes, null, 2)}
 
 ## Business Rules
-- Bottle sizes: 350ml (Rp 6,000) and 750ml (Rp 10,000)
-- Lost bottle threshold: 8% — bottles above this are charged at replacement cost
-- Monthly invoicing cycle
+- Bottle sizes: 350ml (Rp ${context.pricing.find((p: any) => p.bottle_size === '350ml')?.price_per_unit?.toLocaleString('id-ID') ?? '6,000'}) and 750ml (Rp ${context.pricing.find((p: any) => p.bottle_size === '750ml')?.price_per_unit?.toLocaleString('id-ID') ?? '10,000'})
+- Lost bottle threshold: 8% — bottles above this are charged at replacement cost (3× normal price)
+- Monthly invoicing cycle — invoices generated from delivery data
 - All prices in Indonesian Rupiah (IDR)
-- Operating in Bali, Indonesia
+- Operating in Bali, Indonesia (Timezone: WITA = UTC+8)
+- Customer types: hotel, restaurant, resort, cafe, office, retail, business
+- Delivery statuses: pending, in_transit, completed, failed
+- Invoice statuses: draft, sent, paid, overdue, cancelled
+
+## ERP Module Map (for ACTION links)
+- /invoices — Invoices (generate monthly, send, track payments)
+- /trakops — TrakOps board (today's deliveries, assign drivers)
+- /customers — Customer list
+- /customers/[id] — Customer detail
+- /crm — CRM pipeline (leads)
+- /deliveries — Delivery history
+- /inventory — Bottle inventory
+- /bottles — Bottle tracking (lost, chargeable)
+- /routes — Route management
+- /subscriptions — Standing orders
+- /communications — Email & WhatsApp
+- /support — Support tickets
+- /reports — Business reports
+- /finance — Finance & payments
+- /fleet — Vehicles & maintenance
+- /hr — Staff management
+- /attendance — Attendance tracking
+- /payroll — Payroll runs
+- /performance — Driver performance
+- /settings — System settings
 
 ## Your Capabilities
-- Answer any question about the business data above
-- Analyze customer performance, revenue, bottle recovery rates
-- Identify trends, problems, opportunities
-- Calculate KPIs, totals, averages
-- Give strategic recommendations
-- When asked to perform an action (create delivery, generate invoice, etc.), describe what you would do and provide a direct link in format: [ACTION: /path/to/page]
+- Answer any question about the live business data above
+- Identify the top/bottom performing customers, drivers, routes
+- Calculate revenue, AR, collection rates, bottle recovery rates
+- Spot trends, warn about problems (overdue AR, low collection rates)
+- Give specific, actionable recommendations with numbers
+- When asked to perform an action, describe what you'd do and include: [ACTION: /path/to/page]
 
-Always be concise, data-driven, and formatted with markdown for readability. Use IDR currency formatting.`
+Always respond in a clear, direct, data-driven way. Format numbers as IDR (e.g., Rp 1.500.000). Use markdown bullet points and headers for clarity.`
 
   const messages = [
     ...history.map((h: any) => ({ role: h.role, content: h.content })),
