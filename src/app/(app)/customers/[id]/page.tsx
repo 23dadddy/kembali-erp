@@ -403,6 +403,21 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   </button>
                 )}
                 {portalStatus && <span className="text-xs text-slate-500">{portalStatus}</span>}
+                {customer.contact_email && (
+                  <button onClick={async () => {
+                    const month = new Date().toISOString().slice(0, 7)
+                    const res = await fetch('/api/invoices/statement', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ month, customerId: customer.id }),
+                    })
+                    const data = await res.json()
+                    setPortalStatus(data.sent > 0 ? `✓ Statement sent for ${month}` : `Skipped: ${data.results?.[0]?.reason ?? 'no activity'}`)
+                  }}
+                    className="inline-flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors">
+                    <Mail className="w-3.5 h-3.5" /> Send Statement
+                  </button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => { setEditingCustomer(true); setTab('overview') }}>
                   <Edit2 className="w-3 h-3 mr-1.5" /> Edit
                 </Button>
