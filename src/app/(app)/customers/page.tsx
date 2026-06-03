@@ -24,7 +24,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Search, Building2, Hotel, Utensils, TreePalm, Phone, Mail, Loader2, CalendarDays } from 'lucide-react'
+import { Plus, Search, Building2, Hotel, Utensils, TreePalm, Phone, Mail, Loader2, CalendarDays, Upload, Download } from 'lucide-react'
+import Link from 'next/link'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { CustomerType, Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/lib/db'
@@ -175,6 +176,9 @@ export default function CustomersPage() {
               </SelectContent>
             </Select>
           </div>
+          <Link href="/customers/import" className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 transition-colors">
+            <Upload className="w-4 h-4" /> Import CSV
+          </Link>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2 transition-colors">
               <Plus className="w-4 h-4" />

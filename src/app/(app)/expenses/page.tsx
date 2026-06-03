@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Receipt, Check, X, Loader2 } from 'lucide-react'
+import { Plus, Receipt, Check, X, Loader2, Download } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -117,9 +117,31 @@ export default function ExpensesPage() {
               <SelectItem value="paid">Paid</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Submit Claim
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => {
+              const filtered = filterStatus === 'all' ? claims : claims.filter(c => c.status === filterStatus)
+              const rows = filtered.map(c => ({
+                Staff: (c.staff as any)?.name ?? '',
+                Role: (c.staff as any)?.role ?? '',
+                Category: c.category,
+                Description: c.description,
+                Amount_IDR: c.amount,
+                Date: c.expense_date,
+                Status: c.status,
+                Approved_By: (c.approver as any)?.name ?? '',
+              }))
+              const headers = Object.keys(rows[0] ?? {})
+              const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+              const a = document.createElement('a')
+              a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+              a.download = `expenses.csv`; a.click()
+            }}>
+              <Download className="w-4 h-4 mr-2" /> Export CSV
+            </Button>
+            <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Submit Claim
+            </Button>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border">
