@@ -98,6 +98,14 @@ export default function TrakOpsPage() {
 
   const drivers = staff.filter((s) => s.role === 'driver')
 
+  const dispatchAll = async () => {
+    const pendingIds = deliveries.filter(d => d.status === 'pending').map(d => d.id)
+    if (pendingIds.length === 0) return
+    setDeliveries(prev => prev.map(d => pendingIds.includes(d.id) ? { ...d, status: 'in_transit' as const } : d))
+    const sb = createClient()
+    await sb.from('deliveries').update({ status: 'in_transit' }).in('id', pendingIds)
+  }
+
   const handleCreateRoute = async () => {
     setSavingRoute(true)
     setRouteOpen(false)
@@ -224,6 +232,15 @@ export default function TrakOpsPage() {
           <div className="flex items-center gap-3">
             {generateResult && (
               <span className="text-xs text-slate-500 bg-slate-100 rounded-lg px-3 py-1.5">{generateResult}</span>
+            )}
+            {counts.pending > 0 && (
+              <button
+                onClick={dispatchAll}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                <Navigation className="w-4 h-4" />
+                Dispatch All ({counts.pending})
+              </button>
             )}
             <button
               onClick={handleGenerateDeliveries}

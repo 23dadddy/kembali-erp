@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
 import {
   FileText, Plus, Loader2, Check, X, Calendar, DollarSign,
-  AlertCircle, CheckCircle2, RefreshCw, Building2, ChevronRight
+  AlertCircle, CheckCircle2, RefreshCw, Building2, ChevronRight, Mail, Download
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -79,6 +79,42 @@ export default function ContractsPage() {
     setContracts(contracts.map(c => c.id === id ? { ...c, status } : c))
   }
 
+  const sendRenewalReminder = async (contract: any) => {
+    const customer = contract.customer as any
+    if (!customer?.name) return
+    // Fetch customer email
+    const sb = createClient()
+    const { data: cust } = await sb.from('customers').select('contact_email, contact_name').eq('id', contract.customer_id).single()
+    if (!cust?.contact_email) { alert('No contact email on file for this customer'); return }
+    const daysLeft = Math.ceil((new Date(contract.end_date).getTime() - Date.now()) / 86400000)
+    await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'contract_renewal', payload: {
+        customer: { name: customer.name, contact_email: cust.contact_email, contact_name: cust.contact_name },
+        contract: { title: contract.title, end_date: contract.end_date, daysLeft, value: contract.value },
+      } }),
+    })
+    alert(`Renewal reminder sent to ${cust.contact_email}`)
+  }
+
+  const exportCSV = () => {
+    const rows = filtered.map(c => ({
+      Customer: (c.customer as any)?.name ?? '',
+      Title: c.title,
+      Status: c.status,
+      Start: c.start_date,
+      End: c.end_date ?? '',
+      Value_IDR: c.value ?? 0,
+      Auto_Renew: c.auto_renew ? 'Yes' : 'No',
+    }))
+    const headers = Object.keys(rows[0] ?? {})
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = 'contracts.csv'; a.click()
+  }
+
   const filtered = contracts.filter(c => filterStatus === 'all' || c.status === filterStatus)
 
   const today = new Date().toISOString().split('T')[0]
@@ -124,10 +160,18 @@ export default function ContractsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {expiringIn30.map(c => (
-                <button key={c.id} onClick={() => router.push(`/customers/${c.customer_id}`)}
-                  className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2.5 py-1 rounded-full transition-colors">
-                  {c.customer?.name} · {fmtDate(c.end_date)}
-                </button>
+                <div key={c.id} className="flex items-center gap-1.5">
+                  <button onClick={() => router.push(`/customers/${c.customer_id}`)}
+                    className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2.5 py-1 rounded-full transition-colors">
+                    {(c.customer as any)?.name} · {fmtDate(c.end_date)}
+                  </button>
+                  {c.end_date && (
+                    <button onClick={() => sendRenewalReminder(c)}
+                      className="text-xs bg-white hover:bg-amber-50 text-amber-600 px-2 py-1 rounded-full border border-amber-200 flex items-center gap-1 transition-colors">
+                      <Mail className="w-3 h-3" /> Remind
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -144,6 +188,10 @@ export default function ContractsPage() {
             ))}
           </div>
           <div className="flex-1" />
+          <button onClick={exportCSV} disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">
+            <Download className="w-4 h-4" /> Export
+          </button>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
             <Plus className="w-4 h-4" /> New Contract

@@ -326,6 +326,38 @@ export async function sendOverdueReminderEmail(invoice: {
   })
 }
 
+export async function sendContractRenewalEmail(data: {
+  customer: { name: string; contact_email: string; contact_name?: string }
+  contract: { title: string; end_date: string; daysLeft: number; value?: number }
+}) {
+  const { customer, contract } = data
+  if (!customer.contact_email) return { ok: false, error: 'No email' }
+  const idr = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+  const endDateLabel = new Date(contract.end_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const urgency = contract.daysLeft <= 7 ? 'high' : 'medium'
+
+  const html = baseTemplate(`
+    <h2>Contract Renewal Reminder</h2>
+    <p>Dear ${customer.contact_name || customer.name},</p>
+    <p>This is a friendly reminder that your service agreement with Kembali Water is approaching its renewal date.</p>
+    <div style="background:${urgency === 'high' ? '#FFF7ED' : '#FFFBEB'};border-radius:8px;padding:16px;margin:20px 0;border-left:4px solid ${urgency === 'high' ? '#F97316' : '#F59E0B'}">
+      <p style="margin:0;font-weight:600;color:#92400E">${contract.title}</p>
+      <p style="margin:4px 0 0;color:#B45309">Expires: <strong>${endDateLabel}</strong> — ${contract.daysLeft <= 0 ? 'EXPIRED' : `${contract.daysLeft} days remaining`}</p>
+      ${contract.value ? `<p style="margin:4px 0 0;color:#B45309">Contract Value: ${idr(contract.value)} / year</p>` : ''}
+    </div>
+    <p>To continue uninterrupted service, please contact your account manager to discuss renewal terms.</p>
+    <p>Get in touch: <a href="mailto:contact@kembaliwater.com">contact@kembaliwater.com</a> | <a href="tel:+6281234567890">+62 812-3456-7890</a></p>
+  `)
+
+  return sendEmail({
+    to: customer.contact_email,
+    toName: customer.contact_name || customer.name,
+    subject: `Contract renewal in ${contract.daysLeft} days — ${contract.title}`,
+    html,
+    template: 'contract_renewal',
+  })
+}
+
 export async function sendPurchaseOrderEmail(po: {
   id: string; po_number: string; total: number; expected_date?: string; notes?: string
   vendor: { name: string; email: string; contact?: string }
