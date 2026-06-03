@@ -534,6 +534,9 @@ export default function SettingsPage() {
               <p className="text-xs text-amber-600 mt-2">Until the bucket exists, documents still save with metadata (name, size) but no download link.</p>
             </div>
 
+            {/* Email Log */}
+            <EmailLogSection />
+
             {/* Version */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <p className="font-semibold text-slate-800 mb-2">System Info</p>
@@ -548,6 +551,54 @@ export default function SettingsPage() {
         )}
       </div>
     </>
+  )
+}
+
+function EmailLogSection() {
+  const [logs, setLogs] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    const sb = createClient()
+    const { data } = await sb.from('email_log').select('*').order('sent_at', { ascending: false }).limit(30)
+    setLogs(data ?? [])
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold text-slate-800 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-slate-400" /> Email Log
+        </p>
+        <button onClick={() => { setOpen(!open); if (!open) load() }}
+          className="text-xs text-cyan-600 hover:text-cyan-700 font-medium">
+          {open ? 'Hide' : 'View Recent'}
+        </button>
+      </div>
+      {open && (
+        <div className="space-y-2">
+          {loading ? <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-slate-300" /></div>
+          : logs.length === 0 ? <p className="text-sm text-slate-400 text-center py-4">No emails sent yet</p>
+          : logs.map(log => (
+            <div key={log.id} className="flex items-center gap-3 text-xs py-2 border-b border-slate-50 last:border-0">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${log.status === 'sent' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-slate-700 truncate">{log.subject}</p>
+                <p className="text-slate-400 truncate">→ {log.to_email}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${log.status === 'sent' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>{log.status}</span>
+                <p className="text-slate-300 mt-0.5">{new Date(log.sent_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!open && <p className="text-xs text-slate-400">View the last 30 emails sent by the system — useful for debugging delivery issues.</p>}
+    </div>
   )
 }
 
