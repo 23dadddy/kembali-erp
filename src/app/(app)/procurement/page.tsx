@@ -159,14 +159,22 @@ export default function ProcurementPage() {
         {/* Low Stock Banner */}
         {lowStockItems.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-red-500" />
-              <p className="text-sm font-semibold text-red-700">Low Stock — {lowStockItems.length} item{lowStockItems.length > 1 ? 's' : ''} need reordering</p>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <p className="text-sm font-semibold text-red-700">Low Stock — {lowStockItems.length} item{lowStockItems.length > 1 ? 's' : ''} need reordering</p>
+              </div>
+              <button
+                onClick={() => setTab('movements')}
+                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors"
+              >
+                <ShoppingCart className="w-3.5 h-3.5" /> Create Purchase Orders
+              </button>
             </div>
             <div className="flex flex-wrap gap-2">
               {lowStockItems.map(item => (
                 <span key={item.id} className="text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded-full">
-                  {item.name}: {item.quantity} {item.unit} (reorder at {item.reorder_point})
+                  {item.name}: {item.quantity} {item.unit} (reorder at {item.reorder_point}, order {item.reorder_quantity} {item.unit})
                 </span>
               ))}
             </div>
