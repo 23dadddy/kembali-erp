@@ -385,6 +385,45 @@ export default function SettingsPage() {
               </a>
             </div>
 
+            {/* Vercel env vars checklist */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe className="w-5 h-5 text-slate-500" />
+                <p className="font-semibold text-slate-800">Vercel Environment Variables</p>
+              </div>
+              <p className="text-sm text-slate-500 mb-3">Add these in <strong>Vercel → Project → Settings → Environment Variables</strong>:</p>
+              <div className="space-y-2 font-mono text-xs">
+                {[
+                  { key: 'NEXT_PUBLIC_SUPABASE_URL', val: 'https://oyingjtpontuoiyvkzxg.supabase.co', required: true },
+                  { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', val: 'eyJ...', required: true },
+                  { key: 'ANTHROPIC_API_KEY', val: 'sk-ant-api03-...', required: true, label: 'AI Command Center' },
+                  { key: 'RESEND_API_KEY', val: 're_...', required: true, label: 'Email sending' },
+                  { key: 'GOOGLE_CLIENT_ID', val: '577522590826-...', required: true, label: 'Gmail OAuth' },
+                  { key: 'GOOGLE_CLIENT_SECRET', val: 'GOCSPX-...', required: true, label: 'Gmail OAuth' },
+                  { key: 'GOOGLE_REDIRECT_URI', val: 'https://kembali-erp.vercel.app/api/gmail/callback', required: true },
+                  { key: 'INBOUND_EMAIL_SECRET', val: 'kembali-webhook-...', required: false, label: 'Inbound email security' },
+                  { key: 'TWILIO_ACCOUNT_SID', val: 'AC...', required: false, label: 'WhatsApp sending' },
+                  { key: 'TWILIO_AUTH_TOKEN', val: '...', required: false, label: 'WhatsApp sending' },
+                  { key: 'TWILIO_WHATSAPP_FROM', val: 'whatsapp:+14155238886', required: false, label: 'WhatsApp sender number' },
+                ].map(({ key, val, required, label }) => (
+                  <div key={key} className={`flex items-start gap-2 p-2 rounded-lg ${required ? 'bg-slate-50' : 'bg-slate-50/50 opacity-70'}`}>
+                    <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${required ? 'bg-cyan-500' : 'bg-slate-300'}`} />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-slate-800 font-semibold">{key}</span>
+                      {label && <span className="text-slate-400 ml-2 text-xs font-sans">({label})</span>}
+                    </div>
+                    <span className={`text-xs font-sans px-1.5 py-0.5 rounded ${required ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
+                      {required ? 'Required' : 'Optional'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 text-sm text-cyan-600 hover:underline">
+                Open Vercel Dashboard ↗
+              </a>
+            </div>
+
             {/* Database */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
