@@ -71,20 +71,22 @@ export async function POST(req: NextRequest) {
 
   // ── Thread matching: find existing conversation to reply into ──────────────
   let resolvedThreadId: string = messageId ?? `email-${fromEmail}-${Date.now()}`
+  let matched = false
 
-  // 1. Match by In-Reply-To → look for a communications row with that external_id
-  if (inReplyTo) {
+  // 1. Match by In-Reply-To → find communications row whose external_id matches
+  if (inReplyTo && !matched) {
+    const cleaned = inReplyTo.replace(/^<|>$/g, '')
     const { data: parentMsg } = await supabase
       .from('communications')
       .select('thread_id')
-      .eq('external_id', inReplyTo.replace(/^<|>$/g, ''))
+      .eq('external_id', cleaned)
       .limit(1)
       .maybeSingle()
-    if (parentMsg) resolvedThreadId = parentMsg.thread_id
+    if (parentMsg) { resolvedThreadId = parentMsg.thread_id; matched = true }
   }
 
-  // 2. Fallback: match by Gmail thread ID stored in metadata
-  if (resolvedThreadId === (messageId ?? `email-${fromEmail}-${Date.now()}`) && gmailThreadId) {
+  // 2. Match by Gmail thread ID stored in metadata
+  if (gmailThreadId && !matched) {
     const { data: gmailThread } = await supabase
       .from('communications')
       .select('thread_id')
@@ -92,7 +94,25 @@ export async function POST(req: NextRequest) {
       .contains('metadata', { gmailThreadId })
       .limit(1)
       .maybeSingle()
-    if (gmailThread) resolvedThreadId = gmailThread.thread_id
+    if (gmailThread) { resolvedThreadId = gmailThread.thread_id; matched = true }
+  }
+
+  // 3. Fallback: match by normalised subject + same email pair (handles Re:/Fwd: chains)
+  if (!matched && subject) {
+    const normalised = subject.replace(/^(re|fwd?):\s*/i, '').trim().toLowerCase()
+    if (normalised) {
+      // Look for a thread where the other party is this sender (either direction)
+      const { data: subjectMatch } = await supabase
+        .from('communications')
+        .select('thread_id')
+        .eq('channel', 'email')
+        .or(`from_address.ilike.${fromEmail},to_address.ilike.${fromEmail}`)
+        .ilike('subject', `%${normalised}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (subjectMatch) { resolvedThreadId = subjectMatch.thread_id; matched = true }
+    }
   }
 
   // ── Log to unified communications inbox ───────────────────────────────────
