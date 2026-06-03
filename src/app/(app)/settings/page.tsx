@@ -377,6 +377,7 @@ export default function SettingsPage() {
                 <li>3. New Query again, paste & run <code className="bg-blue-100 px-1 rounded">supabase/migrations/20260603_comms_tables.sql</code></li>
                 <li>3. Paste & run <code className="bg-blue-100 px-1 rounded">20260603_inventory_rpcs.sql</code> <span className="text-red-600 font-semibold">(critical — fixes delivery inventory updates)</span></li>
                 <li>4. Paste & run <code className="bg-blue-100 px-1 rounded">20260603_missing_columns.sql</code> — adds missing columns (portal_enabled, auth_user_id, delivery fields, etc.)</li>
+                <li>5. Paste & run <code className="bg-blue-100 px-1 rounded">20260604_payments_status.sql</code> — adds status column to payments (needed for customer payment notifications)</li>
                 <li>✅ After running all 4 files, the entire ERP will be fully operational</li>
               </ol>
               <a href="https://supabase.com/dashboard/project/oyingjtpontuoiyvkzxg/sql/new" target="_blank" rel="noopener noreferrer"
