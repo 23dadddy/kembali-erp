@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2, Package, Loader2, ChevronRight, Check } from 'lucide-react'
+import { Plus, Trash2, Package, Loader2, ChevronRight, Check, Mail } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -34,6 +34,7 @@ export default function PurchaseOrdersPage() {
   const [form, setForm] = useState({ vendor_name: '', vendor_contact: '', vendor_email: '', expected_date: '', notes: '' })
   const [items, setItems] = useState<POItem[]>([emptyItem()])
   const [saving, setSaving] = useState(false)
+  const [sendingPO, setSendingPO] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -67,6 +68,28 @@ export default function PurchaseOrdersPage() {
     setForm({ vendor_name: '', vendor_contact: '', vendor_email: '', expected_date: '', notes: '' })
     setItems([emptyItem()])
     setSaving(false)
+  }
+
+  const sendPOToVendor = async (o: any) => {
+    if (!o.vendor_email) { alert('No vendor email on file for this PO'); return }
+    setSendingPO(o.id)
+    const sb = createClient()
+    const { data: poItems } = await sb.from('po_items').select('*').eq('po_id', o.id)
+    await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'purchase_order', payload: {
+        id: o.id, po_number: o.po_number, total: Number(o.total),
+        expected_date: o.expected_date, notes: o.notes,
+        vendor: { name: o.vendor_name, email: o.vendor_email, contact: o.vendor_contact },
+        items: (poItems ?? []).map((i: any) => ({ ...i, total: Number(i.quantity) * Number(i.unit_price) })),
+        subtotal: Number(o.subtotal ?? 0), tax_amount: Number(o.tax_amount ?? 0),
+      } }),
+    })
+    // If still draft, move to sent
+    if (o.status === 'draft') await updateStatus(o.id, 'sent')
+    setSendingPO(null)
+    alert(`PO ${o.po_number} sent to ${o.vendor_email}`)
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -151,6 +174,12 @@ export default function PurchaseOrdersPage() {
                   <TableCell><Badge className={STATUS_COLORS[o.status]}>{o.status}</Badge></TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {(o.status === 'draft' || o.status === 'sent') && o.vendor_email && (
+                        <button onClick={() => sendPOToVendor(o)} disabled={sendingPO === o.id}
+                          className="text-xs bg-violet-50 hover:bg-violet-100 text-violet-700 font-medium px-2 py-1 rounded-lg flex items-center gap-1">
+                          {sendingPO === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}Email PO
+                        </button>
+                      )}
                       {o.status === 'draft' && (
                         <button onClick={() => updateStatus(o.id, 'sent')}
                           className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-lg">Send</button>

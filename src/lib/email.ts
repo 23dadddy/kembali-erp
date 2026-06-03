@@ -325,3 +325,49 @@ export async function sendOverdueReminderEmail(invoice: {
     relatedId: invoice.id,
   })
 }
+
+export async function sendPurchaseOrderEmail(po: {
+  id: string; po_number: string; total: number; expected_date?: string; notes?: string
+  vendor: { name: string; email: string; contact?: string }
+  items: { description: string; quantity: number; unit: string; unit_price: number; total?: number }[]
+  subtotal: number; tax_amount: number
+}) {
+  if (!po.vendor.email) return { ok: false, error: 'No vendor email' }
+  const idr = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+
+  const itemRows = po.items.map(i =>
+    `<tr><td>${i.description}</td><td style="text-align:right">${i.quantity} ${i.unit}</td><td style="text-align:right">${idr(i.unit_price)}</td><td style="text-align:right">${idr(Number(i.total ?? i.quantity * i.unit_price))}</td></tr>`
+  ).join('')
+
+  const html = baseTemplate(`
+    <h2>Purchase Order — ${po.po_number}</h2>
+    <p>Dear ${po.vendor.contact || po.vendor.name},</p>
+    <p>Please find below our purchase order <strong>${po.po_number}</strong> from <strong>PT Kembali Air Bersih</strong>.</p>
+    ${po.expected_date ? `<p>📅 Expected delivery by: <strong>${new Date(po.expected_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>` : ''}
+
+    <table class="table">
+      <thead><tr><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <div style="text-align:right;margin-top:8px;padding-top:8px;border-top:1px solid #E2E8F0">
+      <p style="color:#64748B;font-size:13px;margin:4px 0">Subtotal: ${idr(po.subtotal)}</p>
+      <p style="color:#64748B;font-size:13px;margin:4px 0">PPN 11%: ${idr(po.tax_amount)}</p>
+      <p style="font-weight:700;font-size:16px;margin:8px 0">Total: ${idr(po.total)}</p>
+    </div>
+
+    ${po.notes ? `<div style="background:#F8FAFC;border-radius:8px;padding:12px;margin-top:12px"><p style="margin:0;color:#64748B;font-size:13px"><strong>Notes:</strong> ${po.notes}</p></div>` : ''}
+
+    <p style="margin-top:20px">Please confirm receipt of this order and advise your delivery schedule. For queries contact us at <a href="mailto:contact@kembaliwater.com">contact@kembaliwater.com</a>.</p>
+  `)
+
+  return sendEmail({
+    to: po.vendor.email,
+    toName: po.vendor.contact || po.vendor.name,
+    subject: `Purchase Order ${po.po_number} from Kembali Water`,
+    html,
+    template: 'purchase_order',
+    relatedType: 'purchase_order',
+    relatedId: po.id,
+  })
+}

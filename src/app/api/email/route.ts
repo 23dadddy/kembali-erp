@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendInvoiceEmail, sendDeliveryConfirmationEmail, sendOverdueReminderEmail } from '@/lib/email'
+import { sendInvoiceEmail, sendDeliveryConfirmationEmail, sendOverdueReminderEmail, sendPurchaseOrderEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     if (type === 'invoice') result = await sendInvoiceEmail(payload)
     else if (type === 'delivery_confirmation') result = await sendDeliveryConfirmationEmail(payload)
     else if (type === 'overdue_reminder') result = await sendOverdueReminderEmail(payload)
+    else if (type === 'purchase_order') result = await sendPurchaseOrderEmail(payload)
     else return NextResponse.json({ error: 'Unknown type' }, { status: 400 })
 
     return NextResponse.json(result)
