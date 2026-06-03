@@ -375,7 +375,9 @@ export default function SettingsPage() {
                 <li>1. Open <span className="font-semibold">supabase.com → your project → SQL Editor</span></li>
                 <li>2. Click <span className="font-semibold">+ New Query</span>, paste & run <code className="bg-blue-100 px-1 rounded">supabase/migrations/20260603_missing_tables.sql</code></li>
                 <li>3. New Query again, paste & run <code className="bg-blue-100 px-1 rounded">supabase/migrations/20260603_comms_tables.sql</code></li>
-                <li>✅ Tables created: WhatsApp, Attendance, Production, Expenses, Credit Notes, POs, Chat, Support Comments, Communications, Documents, Email Log</li>
+                <li>3. Paste & run <code className="bg-blue-100 px-1 rounded">20260603_inventory_rpcs.sql</code> <span className="text-red-600 font-semibold">(critical — fixes delivery inventory updates)</span></li>
+                <li>4. Paste & run <code className="bg-blue-100 px-1 rounded">20260603_missing_columns.sql</code> — adds missing columns (portal_enabled, auth_user_id, delivery fields, etc.)</li>
+                <li>✅ After running all 4 files, the entire ERP will be fully operational</li>
               </ol>
               <a href="https://supabase.com/dashboard/project/oyingjtpontuoiyvkzxg/sql/new" target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
