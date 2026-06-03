@@ -41,7 +41,7 @@ export function NotificationsBell() {
     const todayStr = today.toISOString().split('T')[0]
     const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-    const [overdueRes, bottleRes, vehicleRes, staffRes, ticketsRes, stockRes, todayDelivRes, contractsRes] = await Promise.all([
+    const [overdueRes, bottleRes, vehicleRes, staffRes, ticketsRes, stockRes, todayDelivRes, contractsRes, pendingPayRes] = await Promise.all([
       sb.from('invoices').select('id, invoice_number, total, customer:customers(name)').eq('status', 'overdue').limit(20),
       sb.from('customer_bottle_balance').select('customer_id, chargeable_lost_350ml, chargeable_lost_750ml').filter('is_chargeable', 'eq', true).limit(20),
       sb.from('vehicles').select('id, name, plate_number, registration_expiry, insurance_expiry').or(`registration_expiry.lte.${in30Days},insurance_expiry.lte.${in30Days}`).not('registration_expiry', 'is', null),
@@ -50,6 +50,7 @@ export function NotificationsBell() {
       sb.from('inventory_items').select('id, name, quantity, reorder_point').not('reorder_point', 'is', null).gt('reorder_point', 0).limit(20),
       sb.from('deliveries').select('id, status').eq('delivery_date', todayStr),
       sb.from('contracts').select('id, title, end_date, customer:customers(name)').not('end_date', 'is', null).lte('end_date', in30Days).in('status', ['active']).limit(10),
+      sb.from('payments').select('id').eq('status', 'pending_verification').limit(20),
     ])
 
     const items: Notification[] = []
@@ -178,6 +179,19 @@ export function NotificationsBell() {
         title: `Contract Expiring`,
         body: `${(c.customer as any)?.name ?? 'Unknown'} — ${c.title ?? 'Contract'} · ${daysLeft <= 0 ? 'EXPIRED' : `${daysLeft} days left`}`,
         href: '/contracts',
+      })
+    }
+
+    // Pending payment verifications from customer portal
+    const pendingPay = pendingPayRes.data ?? []
+    if (pendingPay.length > 0) {
+      items.push({
+        id: 'pending-payments',
+        type: 'invoice_overdue',
+        severity: 'high',
+        title: `${pendingPay.length} Payment${pendingPay.length > 1 ? 's' : ''} Awaiting Verification`,
+        body: 'Customer payment notifications — review and mark invoices as paid',
+        href: '/invoices',
       })
     }
 
