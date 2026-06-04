@@ -974,43 +974,9 @@ function GmailTab() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CommunicationsPage() {
-  const [activeTab, setActiveTab] = useState<'email' | 'whatsapp'>('email')
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      {/* Tab bar with search (email) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#f6f8fc', borderBottom: '1px solid #e0e0e0', flexShrink: 0, paddingLeft: 16 }}>
-        {/* Wordmark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 24, borderRight: '1px solid #e0e0e0', marginRight: 8 }}>
-          <span style={{ fontSize: 17, fontWeight: 600, color: '#0EA5A4', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.3px' }}>Kembali</span>
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#5f6368', background: '#e8f0fe', borderRadius: 4, padding: '2px 5px' }}>Comm</span>
-        </div>
-
-        {/* Tabs */}
-        <button onClick={() => setActiveTab('email')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '14px 20px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, fontWeight: activeTab === 'email' ? 600 : 400, color: activeTab === 'email' ? '#0b57d0' : '#5f6368', borderBottom: activeTab === 'email' ? '2px solid #0b57d0' : '2px solid transparent', fontFamily: 'Google Sans, Roboto, sans-serif' }}>
-          <Mail size={16} /> Email
-        </button>
-        <button onClick={() => setActiveTab('whatsapp')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '14px 20px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, fontWeight: activeTab === 'whatsapp' ? 600 : 400, color: activeTab === 'whatsapp' ? '#25D366' : '#5f6368', borderBottom: activeTab === 'whatsapp' ? '2px solid #25D366' : '2px solid transparent', fontFamily: 'Google Sans, Roboto, sans-serif' }}>
-          <MessageCircle size={16} /> WhatsApp
-        </button>
-
-        {/* Email search bar (only on email tab) */}
-        {activeTab === 'email' && (
-          <div style={{ flex: 1, maxWidth: 720, marginLeft: 16, marginRight: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#eaf1fb', borderRadius: 24, padding: '0 16px', height: 40, gap: 8 }}>
-              <Search style={{ width: 18, height: 18, color: '#5f6368', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, color: '#9aa0a6' }}>Search mail</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Tab content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {activeTab === 'email' ? <GmailTab /> : <WhatsAppTab />}
-      </div>
+      <GmailTab />
     </div>
   )
 }

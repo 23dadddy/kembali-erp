@@ -9,7 +9,7 @@ import {
   DollarSign, TrendingUp, Target, Sparkles, RefreshCw, Factory,
   Route, ShoppingCart, PieChart, Tag, Shield, Star, Banknote,
   ScrollText, MessageSquare, ClipboardCheck, RotateCcw, CalendarDays, BookOpen,
-  LogOut, MessagesSquare, FolderOpen, Receipt, Clock, ClipboardList,
+  LogOut, MessagesSquare, FolderOpen, Receipt, Clock, ClipboardList, Mail, MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect } from 'react'
@@ -73,7 +73,8 @@ const groups = [
   {
     label: 'Workspace',
     items: [
-      { label: 'Communications', href: '/communications', icon: MessageSquare },
+      { label: 'Email', href: '/communications', icon: Mail },
+      { label: 'WhatsApp', href: '/whatsapp', icon: MessageCircle },
       { label: 'Team Chat', href: '/chat', icon: MessagesSquare },
       { label: 'Documents', href: '/documents', icon: FolderOpen },
     ],
