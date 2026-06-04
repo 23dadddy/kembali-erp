@@ -6,7 +6,7 @@ import { Topbar } from '@/components/layout/topbar'
 import {
   MapPin, Plus, Loader2, Check, X, Truck, User, Clock,
   ChevronRight, GripVertical, Trash2, Play, Edit2, Route,
-  Calendar, Navigation, Zap
+  Calendar, Navigation, Zap, Sparkles, ExternalLink
 } from 'lucide-react'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -23,6 +23,9 @@ export default function RoutesPage() {
   const [showStopForm, setShowStopForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [optimizing, setOptimizing] = useState(false)
+  const [optimizeResult, setOptimizeResult] = useState<any>(null)
+  const [startAddress, setStartAddress] = useState('Kembali Water, Bali, Indonesia')
 
   const [routeForm, setRouteForm] = useState({
     name: '',
@@ -194,6 +197,31 @@ export default function RoutesPage() {
     alert(`Generated ${totalCreated} deliveries across all active routes for today.`)
   }
 
+  const optimizeRoute = async () => {
+    if (!selectedRoute) return
+    if (stops.length < 2) { alert('Need at least 2 stops to optimize'); return }
+    if (!confirm(`Optimize stop order for "${selectedRoute.name}" using Google Maps?\n\nThis will reorder all stops to find the fastest route.`)) return
+
+    setOptimizing(true)
+    setOptimizeResult(null)
+    try {
+      const res = await fetch('/api/routes/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ routeId: selectedRoute.id, origin: startAddress }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setOptimizeResult(data)
+      await loadStops(selectedRoute.id)
+      await loadAll()
+    } catch (e: any) {
+      alert(`Optimization failed: ${e.message}`)
+    } finally {
+      setOptimizing(false)
+    }
+  }
+
   const toggleDay = (day: string) => {
     setRouteForm(f => ({
       ...f,
@@ -281,14 +309,62 @@ export default function RoutesPage() {
                       </div>
                     )}
                   </div>
-                  <button onClick={generateDeliveries} disabled={generating || stops.length === 0}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                    {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    Generate Today's Deliveries
-                  </button>
+                  <div className="flex flex-col gap-2 items-end">
+                    <button onClick={generateDeliveries} disabled={generating || stops.length === 0}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                      {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                      Generate Today's Deliveries
+                    </button>
+                    <button onClick={optimizeRoute} disabled={optimizing || stops.length < 2}
+                      className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                      {optimizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      Optimize Route with Maps
+                    </button>
+                  </div>
                 </div>
                 {selectedRoute.notes && <p className="text-sm text-slate-500 mt-3 bg-slate-50 rounded-xl px-3 py-2">{selectedRoute.notes}</p>}
+
+                {/* Start address for optimization */}
+                <div className="mt-3 flex items-center gap-2">
+                  <label className="text-xs text-slate-500 whitespace-nowrap font-medium">Start from:</label>
+                  <input
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-50"
+                    value={startAddress}
+                    onChange={e => setStartAddress(e.target.value)}
+                    placeholder="Your depot address..."
+                  />
+                </div>
               </div>
+
+              {/* Optimization result banner */}
+              {optimizeResult && (
+                <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-violet-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-violet-800 text-sm">Route optimized by Google Maps ✓</p>
+                      <p className="text-xs text-violet-600 mt-0.5">
+                        Total: <strong>{optimizeResult.totalDistance}</strong> · <strong>{optimizeResult.totalDuration}</strong> · Stops reordered for fastest delivery
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://www.google.com/maps/dir/${encodeURIComponent(startAddress)}/${optimizeResult.optimizedStops?.map((s: any) => encodeURIComponent(`${s.customer?.address}, ${s.customer?.city}, Bali`)).join('/')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Open in Maps
+                    </a>
+                    <button onClick={() => setOptimizeResult(null)} className="text-violet-400 hover:text-violet-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Stops */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -381,6 +457,11 @@ export default function RoutesPage() {
                           )}
                         </div>
                         {stop.notes && <p className="text-xs text-slate-400 mt-0.5 italic">{stop.notes}</p>}
+                        {optimizeResult?.optimizedStops?.[idx]?.leg && (
+                          <p className="text-xs text-violet-500 mt-0.5">
+                            {optimizeResult.optimizedStops[idx].leg.distance} · {optimizeResult.optimizedStops[idx].leg.duration}
+                          </p>
+                        )}
                       </div>
                       <button onClick={() => deleteStop(stop.id)} className="text-slate-300 hover:text-red-400 transition-colors p-1">
                         <Trash2 className="w-4 h-4" />
