@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
 import {
   MessageSquare, Plus, Loader2, Check, X, AlertCircle,
-  CheckCircle2, Clock, Building2, Search, Send, Lock, Eye,
+  CheckCircle2, Clock, Building2, Search, Send, Lock, Eye, Download,
   ChevronDown, User,
 } from 'lucide-react'
 
@@ -185,6 +185,16 @@ export default function SupportPage() {
               <input className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400"
                 placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <button onClick={() => {
+              const rows = filtered.map(t => ({ ID: t.id.slice(0, 8), Subject: t.subject, Status: t.status, Priority: t.priority, Category: t.category, Customer: (t.customer as any)?.name ?? '', Created: t.created_at?.split('T')[0] ?? '' }))
+              if (!rows.length) return
+              const headers = Object.keys(rows[0])
+              const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify((r as any)[h] ?? '')).join(','))].join('\n')
+              const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+              a.download = 'support-tickets.csv'; a.click()
+            }} className="flex-shrink-0 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 rounded-lg px-2 py-1.5 text-sm">
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <button onClick={() => setShowNewForm(true)}
               className="flex-shrink-0 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium flex items-center gap-1">
               <Plus className="w-3.5 h-3.5" />

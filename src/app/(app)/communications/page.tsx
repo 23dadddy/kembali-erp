@@ -508,8 +508,24 @@ function GmailTab() {
   const [replyOpen, setReplyOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<GmailMessage | null>(null)
   const [replyBody, setReplyBody] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState<{ name: string; type: string; data: string; size: number }[]>([])
+  const replyAttachInputRef = useRef<HTMLInputElement>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+
+  const handleReplyAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const result = ev.target?.result as string
+        const base64 = result.split(',')[1]
+        setReplyAttachments(prev => [...prev, { name: file.name, type: file.type || 'application/octet-stream', data: base64, size: file.size }])
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
   const [composing, setComposing] = useState(false)
   const [composeMin, setComposeMin] = useState(false)
   const [composeTo, setComposeTo] = useState('')
@@ -517,7 +533,26 @@ function GmailTab() {
   const [composeBody, setComposeBody] = useState('')
   const [composeSending, setComposeSending] = useState(false)
   const [composeError, setComposeError] = useState<string | null>(null)
+  const [composeAttachments, setComposeAttachments] = useState<{ name: string; type: string; data: string; size: number }[]>([])
+  const attachInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const result = ev.target?.result as string
+        // result is "data:mime/type;base64,XXXX"
+        const base64 = result.split(',')[1]
+        setComposeAttachments(prev => [...prev, { name: file.name, type: file.type || 'application/octet-stream', data: base64, size: file.size }])
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  const removeAttachment = (idx: number) => setComposeAttachments(prev => prev.filter((_, i) => i !== idx))
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/gmail/threads?maxResults=1')
@@ -566,11 +601,19 @@ function GmailTab() {
     setSending(true); setSendError(null)
     const res = await fetch('/api/gmail/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: parseFrom(replyTo.from).email, subject: selected.subject.match(/^Re:/i) ? selected.subject : `Re: ${selected.subject}`, body: replyBody, threadId: selected.id, inReplyTo: replyTo.messageId, references: replyTo.messageId }),
+      body: JSON.stringify({
+        to: parseFrom(replyTo.from).email,
+        subject: selected.subject.match(/^Re:/i) ? selected.subject : `Re: ${selected.subject}`,
+        body: replyBody,
+        threadId: selected.id,
+        inReplyTo: replyTo.messageId,
+        references: replyTo.messageId,
+        attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
+      }),
     })
     const data = await res.json()
     if (!data.ok) setSendError(data.error ?? 'Send failed')
-    else { setReplyOpen(false); setReplyBody(''); await loadThread(selected.id); await loadThreads(folder) }
+    else { setReplyOpen(false); setReplyBody(''); setReplyAttachments([]); await loadThread(selected.id); await loadThreads(folder) }
     setSending(false)
   }
 
@@ -579,11 +622,21 @@ function GmailTab() {
     setComposeSending(true); setComposeError(null)
     const res = await fetch('/api/gmail/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: composeTo, subject: composeSubject || '(no subject)', body: composeBody }),
+      body: JSON.stringify({
+        to: composeTo,
+        subject: composeSubject || '(no subject)',
+        body: composeBody,
+        attachments: composeAttachments.length > 0 ? composeAttachments : undefined,
+      }),
     })
     const data = await res.json()
     if (!data.ok) setComposeError(data.error ?? 'Send failed')
-    else { setComposing(false); setComposeTo(''); setComposeSubject(''); setComposeBody(''); loadThreads(folder) }
+    else {
+      setComposing(false)
+      setComposeTo(''); setComposeSubject(''); setComposeBody('')
+      setComposeAttachments([])
+      loadThreads(folder)
+    }
     setComposeSending(false)
   }
 
@@ -813,13 +866,34 @@ function GmailTab() {
                   </div>
                   <textarea autoFocus value={replyBody} onChange={e => setReplyBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply() } }} placeholder="Write your reply…"
                     style={{ width: '100%', minHeight: 140, border: 'none', outline: 'none', padding: 16, fontSize: 14, fontFamily: 'Roboto, Arial, sans-serif', resize: 'vertical', boxSizing: 'border-box', color: '#202124', lineHeight: 1.6 }} />
+                  {/* Reply attachment chips */}
+                  {replyAttachments.length > 0 && (
+                    <div style={{ padding: '6px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {replyAttachments.map((att, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', borderRadius: 16, padding: '4px 10px', fontSize: 12, color: '#3c4043' }}>
+                          <Paperclip style={{ width: 12, height: 12 }} />
+                          <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                          <span style={{ color: '#80868b' }}>({(att.size / 1024).toFixed(0)}KB)</span>
+                          <button onClick={() => setReplyAttachments(prev => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1, marginLeft: 2 }}>
+                            <X style={{ width: 12, height: 12, color: '#5f6368' }} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {sendError && <p style={{ margin: '0 16px 8px', fontSize: 12, color: '#d93025' }}>{sendError}</p>}
                   <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f3f4', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button onClick={sendReply} disabled={sending || !replyBody.trim()}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, background: sending || !replyBody.trim() ? '#f1f3f4' : '#0b57d0', color: sending || !replyBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} Send
                     </button>
-                    <button onClick={() => { setReplyOpen(false); setReplyBody('') }} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                    {/* Reply attach button */}
+                    <button onClick={() => replyAttachInputRef.current?.click()} title="Attach files"
+                      style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
+                    </button>
+                    <input ref={replyAttachInputRef} type="file" multiple className="hidden" onChange={handleReplyAttachFiles} />
+                    <button onClick={() => { setReplyOpen(false); setReplyBody(''); setReplyAttachments([]) }} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
                       <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
                     </button>
                   </div>
@@ -855,14 +929,36 @@ function GmailTab() {
               </div>
               <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder="   "
                 style={{ flex: 1, border: 'none', outline: 'none', padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
+              {/* Attachment chips */}
+              {composeAttachments.length > 0 && (
+                <div style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {composeAttachments.map((att, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', borderRadius: 16, padding: '4px 10px', fontSize: 12, color: '#3c4043' }}>
+                      <Paperclip style={{ width: 12, height: 12 }} />
+                      <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                      <span style={{ color: '#80868b' }}>({(att.size / 1024).toFixed(0)}KB)</span>
+                      <button onClick={() => removeAttachment(i)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1, marginLeft: 2 }}>
+                        <X style={{ width: 12, height: 12, color: '#5f6368' }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               {composeError && <p style={{ margin: '0 12px 4px', fontSize: 12, color: '#d93025' }}>{composeError}</p>}
               <div style={{ padding: '8px 12px', borderTop: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button onClick={sendCompose} disabled={composeSending || !composeTo.trim() || !composeBody.trim()}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: composeSending || !composeTo.trim() || !composeBody.trim() ? '#f1f3f4' : '#0b57d0', color: composeSending || !composeTo.trim() || !composeBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : null} Send
                 </button>
+                {/* Attach file button */}
+                <button onClick={() => attachInputRef.current?.click()}
+                  title="Attach files"
+                  style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
+                </button>
+                <input ref={attachInputRef} type="file" multiple className="hidden" onChange={handleAttachFiles} />
                 <div style={{ marginLeft: 'auto' }}>
-                  <button onClick={() => setComposing(false)} style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
+                  <button onClick={() => { setComposing(false); setComposeAttachments([]) }} style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
                     <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
                   </button>
                 </div>

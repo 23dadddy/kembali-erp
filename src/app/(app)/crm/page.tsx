@@ -8,7 +8,7 @@ import { idr } from '@/lib/format'
 import {
   TrendingUp, Plus, Check, X, Loader2, Phone, Mail, MapPin,
   ArrowRight, Users, DollarSign, Target, Star, MessageSquare,
-  Calendar, Video, FileText, Activity, ChevronRight, Edit2, Building2, User
+  Calendar, Video, FileText, Activity, ChevronRight, Edit2, Building2, User, Download
 } from 'lucide-react'
 
 const STAGES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'] as const
@@ -251,9 +251,19 @@ export default function CRMPage() {
           </div>
 
           {/* Add button */}
-          <div className="px-3 py-2 border-b border-slate-100">
+          <div className="px-3 py-2 border-b border-slate-100 flex gap-2">
+            <button onClick={() => {
+              const rows = filtered.map((l: any) => ({ Company: l.company_name, Contact: l.contact_name ?? '', Stage: l.status, City: l.city ?? '', Type: l.type ?? '', Value_IDR: l.estimated_monthly_value ?? 0, Probability: l.probability ?? 0, Assignee: (staff.find((s: any) => s.id === l.assigned_to) as any)?.name ?? '' }))
+              if (!rows.length) return
+              const headers = Object.keys(rows[0])
+              const csv = [headers.join(','), ...rows.map((r: any) => headers.map((h: string) => JSON.stringify((r)[h] ?? '')).join(','))].join('\n')
+              const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+              a.download = 'crm-leads.csv'; a.click()
+            }} className="flex items-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 px-2.5 py-2 rounded-xl text-xs">
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <button onClick={() => { setForm(EMPTY_LEAD); setEditingId(null); setShowForm(true) }}
-              className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-xl text-sm font-medium transition-colors">
+              className="flex-1 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-xl text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" /> Add Lead
             </button>
           </div>
