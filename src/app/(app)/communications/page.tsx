@@ -888,11 +888,11 @@ function GmailTab() {
                       {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} Send
                     </button>
                     {/* Reply attach button */}
-                    <button onClick={() => replyAttachInputRef.current?.click()} title="Attach files"
+                    <button type="button" onClick={() => replyAttachInputRef.current?.click()} title="Attach files"
                       style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
                     </button>
-                    <input ref={replyAttachInputRef} type="file" multiple className="hidden" onChange={handleReplyAttachFiles} />
+                    <input ref={replyAttachInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleReplyAttachFiles} />
                     <button onClick={() => { setReplyOpen(false); setReplyBody(''); setReplyAttachments([]) }} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
                       <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
                     </button>
@@ -907,7 +907,7 @@ function GmailTab() {
 
       {/* ── FLOATING COMPOSE ── */}
       {composing && (
-        <div style={{ position: 'fixed', bottom: 0, right: 32, zIndex: 50, width: 500, background: '#fff', borderRadius: '8px 8px 0 0', boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', height: composeMin ? 48 : 480, transition: 'height 0.15s ease' }}>
+        <div style={{ position: 'fixed', bottom: 0, right: 32, zIndex: 50, width: 520, background: '#fff', borderRadius: '8px 8px 0 0', boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', height: composeMin ? 48 : 520, transition: 'height 0.15s ease' }}>
           <div onClick={() => setComposeMin(!composeMin)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#404040', borderRadius: '8px 8px 0 0', cursor: 'pointer', flexShrink: 0 }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: '#fff', fontFamily: 'inherit' }}>New Message</span>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -927,8 +927,8 @@ function GmailTab() {
               <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 12px' }}>
                 <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} placeholder="Subject" style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124', fontWeight: 500 }} />
               </div>
-              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder="   "
-                style={{ flex: 1, border: 'none', outline: 'none', padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
+              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder="Write your message..."
+                style={{ flex: 1, minHeight: 200, border: 'none', outline: 'none', padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
               {/* Attachment chips */}
               {composeAttachments.length > 0 && (
                 <div style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -951,12 +951,12 @@ function GmailTab() {
                   {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : null} Send
                 </button>
                 {/* Attach file button */}
-                <button onClick={() => attachInputRef.current?.click()}
+                <button type="button" onClick={() => attachInputRef.current?.click()}
                   title="Attach files"
                   style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
                 </button>
-                <input ref={attachInputRef} type="file" multiple className="hidden" onChange={handleAttachFiles} />
+                <input ref={attachInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleAttachFiles} />
                 <div style={{ marginLeft: 'auto' }}>
                   <button onClick={() => { setComposing(false); setComposeAttachments([]) }} style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
                     <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
