@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, Users, Truck, Package, FileText,
-  UserCog, MapPin, Settings, BarChart3, Smartphone,
-  DollarSign, TrendingUp, Target, Sparkles, RefreshCw, Factory,
-  Route, ShoppingCart, PieChart, Tag, Shield, Star, Banknote,
-  ScrollText, MessageSquare, ClipboardCheck, RotateCcw, CalendarDays, BookOpen,
-  LogOut, MessagesSquare, FolderOpen, Receipt, Clock, ClipboardList, Mail, MessageCircle,
+  LayoutDashboard, Users, Package, FileText,
+  UserCog, Settings, BarChart3,
+  DollarSign, Factory,
+  Shield, Truck,
+  ScrollText, MessageSquare, ClipboardCheck,
+  LogOut, MessagesSquare, FolderOpen, Mail,
+  ShoppingCart, Truck as DispatchIcon, Receipt, BookOpen, Headphones,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect } from 'react'
@@ -20,63 +21,38 @@ const groups = [
     label: null,
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Executive View', href: '/executive', icon: PieChart },
-      { label: 'AI Command Center', href: '/ai', icon: Sparkles },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'TrakOps', href: '/trakops', icon: Truck },
-      { label: 'Deliveries', href: '/deliveries', icon: MapPin },
-      { label: 'Calendar', href: '/calendar', icon: CalendarDays },
-      { label: 'Customers', href: '/customers', icon: Users },
-      { label: 'CRM & Sales', href: '/crm', icon: Target },
-      { label: 'Contracts', href: '/contracts', icon: ScrollText },
-      { label: 'Subscriptions', href: '/subscriptions', icon: RefreshCw },
-      { label: 'Routes', href: '/routes', icon: Route },
       { label: 'Orders', href: '/orders', icon: ShoppingCart },
-      { label: 'Production', href: '/production', icon: Factory },
+      { label: 'Dispatch', href: '/dispatch', icon: DispatchIcon },
+      { label: 'Customers', href: '/customers', icon: Users },
+      { label: 'Sales', href: '/crm', icon: ScrollText },
+      { label: 'Support', href: '/support', icon: Headphones },
       { label: 'Inventory', href: '/inventory', icon: Package },
-      { label: 'Bottle Tracking', href: '/bottles', icon: RotateCcw },
-      { label: 'Procurement', href: '/procurement', icon: ShoppingCart },
-      { label: 'Support', href: '/support', icon: MessageSquare },
+      { label: 'Production', href: '/production', icon: Factory },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { label: 'Invoices', href: '/invoices', icon: FileText },
-      { label: 'Credit Notes', href: '/credit-notes', icon: FileText },
-      { label: 'Purchase Orders', href: '/purchase-orders', icon: ClipboardList },
-      { label: 'Expenses', href: '/expenses', icon: Receipt },
-      { label: 'Finance', href: '/finance', icon: DollarSign },
-      { label: 'Payroll', href: '/payroll', icon: Banknote },
-      { label: 'Pricing', href: '/pricing', icon: DollarSign },
-      { label: 'Promotions', href: '/promotions', icon: Tag },
-      { label: 'Accounts', href: '/accounts', icon: BookOpen },
-      { label: 'Reports', href: '/reports', icon: BarChart3 },
+      { label: 'Billing', href: '/billing', icon: FileText },
+      { label: 'Accounting', href: '/accounting', icon: DollarSign },
     ],
   },
   {
-    label: 'Team',
+    label: 'People & Fleet',
     items: [
-      { label: 'HR & Drivers', href: '/hr', icon: UserCog },
-      { label: 'Attendance', href: '/attendance', icon: Clock },
+      { label: 'People', href: '/people', icon: UserCog },
       { label: 'Fleet', href: '/fleet', icon: Truck },
-      { label: 'Performance', href: '/performance', icon: Star },
-      { label: 'Safety', href: '/safety', icon: Shield },
-      { label: 'Driver App', href: '/portal', icon: Smartphone },
-      { label: 'Driver Checklist', href: '/checklist', icon: ClipboardCheck },
     ],
   },
   {
     label: 'Workspace',
     items: [
-      { label: 'Email', href: '/communications', icon: Mail },
-      { label: 'WhatsApp', href: '/whatsapp', icon: MessageCircle },
-      { label: 'Team Chat', href: '/chat', icon: MessagesSquare },
-      { label: 'Documents', href: '/documents', icon: FolderOpen },
+      { label: 'Communications', href: '/communications', icon: MessagesSquare },
     ],
   },
   {
@@ -91,9 +67,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Warm the cache for the most-visited pages as soon as the sidebar mounts
   useEffect(() => {
-    // Fire in sequence with small delays to avoid hammering Supabase on initial load
     const t1 = setTimeout(() => getCustomers(), 200)
     const t2 = setTimeout(() => getInvoices(), 600)
     const t3 = setTimeout(() => getStaff(), 1000)
@@ -109,7 +83,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-56 min-h-screen flex flex-col" style={{ background: '#0F172A' }}>
+    <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#0F172A' }}>
       {/* Wordmark */}
       <div className="px-5 py-5 border-b border-slate-800">
         <div className="font-semibold text-white tracking-tight" style={{ fontSize: '15px' }}>Kembali Water</div>
@@ -160,7 +134,7 @@ export function Sidebar() {
           <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
           Sign Out
         </button>
-        <p className="text-slate-600 px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v1.0</p>
+        <p className="text-slate-600 px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v2.0</p>
       </div>
     </aside>
   )
