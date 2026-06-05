@@ -185,16 +185,15 @@ function LiveDispatch() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {DAYS_LONG.map((day) => (
-            <button key={day} onClick={() => setSelectedDay(day)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${selectedDay === day ? 'bg-cyan-600 text-white' : 'bg-white border text-slate-600 hover:bg-slate-50'}`}>
-              {day.slice(0, 3)}{day === today && <span className="ml-1 text-xs opacity-70">today</span>}
-            </button>
-          ))}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setSelectedDay(new Date(e.target.value + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })) }} className="text-sm font-medium text-slate-700 bg-transparent outline-none" />
         </div>
-        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
+        {selectedDate !== new Date().toISOString().split('T')[0] && (
+          <button onClick={() => { const t = new Date().toISOString().split('T')[0]; setSelectedDate(t); setSelectedDay(today) }} className="text-xs text-cyan-600 hover:text-cyan-700 font-medium">Back to today</button>
+        )}
+        <span className="text-sm text-slate-500">{selectedDay}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
