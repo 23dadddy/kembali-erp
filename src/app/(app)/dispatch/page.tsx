@@ -503,6 +503,21 @@ function RouteMapPanel({ stops, optimizeResult }: { stops: any[]; optimizeResult
   )
 }
 
+// ─── GOOGLE MAPS SETUP BANNER ─────────────────────────────────────────────────
+function MapsSetupBanner() {
+  const configured = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE'
+  if (configured) return null
+  return (
+    <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+      <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-amber-800 text-sm">Google Maps not set up yet</p>
+        <p className="text-xs text-amber-600 mt-0.5">Route map display and stop optimization require a Google Maps API key. To activate: set up Google Cloud billing, enable Maps JavaScript API + Directions API + Geocoding API, then add <code className="bg-amber-100 px-1 rounded">GOOGLE_MAPS_API_KEY</code> and <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to Vercel environment variables.</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── TAB: ROUTES ──────────────────────────────────────────────────────────────
 function RouteManager() {
   const [routes, setRoutes] = useState<any[]>([])
@@ -603,7 +618,9 @@ function RouteManager() {
   const toggleDay = (day: string) => setRouteForm(f => ({ ...f, day_of_week: f.day_of_week.includes(day) ? f.day_of_week.filter(d => d !== day) : [...f.day_of_week, day] }))
 
   return (
-    <div className="flex h-[calc(100vh-113px)]">
+    <div className="flex flex-col h-[calc(100vh-113px)]">
+      <MapsSetupBanner />
+      <div className="flex flex-1 overflow-hidden">
       {/* Routes List */}
       <div className="w-72 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-slate-100 space-y-2">
@@ -744,6 +761,7 @@ function RouteManager() {
           </div>
           </div>
         )}
+      </div>
       </div>
 
       {showRouteForm && (
