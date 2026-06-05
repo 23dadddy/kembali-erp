@@ -60,12 +60,6 @@ const groups = [
       { label: 'Fleet', href: '/fleet', icon: Truck },
     ],
   },
-  {
-    label: 'System',
-    items: [
-      { label: 'Settings', href: '/settings', icon: Settings },
-    ],
-  },
 ]
 
 // Comms items are handled separately so we can attach live badges
@@ -210,6 +204,26 @@ export function Sidebar() {
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
                   <span className="flex-1 min-w-0 truncate">{label}</span>
                   <Badge count={count} />
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* System */}
+        <div>
+          <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
+            System
+          </p>
+          <div className="space-y-0.5">
+            {[{ label: 'Settings', href: '/settings', icon: Settings }].map(({ label, href, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                  style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                  {label}
                 </Link>
               )
             })}
