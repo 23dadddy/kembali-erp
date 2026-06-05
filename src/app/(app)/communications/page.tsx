@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, Send, LogIn, Check, Printer,
   MailOpen, Tag, Clock, Settings, Menu, MessageCircle, Mail,
   Phone, CheckCheck, Image, Paperclip, Smile, Mic, Plus, User,
+  Hash, MessageSquare, Circle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -971,12 +972,242 @@ function GmailTab() {
   )
 }
 
+// ─── Internal Chat Tab ────────────────────────────────────────────────────────
+
+const CHAT_CHANNELS = [
+  { id: 'general', label: 'General', icon: '💬' },
+  { id: 'operations', label: 'Operations', icon: '🚛' },
+  { id: 'drivers', label: 'Drivers', icon: '🚚' },
+  { id: 'finance', label: 'Finance', icon: '💰' },
+  { id: 'management', label: 'Management', icon: '📊' },
+]
+
+interface ChatMessage {
+  id: string
+  channel: string
+  sender_id: string | null
+  recipient_id: string | null
+  content: string
+  created_at: string
+  sender?: { name: string } | null
+}
+interface ChatStaff { id: string; name: string; role: string }
+
+function InternalChatTab() {
+  const sbRef = useRef(createClient())
+  const sb = sbRef.current
+  const [channel, setChannel] = useState('general')
+  const [dmTarget, setDmTarget] = useState<ChatStaff | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [staff, setStaff] = useState<ChatStaff[]>([])
+  const [myStaff, setMyStaff] = useState<ChatStaff | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    let presenceChannel: any = null
+    const init = async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      const [staffRes, myRes] = await Promise.all([
+        sb.from('staff').select('id, name, role').eq('active', true).order('name'),
+        user ? sb.from('staff').select('id, name, role').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
+      ])
+      let me = (myRes as any).data as ChatStaff | null
+      if (!me && user) me = { id: user.id, name: user.email?.split('@')[0] ?? 'Me', role: '' }
+      setStaff((staffRes.data ?? []) as ChatStaff[])
+      setMyStaff(me)
+      if (me) {
+        presenceChannel = sb.channel('presence-comms', { config: { presence: { key: me.id } } })
+        presenceChannel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') await presenceChannel.track({ staff_id: me!.id })
+        })
+      }
+    }
+    init()
+    return () => { presenceChannel?.unsubscribe() }
+  }, [])
+
+  const loadMessages = useCallback(async () => {
+    setLoading(true)
+    let q = sb.from('chat_messages').select('*, sender:staff!sender_id(name)').order('created_at', { ascending: true }).limit(100)
+    if (dmTarget && myStaff) {
+      q = q.or(`and(sender_id.eq.${myStaff.id},recipient_id.eq.${dmTarget.id}),and(sender_id.eq.${dmTarget.id},recipient_id.eq.${myStaff.id})`)
+    } else {
+      q = q.eq('channel', channel).is('recipient_id', null)
+    }
+    const { data } = await q
+    setMessages((data ?? []) as ChatMessage[])
+    setLoading(false)
+  }, [channel, dmTarget, myStaff])
+
+  useEffect(() => { loadMessages() }, [loadMessages])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  useEffect(() => {
+    const viewKey = dmTarget ? `dm-${dmTarget.id}` : `ch-${channel}`
+    const sub = sb.channel(`comms-chat-${viewKey}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+        const msg = payload.new as ChatMessage
+        const isChannelMsg = !msg.recipient_id && msg.channel === channel && !dmTarget
+        const isDM = dmTarget && myStaff && ((msg.sender_id === myStaff.id && msg.recipient_id === dmTarget.id) || (msg.sender_id === dmTarget.id && msg.recipient_id === myStaff.id))
+        if (isChannelMsg || isDM) {
+          const senderName = [...staff, ...(myStaff ? [myStaff] : [])].find(s => s.id === msg.sender_id)?.name ?? null
+          setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, sender: senderName ? { name: senderName } : null }])
+        }
+      })
+      .subscribe()
+    return () => { sub.unsubscribe() }
+  }, [channel, dmTarget, myStaff, staff])
+
+  const sendMessage = async () => {
+    const text = input.trim()
+    if (!text) return
+    setInput(''); setSendError(null); inputRef.current?.focus()
+    const { error } = await sb.from('chat_messages').insert({ channel: dmTarget ? null : channel, sender_id: myStaff?.id ?? null, recipient_id: dmTarget?.id ?? null, content: text })
+    if (error) { setSendError(error.message); setInput(text) }
+  }
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso), now = new Date()
+    return d.toDateString() === now.toDateString()
+      ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const groupedMessages: { date: string; msgs: ChatMessage[] }[] = []
+  for (const msg of messages) {
+    const date = new Date(msg.created_at).toDateString()
+    const last = groupedMessages[groupedMessages.length - 1]
+    if (last && last.date === date) last.msgs.push(msg)
+    else groupedMessages.push({ date, msgs: [msg] })
+  }
+
+  const currentTitle = dmTarget ? `DM · ${dmTarget.name}` : `#${CHAT_CHANNELS.find(c => c.id === channel)?.label ?? channel}`
+
+  return (
+    <div className="flex flex-1 overflow-hidden min-h-0">
+      {/* Sidebar */}
+      <div className="w-56 bg-slate-900 text-white flex flex-col flex-shrink-0">
+        <div className="p-3 border-b border-slate-700">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Channels</p>
+          {CHAT_CHANNELS.map(ch => (
+            <button key={ch.id} onClick={() => { setChannel(ch.id); setDmTarget(null) }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${!dmTarget && channel === ch.id ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+              <Hash className="w-3.5 h-3.5 flex-shrink-0" />{ch.label}
+            </button>
+          ))}
+        </div>
+        <div className="p-3 flex-1 overflow-y-auto">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Direct Messages</p>
+          {staff.filter(s => s.id !== myStaff?.id).map(s => (
+            <button key={s.id} onClick={() => setDmTarget(s)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${dmTarget?.id === s.id ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+              <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0">{s.name[0]}</div>
+              <span className="truncate">{s.name}</span>
+            </button>
+          ))}
+        </div>
+        {myStaff && (
+          <div className="p-3 border-t border-slate-700">
+            <div className="flex items-center gap-2 text-slate-400 text-xs">
+              <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500" />
+              <span className="truncate">{myStaff.name}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col bg-white min-w-0">
+        <div className="border-b px-5 py-3 flex items-center gap-2">
+          {dmTarget ? <User className="w-4 h-4 text-slate-400" /> : <Hash className="w-4 h-4 text-slate-400" />}
+          <span className="font-semibold text-slate-800">{currentTitle}</span>
+          {dmTarget && <span className="text-xs text-slate-400 ml-1">· {dmTarget.role}</span>}
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {loading ? <div className="flex justify-center pt-8"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
+            : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <MessageSquare className="w-10 h-10 text-slate-200 mb-3" />
+                <p className="font-medium text-slate-400">No messages yet</p>
+                <p className="text-sm text-slate-300 mt-1">Be the first to say something in {currentTitle}</p>
+              </div>
+            ) : groupedMessages.map(({ date, msgs }) => (
+              <div key={date}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 h-px bg-slate-100" />
+                  <span className="text-xs text-slate-400 bg-white px-2">{new Date(date).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  <div className="flex-1 h-px bg-slate-100" />
+                </div>
+                <div className="space-y-3">
+                  {msgs.map((msg, i) => {
+                    const isMe = msg.sender_id === myStaff?.id
+                    const showSender = i === 0 || msgs[i - 1].sender_id !== msg.sender_id
+                    return (
+                      <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                        {showSender && <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1 ${isMe ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{((msg.sender as any)?.name ?? '?')[0].toUpperCase()}</div>}
+                        {!showSender && <div className="w-7 flex-shrink-0" />}
+                        <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+                          {showSender && <div className={`flex items-baseline gap-2 mb-0.5 ${isMe ? 'flex-row-reverse' : ''}`}><span className="text-xs font-semibold text-slate-700">{isMe ? 'You' : (msg.sender as any)?.name ?? 'Unknown'}</span><span className="text-xs text-slate-400">{formatTime(msg.created_at)}</span></div>}
+                          <div className={`rounded-2xl px-4 py-2 text-sm ${isMe ? 'bg-cyan-600 text-white rounded-tr-sm' : 'bg-slate-100 text-slate-800 rounded-tl-sm'}`}>{msg.content}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          <div ref={bottomRef} />
+        </div>
+        <div className="border-t px-4 py-3">
+          {sendError && <p className="text-xs text-red-500 mb-2 px-1">Failed to send: {sendError}</p>}
+          <div className="flex items-center gap-3 bg-slate-50 rounded-xl border px-4 py-2.5">
+            <input ref={inputRef} className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400" placeholder={`Message ${currentTitle}…`} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }} />
+            <button onClick={sendMessage} disabled={!input.trim()} className="text-cyan-600 hover:text-cyan-700 disabled:text-slate-300 transition-colors"><Send className="w-4 h-4" /></button>
+          </div>
+          <p className="text-xs text-slate-400 mt-1.5 text-center">Press Enter to send · Shift+Enter for new line</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+type CommTab = 'email' | 'whatsapp' | 'internal'
+
+const COMM_TABS: { id: CommTab; label: string; icon: string }[] = [
+  { id: 'email', label: 'Email', icon: '✉️' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+  { id: 'internal', label: 'Internal Communication', icon: '🔒' },
+]
+
 export default function CommunicationsPage() {
+  const [tab, setTab] = useState<CommTab>('email')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      <GmailTab />
+      <Topbar title="Communications" />
+      {/* Tab bar */}
+      <div className="bg-white border-b border-slate-200 px-6 flex-shrink-0">
+        <div className="flex gap-1">
+          {COMM_TABS.map(({ id, label, icon }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              <span>{icon}</span>{label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Content */}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        {tab === 'email' && <GmailTab />}
+        {tab === 'whatsapp' && <WhatsAppTab />}
+        {tab === 'internal' && <InternalChatTab />}
+      </div>
     </div>
   )
 }
