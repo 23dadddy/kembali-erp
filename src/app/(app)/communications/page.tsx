@@ -972,7 +972,17 @@ function GmailTab() {
   )
 }
 
-// ─── Internal Chat Tab ────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function CommunicationsPage() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      <GmailTab />
+    </div>
+  )
+}
+
+// ─── Internal Chat Tab (kept here for reference, not used) ────────────────────
 
 const CHAT_CHANNELS = [
   { id: 'general', label: 'General', icon: '💬' },
@@ -1175,39 +1185,3 @@ function InternalChatTab() {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-type CommTab = 'email' | 'whatsapp' | 'internal'
-
-const COMM_TABS: { id: CommTab; label: string; icon: string }[] = [
-  { id: 'email', label: 'Email', icon: '✉️' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-  { id: 'internal', label: 'Internal Communication', icon: '🔒' },
-]
-
-export default function CommunicationsPage() {
-  const [tab, setTab] = useState<CommTab>('email')
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      <Topbar title="Communications" />
-      {/* Tab bar */}
-      <div className="bg-white border-b border-slate-200 px-6 flex-shrink-0">
-        <div className="flex gap-1">
-          {COMM_TABS.map(({ id, label, icon }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              <span>{icon}</span>{label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* Content */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-        {tab === 'email' && <GmailTab />}
-        {tab === 'whatsapp' && <WhatsAppTab />}
-        {tab === 'internal' && <InternalChatTab />}
-      </div>
-    </div>
-  )
-}

@@ -5,17 +5,28 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, Package, FileText,
-  UserCog, Settings, BarChart3,
+  UserCog, Settings,
   DollarSign, Factory,
-  Shield, Truck,
-  ScrollText, MessageSquare, ClipboardCheck,
-  LogOut, MessagesSquare, FolderOpen, Mail,
-  ShoppingCart, Truck as DispatchIcon, Receipt, BookOpen, Headphones,
+  Truck,
+  ScrollText, LogOut,
+  ShoppingCart, Receipt, BookOpen, Headphones,
+  Mail, MessageCircle, MessagesSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { getCustomers, getInvoices, getStaff, getLeads } from '@/lib/db'
 
+// ─── Unread badge component ──────────────────────────────────────────────────
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-auto flex-shrink-0 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+// ─── Sidebar nav groups ───────────────────────────────────────────────────────
 const groups = [
   {
     label: null,
@@ -27,7 +38,7 @@ const groups = [
     label: 'Operations',
     items: [
       { label: 'Orders', href: '/orders', icon: ShoppingCart },
-      { label: 'Dispatch', href: '/dispatch', icon: DispatchIcon },
+      { label: 'Dispatch', href: '/dispatch', icon: Truck },
       { label: 'Customers', href: '/customers', icon: Users },
       { label: 'Sales', href: '/crm', icon: ScrollText },
       { label: 'Support', href: '/support', icon: Headphones },
@@ -50,12 +61,6 @@ const groups = [
     ],
   },
   {
-    label: 'Workspace',
-    items: [
-      { label: 'Communications', href: '/communications', icon: MessagesSquare },
-    ],
-  },
-  {
     label: 'System',
     items: [
       { label: 'Settings', href: '/settings', icon: Settings },
@@ -63,10 +68,78 @@ const groups = [
   },
 ]
 
+// Comms items are handled separately so we can attach live badges
+const commsItems = [
+  { label: 'Email', href: '/communications', icon: Mail, badgeKey: 'email' as const },
+  { label: 'WhatsApp', href: '/whatsapp', icon: MessageCircle, badgeKey: 'whatsapp' as const },
+  { label: 'Internal Chat', href: '/chat', icon: MessagesSquare, badgeKey: 'chat' as const },
+]
+
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
+  // Live unread counts
+  const [waUnread, setWaUnread] = useState(0)
+  const [chatUnread, setChatUnread] = useState(0)
+
+  // WhatsApp: sum of unread_count across all conversations
+  useEffect(() => {
+    const sb = createClient()
+    const load = async () => {
+      const { data } = await sb.from('whatsapp_conversations').select('unread_count')
+      const total = (data ?? []).reduce((s: number, c: any) => s + (c.unread_count ?? 0), 0)
+      setWaUnread(total)
+    }
+    load()
+    const ch = sb.channel('sidebar-wa-unread')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_conversations' }, load)
+      .subscribe()
+    return () => { sb.removeChannel(ch) }
+  }, [])
+
+  // Chat: count messages from others since last time user visited /chat
+  useEffect(() => {
+    const sb = createClient()
+    const load = async () => {
+      try {
+        const lastVisit = localStorage.getItem('chat_last_visit') ?? new Date(0).toISOString()
+        const { data: { user } } = await sb.auth.getUser()
+        const { data: myStaff } = user
+          ? await sb.from('staff').select('id').eq('auth_user_id', user.id).single()
+          : { data: null }
+
+        let q = sb.from('chat_messages')
+          .select('id', { count: 'exact', head: true })
+          .gt('created_at', lastVisit)
+          .is('recipient_id', null) // channel messages only (not DMs)
+
+        if (myStaff?.id) q = q.neq('sender_id', myStaff.id)
+        else if (user?.id) q = q.neq('sender_id', user.id)
+
+        const { count } = await q
+        setChatUnread(count ?? 0)
+      } catch { setChatUnread(0) }
+    }
+    load()
+    const ch = sb.channel('sidebar-chat-unread')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, load)
+      .subscribe()
+    return () => { sb.removeChannel(ch) }
+  }, [])
+
+  // When user navigates to /chat, clear the chat badge and update last_visit
+  useEffect(() => {
+    if (pathname === '/chat') {
+      localStorage.setItem('chat_last_visit', new Date().toISOString())
+      setChatUnread(0)
+    }
+    if (pathname === '/whatsapp') {
+      // Mark WA conversations as read (handled in the WA page itself)
+    }
+  }, [pathname])
+
+  // Warm cache
   useEffect(() => {
     const t1 = setTimeout(() => getCustomers(), 200)
     const t2 = setTimeout(() => getInvoices(), 600)
@@ -80,6 +153,12 @@ export function Sidebar() {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  const badgeCounts: Record<string, number> = {
+    email: 0, // Gmail unread handled inside the Gmail tab itself
+    whatsapp: waUnread,
+    chat: chatUnread,
   }
 
   return (
@@ -103,18 +182,9 @@ export function Sidebar() {
               {group.items.map(({ label, href, icon: Icon }) => {
                 const active = pathname === href || pathname.startsWith(href + '/')
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    prefetch={true}
-                    className={cn(
-                      'flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors',
-                      active
-                        ? 'text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    )}
-                    style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}
-                  >
+                  <Link key={href} href={href} prefetch={true}
+                    className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                    style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
                     <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
                     {label}
                   </Link>
@@ -123,14 +193,34 @@ export function Sidebar() {
             </div>
           </div>
         ))}
+
+        {/* Communications section with live badges */}
+        <div>
+          <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
+            Communications
+          </p>
+          <div className="space-y-0.5">
+            {commsItems.map(({ label, href, icon: Icon, badgeKey }) => {
+              const active = pathname === href || pathname.startsWith(href + '/')
+              const count = badgeCounts[badgeKey] ?? 0
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                  style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                  <span className="flex-1 min-w-0 truncate">{label}</span>
+                  <Badge count={count} />
+                </Link>
+              )
+            })}
+          </div>
+        </div>
       </nav>
 
       <div className="px-2 py-4 border-t border-slate-800 space-y-0.5">
-        <button
-          onClick={handleLogout}
+        <button onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-          style={{ fontSize: '13px' }}
-        >
+          style={{ fontSize: '13px' }}>
           <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
           Sign Out
         </button>
