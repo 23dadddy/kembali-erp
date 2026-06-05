@@ -17,12 +17,13 @@ import {
   Truck, MapPin, Package, CheckCircle2, Clock, Navigation,
   Plus, RotateCcw, AlertCircle, Loader2, ExternalLink, Users, Zap,
   Route, User, Trash2, Play, Check, X, Calendar, ChevronLeft, ChevronRight,
-  Sparkles,
+  Sparkles, Map,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getDeliveries, getRoutes, getStaff, getCustomers, createDelivery, createRoute, updateDeliveryStatus } from '@/lib/db'
 import type { Delivery, Staff, Customer } from '@/types'
 import Link from 'next/link'
+import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from '@react-google-maps/api'
 
 type Tab = 'live' | 'routes' | 'calendar'
 
@@ -391,6 +392,117 @@ function LiveDispatch() {
   )
 }
 
+// ─── GOOGLE MAP COMPONENT ─────────────────────────────────────────────────────
+const BALI_CENTER = { lat: -8.4095, lng: 115.1889 }
+const STOP_COLORS = ['#0EA5E4', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2', '#DB2777', '#65A30D']
+
+function RouteMapPanel({ stops, optimizeResult }: { stops: any[]; optimizeResult: any }) {
+  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '', id: 'kembali-maps' })
+  const [activeStop, setActiveStop] = useState<string | null>(null)
+  const [geocoded, setGeocoded] = useState<Record<string, { lat: number; lng: number }>>({})
+  const [geocoding, setGeocoding] = useState(false)
+
+  // Geocode stop addresses when stops change
+  useEffect(() => {
+    if (!isLoaded || stops.length === 0) return
+    const geocodeStops = async () => {
+      setGeocoding(true)
+      const results: Record<string, { lat: number; lng: number }> = {}
+      for (const stop of stops) {
+        const customer = stop.customer
+        if (!customer) continue
+        const addr = [customer.address, customer.city, 'Bali, Indonesia'].filter(Boolean).join(', ')
+        try {
+          const geocoder = new (window as any).google.maps.Geocoder()
+          await new Promise<void>((resolve) => {
+            geocoder.geocode({ address: addr }, (res: any, status: any) => {
+              if (status === 'OK' && res[0]) {
+                results[stop.id] = { lat: res[0].geometry.location.lat(), lng: res[0].geometry.location.lng() }
+              }
+              resolve()
+            })
+          })
+        } catch { /* skip */ }
+      }
+      setGeocoded(results); setGeocoding(false)
+    }
+    geocodeStops()
+  }, [isLoaded, stops])
+
+  const path = stops
+    .filter(s => geocoded[s.id])
+    .sort((a, b) => a.stop_order - b.stop_order)
+    .map(s => geocoded[s.id])
+
+  if (!isLoaded) return (
+    <div className="flex items-center justify-center h-full bg-slate-100 rounded-xl">
+      <div className="text-center text-slate-400"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /><p className="text-sm">Loading map…</p></div>
+    </div>
+  )
+
+  if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') return (
+    <div className="flex items-center justify-center h-full bg-slate-100 rounded-xl border-2 border-dashed border-slate-300">
+      <div className="text-center px-6">
+        <Map className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <p className="font-semibold text-slate-500 text-sm">Google Maps not configured</p>
+        <p className="text-xs text-slate-400 mt-1">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your environment variables</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="relative h-full">
+      {geocoding && (
+        <div className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-md text-xs text-slate-600">
+          <Loader2 className="w-3 h-3 animate-spin" /> Geocoding addresses…
+        </div>
+      )}
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '12px' }}
+        center={path.length > 0 ? path[0] : BALI_CENTER}
+        zoom={path.length > 0 ? 12 : 10}
+        options={{ disableDefaultUI: false, streetViewControl: false, mapTypeControl: false, fullscreenControl: true }}
+      >
+        {/* Route path polyline */}
+        {path.length > 1 && (
+          <Polyline path={path} options={{ strokeColor: '#0EA5A4', strokeWeight: 3, strokeOpacity: 0.8, geodesic: true }} />
+        )}
+        {/* Stop markers */}
+        {stops.map((stop, idx) => {
+          const pos = geocoded[stop.id]
+          if (!pos) return null
+          const color = STOP_COLORS[idx % STOP_COLORS.length]
+          return (
+            <Marker
+              key={stop.id}
+              position={pos}
+              label={{ text: String(stop.stop_order), color: 'white', fontSize: '11px', fontWeight: 'bold' }}
+              icon={{ path: (window as any).google.maps.SymbolPath.CIRCLE, scale: 14, fillColor: color, fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }}
+              onClick={() => setActiveStop(stop.id === activeStop ? null : stop.id)}
+            >
+              {activeStop === stop.id && (
+                <InfoWindow onCloseClick={() => setActiveStop(null)}>
+                  <div className="text-xs max-w-[180px]">
+                    <p className="font-bold text-slate-800">{stop.stop_order}. {stop.customer?.name}</p>
+                    <p className="text-slate-500 mt-0.5">{stop.customer?.city}</p>
+                    {stop.customer?.address && <p className="text-slate-400 mt-0.5">{stop.customer.address}</p>}
+                    {stop.estimated_arrival && <p className="text-cyan-600 font-medium mt-1">⏰ {stop.estimated_arrival.slice(0, 5)}</p>}
+                    {optimizeResult?.optimizedStops?.[idx]?.leg && (
+                      <p className="text-violet-600 font-medium mt-1">
+                        📍 {optimizeResult.optimizedStops[idx].leg.distance} · {optimizeResult.optimizedStops[idx].leg.duration}
+                      </p>
+                    )}
+                  </div>
+                </InfoWindow>
+              )}
+            </Marker>
+          )
+        })}
+      </GoogleMap>
+    </div>
+  )
+}
+
 // ─── TAB: ROUTES ──────────────────────────────────────────────────────────────
 function RouteManager() {
   const [routes, setRoutes] = useState<any[]>([])
@@ -523,13 +635,18 @@ function RouteManager() {
       </div>
 
       {/* Route Detail */}
-      <div className="flex-1 overflow-y-auto bg-slate-50">
+      <div className="flex-1 overflow-hidden bg-slate-50 flex flex-col">
         {!selectedRoute ? (
           <div className="flex items-center justify-center h-full text-slate-400">
             <div className="text-center"><MapPin className="w-12 h-12 mx-auto mb-3 text-slate-200" /><p className="font-medium">Select a route to view stops</p></div>
           </div>
         ) : (
-          <div className="p-6 space-y-6">
+          <div className="flex flex-col h-full overflow-hidden">
+          {/* Map */}
+          <div className="flex-shrink-0 h-72 p-4 pb-0">
+            <RouteMapPanel stops={stops} optimizeResult={optimizeResult} />
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-6">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <div className="flex items-start justify-between">
                 <div>
@@ -624,6 +741,7 @@ function RouteManager() {
                   ))}
               </div>
             </div>
+          </div>
           </div>
         )}
       </div>
