@@ -173,8 +173,11 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [filterStatus, setFilterStatus] = useState('pending')
+  const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all')
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [search, setSearch] = useState('')
 
   const [form, setForm] = useState({
     customer_id: '',
@@ -249,6 +252,12 @@ function OrdersContent() {
   const filtered = orders.filter(o => {
     if (filterStatus !== 'all' && o.status !== filterStatus) return false
     if (filterType !== 'all' && o.order_type !== filterType) return false
+    if (filterDateFrom && o.scheduled_date && o.scheduled_date < filterDateFrom) return false
+    if (filterDateTo && o.scheduled_date && o.scheduled_date > filterDateTo) return false
+    if (search) {
+      const q = search.toLowerCase()
+      if (!o.customer?.name?.toLowerCase().includes(q) && !o.customer?.city?.toLowerCase().includes(q)) return false
+    }
     return true
   })
 
@@ -283,6 +292,26 @@ function OrdersContent() {
 
         {/* Controls */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search customer..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-44 bg-white"
+          />
+          {/* Date range */}
+          <div className="flex items-center gap-2">
+            <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+            <span className="text-slate-400 text-xs">to</span>
+            <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+            {(filterDateFrom || filterDateTo) && (
+              <button onClick={() => { setFilterDateFrom(''); setFilterDateTo('') }}
+                className="text-xs text-slate-400 hover:text-red-500 transition-colors">✕ Clear</button>
+            )}
+          </div>
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
             {['pending', 'scheduled', 'delivered', 'all'].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
