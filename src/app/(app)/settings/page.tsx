@@ -362,6 +362,38 @@ export default function SettingsPage() {
 
         {tab === 'system' && (
           <div className="space-y-4">
+
+            {/* Language */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe className="w-5 h-5 text-slate-500" />
+                <p className="font-semibold text-slate-800">Language / Bahasa</p>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">Choose the display language for the ERP interface.</p>
+              <div className="flex gap-3">
+                {[
+                  { code: 'en', label: 'English', flag: '🇬🇧' },
+                  { code: 'id', label: 'Bahasa Indonesia', flag: '🇮🇩' },
+                ].map(lang => {
+                  const current = typeof window !== 'undefined' ? (localStorage.getItem('erp_language') ?? 'en') : 'en'
+                  const isActive = current === lang.code
+                  return (
+                    <button key={lang.code}
+                      onClick={() => {
+                        localStorage.setItem('erp_language', lang.code)
+                        window.location.reload()
+                      }}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-medium text-sm transition-all ${isActive ? 'border-cyan-500 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}>
+                      <span className="text-xl">{lang.flag}</span>
+                      {lang.label}
+                      {isActive && <Check className="w-4 h-4 ml-1 text-cyan-600" />}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-slate-400 mt-3">Full translation coming soon. Currently saves your preference for when translations are ready.</p>
+            </div>
+
             {/* Migration runner */}
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
