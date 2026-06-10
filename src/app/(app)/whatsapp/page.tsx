@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useLanguage } from '@/components/providers/language-provider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ const BOUT = '#005c4b', BIN = '#202c33', TEXT = '#e9edef', MUTED = '#8696a0'
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function WhatsAppPage() {
+  const { t } = useLanguage()
   const [conversations, setConversations] = useState<WAConversation[]>([])
   const [selected, setSelected] = useState<WAConversation | null>(null)
   const [messages, setMessages] = useState<WAMessage[]>([])
@@ -192,7 +194,7 @@ export default function WhatsAppPage() {
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT }}>WhatsApp</p>
-                <p style={{ margin: 0, fontSize: 12, color: MUTED }}>Kembali Water Business</p>
+                <p style={{ margin: 0, fontSize: 12, color: MUTED }}>{t('whatsapp_kembali_biz')}</p>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -211,7 +213,7 @@ export default function WhatsAppPage() {
           <div style={{ padding: '8px 12px', background: PANEL, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: MID, borderRadius: 8, padding: '6px 12px', gap: 8 }}>
               <Search size={16} color={MUTED} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search or start new chat"
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('whatsapp_search')}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: TEXT, fontFamily: 'inherit' }} />
             </div>
           </div>
@@ -225,11 +227,11 @@ export default function WhatsAppPage() {
             ) : filtered.length === 0 ? (
               <div style={{ padding: 28, textAlign: 'center', color: MUTED, fontSize: 14 }}>
                 <MessageCircle size={44} color={MID} style={{ margin: '0 auto 10px' }} />
-                <p style={{ margin: 0, fontWeight: 500 }}>No conversations yet</p>
-                <p style={{ margin: '6px 0 16px', fontSize: 12 }}>Customers message you via WhatsApp,<br />or click + to start a new chat</p>
+                <p style={{ margin: 0, fontWeight: 500 }}>{t('whatsapp_no_convs')}</p>
+                <p style={{ margin: '6px 0 16px', fontSize: 12 }}>{t('whatsapp_start_hint')}</p>
                 <button onClick={() => setShowNew(true)}
                   style={{ background: G, border: 'none', color: '#fff', borderRadius: 20, padding: '10px 20px', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <Plus size={16} /> New Chat
+                  <Plus size={16} /> {t('whatsapp_new_chat')}
                 </button>
               </div>
             ) : filtered.map(conv => {
@@ -268,16 +270,16 @@ export default function WhatsAppPage() {
               <MessageCircle size={72} color={MUTED} />
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ color: TEXT, fontSize: 28, fontWeight: 300, margin: '0 0 8px' }}>WhatsApp Business</p>
+              <p style={{ color: TEXT, fontSize: 28, fontWeight: 300, margin: '0 0 8px' }}>{t('whatsapp_biz_title')}</p>
               <p style={{ color: MUTED, fontSize: 14, margin: 0, maxWidth: 380, lineHeight: 1.6 }}>
-                Send and receive messages from your customers in real-time.<br />
-                Select a conversation on the left to get started.
+                {t('whatsapp_send_receive')}<br />
+                {t('whatsapp_select_conv')}
               </p>
             </div>
 
             {/* Setup box — always shown so user knows what's needed */}
             <div style={{ background: '#1a2229', borderRadius: 12, padding: '16px 20px', maxWidth: 440, border: '1px solid #2a3942', width: '100%', marginTop: 8 }}>
-              <p style={{ color: '#f6bf26', fontSize: 13, margin: '0 0 8px', fontWeight: 600 }}>⚡ WhatsApp Setup Checklist</p>
+              <p style={{ color: '#f6bf26', fontSize: 13, margin: '0 0 8px', fontWeight: 600 }}>{t('whatsapp_setup_title')}</p>
               {[
                 { label: 'Add TWILIO_ACCOUNT_SID to Vercel env vars', key: 'twilio_sid' },
                 { label: 'Add TWILIO_AUTH_TOKEN to Vercel env vars', key: 'twilio_auth' },
@@ -368,7 +370,7 @@ export default function WhatsAppPage() {
                   value={msgInput}
                   onChange={e => setMsgInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                  placeholder="Type a message"
+                  placeholder={t('whatsapp_type_message')}
                   style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: TEXT, fontFamily: 'inherit' }}
                   autoFocus
                 />
@@ -386,7 +388,7 @@ export default function WhatsAppPage() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
             <div style={{ background: '#233138', borderRadius: 14, padding: 28, width: 460, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h3 style={{ margin: 0, color: TEXT, fontSize: 18, fontWeight: 600 }}>📢 Broadcast Message</h3>
+                <h3 style={{ margin: 0, color: TEXT, fontSize: 18, fontWeight: 600 }}>📢 {t('whatsapp_broadcast_title')}</h3>
                 <button onClick={() => setShowBroadcast(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}>
                   <X size={20} color={MUTED} />
                 </button>
@@ -395,7 +397,7 @@ export default function WhatsAppPage() {
                 Send a message to <strong style={{ color: TEXT }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</strong>. Use for announcements, promotions, delivery updates, etc.
               </p>
               <textarea value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)}
-                placeholder="Type your broadcast message..."
+                placeholder={t('whatsapp_type_message')}
                 rows={5}
                 style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 10, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
               {broadcastResult && (
@@ -408,11 +410,11 @@ export default function WhatsAppPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
                 <button onClick={() => setShowBroadcast(false)}
                   style={{ padding: '10px 22px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: MUTED, cursor: 'pointer', fontSize: 14 }}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button onClick={sendBroadcast} disabled={!broadcastMsg.trim() || broadcasting}
                   style={{ padding: '10px 22px', borderRadius: 8, background: G, border: 'none', color: '#fff', cursor: broadcastMsg.trim() && !broadcasting ? 'pointer' : 'default', fontSize: 14, fontWeight: 600, opacity: broadcastMsg.trim() && !broadcasting ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {broadcasting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send Broadcast
+                  {broadcasting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} {t('whatsapp_send_broadcast')}
                 </button>
               </div>
             </div>
@@ -424,41 +426,41 @@ export default function WhatsAppPage() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
             <div style={{ background: '#233138', borderRadius: 14, padding: 28, width: 420, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ margin: 0, color: TEXT, fontSize: 18, fontWeight: 600 }}>New Conversation</h3>
+                <h3 style={{ margin: 0, color: TEXT, fontSize: 18, fontWeight: 600 }}>{t('whatsapp_new_conv')}</h3>
                 <button onClick={() => setShowNew(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}>
                   <X size={20} color={MUTED} />
                 </button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>WhatsApp Number *</label>
+                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>{t('whatsapp_number_label')}</label>
                   <input value={newPhone} onChange={e => setNewPhone(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') createConversation() }}
                     placeholder="+628123456789"
                     style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '11px 14px', color: TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: MUTED }}>Include country code (e.g. +62 for Indonesia)</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: MUTED }}>{t('whatsapp_country_hint')}</p>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>Contact Name</label>
+                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>{t('whatsapp_contact_name')}</label>
                   <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Budi Santoso"
                     style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '11px 14px', color: TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>Link to Customer (optional)</label>
+                  <label style={{ display: 'block', fontSize: 13, color: MUTED, marginBottom: 5 }}>{t('whatsapp_link_customer')}</label>
                   <select value={newCustomerId} onChange={e => setNewCustomerId(e.target.value)}
                     style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '11px 14px', color: newCustomerId ? TEXT : MUTED, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-                    <option value="">— No customer link —</option>
+                    <option value="">{t('whatsapp_no_customer')}</option>
                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
                   <button onClick={() => setShowNew(false)}
                     style={{ padding: '10px 22px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: MUTED, cursor: 'pointer', fontSize: 14 }}>
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button onClick={createConversation} disabled={!newPhone.trim()}
                     style={{ padding: '10px 22px', borderRadius: 8, background: G, border: 'none', color: '#fff', cursor: newPhone.trim() ? 'pointer' : 'default', fontSize: 14, fontWeight: 600, opacity: newPhone.trim() ? 1 : 0.5 }}>
-                    Start Chat
+                    {t('whatsapp_start_chat')}
                   </button>
                 </div>
               </div>

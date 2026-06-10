@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +63,7 @@ const TYPE_COLORS: Record<string, string> = {
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('overview')
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [addresses, setAddresses] = useState<CustomerAddress[]>([])
@@ -337,15 +339,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const pendingRevenue = invoices.filter(i => ['draft', 'sent', 'overdue'].includes(i.status)).reduce((s, i) => s + Number(i.total), 0)
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'overview', label: 'Overview', icon: Building2 },
-    { id: 'addresses', label: `Addresses (${addresses.length})`, icon: MapPin },
-    { id: 'contacts', label: `Contacts (${contacts.length})`, icon: User },
-    { id: 'deliveries', label: `Deliveries (${deliveries.length})`, icon: Truck },
-    { id: 'invoices', label: `Invoices (${invoices.length})`, icon: FileText },
-    { id: 'notes', label: `Notes (${notes.length})`, icon: MessageSquare },
-    { id: 'documents', label: `Documents (${documents.length})`, icon: Paperclip },
-    { id: 'subscription', label: 'Delivery Schedule', icon: RefreshCw },
-    { id: 'history', label: 'Edit History', icon: Clock },
+    { id: 'overview', label: t('cust_tab_overview'), icon: Building2 },
+    { id: 'addresses', label: `${t('cust_tab_addresses')} (${addresses.length})`, icon: MapPin },
+    { id: 'contacts', label: `${t('cust_tab_contacts')} (${contacts.length})`, icon: User },
+    { id: 'deliveries', label: `${t('cust_tab_deliveries')} (${deliveries.length})`, icon: Truck },
+    { id: 'invoices', label: `${t('cust_tab_invoices')} (${invoices.length})`, icon: FileText },
+    { id: 'notes', label: `${t('cust_tab_notes')} (${notes.length})`, icon: MessageSquare },
+    { id: 'documents', label: `${t('cust_tab_documents')} (${documents.length})`, icon: Paperclip },
+    { id: 'subscription', label: t('cust_tab_subscription'), icon: RefreshCw },
+    { id: 'history', label: t('cust_tab_history'), icon: Clock },
   ]
 
   return (
@@ -353,7 +355,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       <Topbar title={customer.name} />
       <div className="p-6 max-w-5xl space-y-6">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm">
-          <ChevronLeft className="w-4 h-4" /> Back to Customers
+          <ChevronLeft className="w-4 h-4" /> {t('cust_back')}
         </button>
 
         {/* Header */}
@@ -393,13 +395,13 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 {(customer as any).portal_enabled ? (
                   <a href="/customer/dashboard" target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
-                    <Globe className="w-3.5 h-3.5" /> Portal Active <ExternalLink className="w-3 h-3" />
+                    <Globe className="w-3.5 h-3.5" /> {t('cust_portal_active')} <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
                   <button onClick={handleEnablePortal} disabled={enablingPortal}
                     className="inline-flex items-center gap-1.5 text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 px-3 py-1.5 rounded-lg hover:bg-cyan-100 disabled:opacity-60 transition-colors">
                     {enablingPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                    Enable Portal
+                    {t('cust_enable_portal')}
                   </button>
                 )}
                 {portalStatus && <span className="text-xs text-slate-500">{portalStatus}</span>}
@@ -415,24 +417,24 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     setPortalStatus(data.sent > 0 ? `✓ Statement sent for ${month}` : `Skipped: ${data.results?.[0]?.reason ?? 'no activity'}`)
                   }}
                     className="inline-flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors">
-                    <Mail className="w-3.5 h-3.5" /> Send Statement
+                    <Mail className="w-3.5 h-3.5" /> {t('cust_send_statement')}
                   </button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => { setEditingCustomer(true); setTab('overview') }}>
-                  <Edit2 className="w-3 h-3 mr-1.5" /> Edit
+                  <Edit2 className="w-3 h-3 mr-1.5" /> {t('edit')}
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-100">
               {[
-                { label: 'Paid Revenue', value: idr(totalRevenue), color: 'text-slate-800' },
-                { label: 'Pending', value: idr(pendingRevenue), color: 'text-amber-600' },
-                { label: 'Total Deliveries', value: String(deliveries.length), color: 'text-slate-800' },
-                { label: 'Outstanding Bottles', value: String((balance?.outstanding_350ml ?? 0) + (balance?.outstanding_750ml ?? 0)), color: (balance?.chargeable_lost_350ml ?? 0) + (balance?.chargeable_lost_750ml ?? 0) > 0 ? 'text-red-600' : 'text-slate-800' },
-              ].map(({ label, value, color }) => (
-                <div key={label}>
-                  <p className="text-xs text-slate-400">{label}</p>
+                { labelKey: 'cust_paid_revenue' as const, value: idr(totalRevenue), color: 'text-slate-800' },
+                { labelKey: 'cust_pending_revenue' as const, value: idr(pendingRevenue), color: 'text-amber-600' },
+                { labelKey: 'cust_total_deliveries' as const, value: String(deliveries.length), color: 'text-slate-800' },
+                { labelKey: 'cust_outstanding_bottles' as const, value: String((balance?.outstanding_350ml ?? 0) + (balance?.outstanding_750ml ?? 0)), color: (balance?.chargeable_lost_350ml ?? 0) + (balance?.chargeable_lost_750ml ?? 0) > 0 ? 'text-red-600' : 'text-slate-800' },
+              ].map(({ labelKey, value, color }) => (
+                <div key={labelKey}>
+                  <p className="text-xs text-slate-400">{t(labelKey)}</p>
                   <p className={`font-bold ${color}`}>{value}</p>
                 </div>
               ))}
@@ -459,20 +461,20 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'overview' && (
           <div className="grid grid-cols-2 gap-6">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Customer Details</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('cust_customer_details')}</CardTitle></CardHeader>
               <CardContent>
                 {editingCustomer ? (
                   <div className="space-y-3">
-                    <div><Label>Name</Label><Input value={editForm.name ?? ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                    <div><Label>{t('name')}</Label><Input value={editForm.name ?? ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label>Type</Label>
+                        <Label>{t('type')}</Label>
                         <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value as any })}>
                           {['hotel', 'restaurant', 'resort', 'cafe', 'office', 'retail', 'business', 'other'].map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                       <div>
-                        <Label>Status</Label>
+                        <Label>{t('status')}</Label>
                         <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value as any })}>
                           {['active', 'lead', 'paused', 'churned', 'blacklisted'].map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
@@ -480,53 +482,53 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label>Tier</Label>
+                        <Label>{t('cust_tier')}</Label>
                         <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.tier} onChange={e => setEditForm({ ...editForm, tier: e.target.value as any })}>
                           {['standard', 'silver', 'gold', 'platinum'].map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                       <div>
-                        <Label>Payment Terms (days)</Label>
+                        <Label>{t('cust_payment_terms')}</Label>
                         <Input type="number" value={editForm.payment_terms_days ?? 30} onChange={e => setEditForm({ ...editForm, payment_terms_days: Number(e.target.value) })} />
                       </div>
                     </div>
-                    <div><Label>Address</Label><Input value={editForm.address ?? ''} onChange={e => setEditForm({ ...editForm, address: e.target.value })} /></div>
-                    <div><Label>City</Label><Input value={editForm.city ?? 'Bali'} onChange={e => setEditForm({ ...editForm, city: e.target.value })} /></div>
-                    <div><Label>Tax ID (NPWP)</Label><Input value={editForm.tax_id ?? ''} onChange={e => setEditForm({ ...editForm, tax_id: e.target.value })} /></div>
+                    <div><Label>{t('address')}</Label><Input value={editForm.address ?? ''} onChange={e => setEditForm({ ...editForm, address: e.target.value })} /></div>
+                    <div><Label>{t('city')}</Label><Input value={editForm.city ?? 'Bali'} onChange={e => setEditForm({ ...editForm, city: e.target.value })} /></div>
+                    <div><Label>{t('cust_tax_id')}</Label><Input value={editForm.tax_id ?? ''} onChange={e => setEditForm({ ...editForm, tax_id: e.target.value })} /></div>
                     <div>
-                      <Label>Bottle Discrepancy Limit</Label>
+                      <Label>{t('cust_bottle_discrepancy')}</Label>
                       <Input type="number" min="0" value={(editForm as any).bottle_discrepancy_limit ?? 5} onChange={e => setEditForm({ ...editForm, bottle_discrepancy_limit: Number(e.target.value) } as any)} />
-                      <p className="text-xs text-slate-400 mt-0.5">Max bottles lost/damaged before charges apply</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{t('cust_bottle_discrepancy_desc')}</p>
                     </div>
                     <div>
-                      <Label>Account Executive</Label>
+                      <Label>{t('cust_account_exec')}</Label>
                       <select className="w-full border rounded-md px-3 py-2 text-sm" value={(editForm as any).assigned_to ?? ''} onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value || null } as any)}>
-                        <option value="">— Unassigned —</option>
+                        <option value="">{t('cust_unassigned_ae')}</option>
                         {salesStaff.map(s => (
                           <option key={s.id} value={s.id}>{s.name}{s.crm_role === 'manager' ? ' (Manager)' : ''}</option>
                         ))}
                       </select>
                     </div>
-                    <div><Label>Notes</Label><Textarea value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2} /></div>
+                    <div><Label>{t('notes')}</Label><Textarea value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2} /></div>
                     <div className="flex gap-2">
-                      <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSaveCustomer}><Check className="w-4 h-4 mr-1" />Save</Button>
+                      <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSaveCustomer}><Check className="w-4 h-4 mr-1" />{t('save')}</Button>
                       <Button variant="outline" onClick={() => { setEditingCustomer(false); setEditForm(customer) }}><X className="w-4 h-4" /></Button>
                     </div>
                   </div>
                 ) : (
                   <dl className="space-y-2.5 text-sm">
                     {[
-                      ['Type', customer.type],
-                      ['Status', customer.status],
-                      ['Tier', customer.tier],
-                      ['City', customer.city],
-                      ['Address', customer.address],
-                      ['Tax ID', customer.tax_id ?? '—'],
-                      ['Payment Terms', `${customer.payment_terms_days ?? 30} days`],
-                      ['Credit Limit', customer.credit_limit > 0 ? idr(customer.credit_limit) : '—'],
-                      ['Source', customer.source ?? '—'],
-                      ['Account Executive', salesStaff.find(s => s.id === (customer as any).assigned_to)?.name ?? '—'],
-                      ['Customer Since', new Date(customer.created_at).toLocaleDateString()],
+                      [t('type'), customer.type],
+                      [t('status'), customer.status],
+                      [t('cust_tier'), customer.tier],
+                      [t('city'), customer.city],
+                      [t('address'), customer.address],
+                      [t('cust_tax_id'), customer.tax_id ?? '—'],
+                      [t('cust_payment_terms'), `${customer.payment_terms_days ?? 30} ${t('day')}`],
+                      [t('cust_credit_limit'), customer.credit_limit > 0 ? idr(customer.credit_limit) : '—'],
+                      [t('cust_source'), customer.source ?? '—'],
+                      [t('cust_account_exec'), salesStaff.find(s => s.id === (customer as any).assigned_to)?.name ?? '—'],
+                      [t('cust_since'), new Date(customer.created_at).toLocaleDateString()],
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between gap-2">
                         <dt className="text-slate-400 flex-shrink-0">{k}</dt>
@@ -535,7 +537,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     ))}
                     {customer.notes && (
                       <div className="pt-2 border-t border-slate-100">
-                        <p className="text-slate-400 text-xs mb-1">Notes</p>
+                        <p className="text-slate-400 text-xs mb-1">{t('notes')}</p>
                         <p className="text-slate-600">{customer.notes}</p>
                       </div>
                     )}
@@ -546,27 +548,27 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
             <div className="space-y-4">
               <Card>
-                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" />Bottle Account</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" />{t('cust_bottle_account')}</CardTitle></CardHeader>
                 <CardContent>
                   {balance ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div className={`rounded-lg p-3 ${balance.chargeable_lost_350ml > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
-                          <p className="text-xs text-slate-400">350ml Outstanding</p>
+                          <p className="text-xs text-slate-400">{t('cust_350ml_outstanding')}</p>
                           <p className={`text-xl font-bold ${balance.chargeable_lost_350ml > 0 ? 'text-red-600' : 'text-slate-700'}`}>{balance.outstanding_350ml}</p>
-                          <p className="text-xs text-slate-400">of {balance.total_delivered_350ml} delivered</p>
+                          <p className="text-xs text-slate-400">{t('cust_of_delivered')} {balance.total_delivered_350ml} {t('cust_delivered_label')}</p>
                         </div>
                         <div className={`rounded-lg p-3 ${balance.chargeable_lost_750ml > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
-                          <p className="text-xs text-slate-400">750ml Outstanding</p>
+                          <p className="text-xs text-slate-400">{t('cust_750ml_outstanding')}</p>
                           <p className={`text-xl font-bold ${balance.chargeable_lost_750ml > 0 ? 'text-red-600' : 'text-slate-700'}`}>{balance.outstanding_750ml}</p>
-                          <p className="text-xs text-slate-400">of {balance.total_delivered_750ml} delivered</p>
+                          <p className="text-xs text-slate-400">{t('cust_of_delivered')} {balance.total_delivered_750ml} {t('cust_delivered_label')}</p>
                         </div>
                       </div>
                       {(balance.chargeable_lost_350ml > 0 || balance.chargeable_lost_750ml > 0) && (
                         <div className="bg-red-50 rounded-lg p-3 border border-red-100">
                           <div className="flex items-center gap-1.5 mb-1.5">
                             <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                            <p className="text-xs font-semibold text-red-700">Chargeable Lost Bottles (above 8%)</p>
+                            <p className="text-xs font-semibold text-red-700">{t('cust_chargeable_above_8')}</p>
                           </div>
                           {balance.chargeable_lost_350ml > 0 && (
                             <p className="text-xs text-red-600">{balance.chargeable_lost_350ml} × 350ml = {idr(balance.chargeable_lost_350ml * 6000)}</p>
@@ -577,25 +579,25 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                       )}
                       {balance.chargeable_lost_350ml === 0 && balance.chargeable_lost_750ml === 0 && (
-                        <p className="text-xs text-emerald-600 bg-emerald-50 rounded-lg p-2">✓ Within 8% threshold — no lost bottle charges</p>
+                        <p className="text-xs text-emerald-600 bg-emerald-50 rounded-lg p-2">{t('cust_threshold_ok')}</p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-400">No delivery history yet</p>
+                    <p className="text-sm text-slate-400">{t('cust_no_delivery_history')}</p>
                   )}
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" />Generate Invoice</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" />{t('cust_generate_invoice_card')}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex gap-2">
                     <Input type="month" value={invoiceMonth} onChange={e => setInvoiceMonth(e.target.value)} className="flex-1" />
                     <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleGenerateInvoice} disabled={generatingInvoice}>
-                      {generatingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Generate'}
+                      {generatingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : t('cust_generate_btn')}
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-400">Auto-calculates from completed deliveries + any lost bottle charges above the 8% threshold.</p>
+                  <p className="text-xs text-slate-400">{t('cust_generate_invoice_desc')}</p>
                 </CardContent>
               </Card>
             </div>
@@ -606,35 +608,35 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'addresses' && (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setAddingAddress(true)}><Plus className="w-4 h-4 mr-1" />Add Address</Button>
+              <Button size="sm" variant="outline" onClick={() => setAddingAddress(true)}><Plus className="w-4 h-4 mr-1" />{t('cust_add_address')}</Button>
             </div>
             {addingAddress && (
               <Card><CardContent className="pt-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Label</Label><Input value={newAddress.label ?? ''} onChange={e => setNewAddress({ ...newAddress, label: e.target.value })} placeholder="Main, Warehouse, Pool Bar..." /></div>
-                  <div><Label>City</Label><Input value={newAddress.city ?? 'Bali'} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} /></div>
+                  <div><Label>{t('cust_label_field')}</Label><Input value={newAddress.label ?? ''} onChange={e => setNewAddress({ ...newAddress, label: e.target.value })} placeholder="Main, Warehouse, Pool Bar..." /></div>
+                  <div><Label>{t('city')}</Label><Input value={newAddress.city ?? 'Bali'} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} /></div>
                 </div>
-                <div><Label>Street Address</Label><Input value={newAddress.address ?? ''} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} /></div>
-                <div><Label>Delivery Instructions</Label><Textarea value={newAddress.delivery_instructions ?? ''} onChange={e => setNewAddress({ ...newAddress, delivery_instructions: e.target.value })} rows={2} placeholder="e.g. Use loading dock entrance, call procurement 10 min before..." /></div>
+                <div><Label>{t('cust_street_address')}</Label><Input value={newAddress.address ?? ''} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} /></div>
+                <div><Label>{t('cust_delivery_instructions_field')}</Label><Textarea value={newAddress.delivery_instructions ?? ''} onChange={e => setNewAddress({ ...newAddress, delivery_instructions: e.target.value })} rows={2} placeholder="e.g. Use loading dock entrance, call procurement 10 min before..." /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Latitude (optional)</Label><Input type="number" step="any" value={newAddress.latitude ?? ''} onChange={e => setNewAddress({ ...newAddress, latitude: e.target.value ? Number(e.target.value) : null })} /></div>
-                  <div><Label>Longitude (optional)</Label><Input type="number" step="any" value={newAddress.longitude ?? ''} onChange={e => setNewAddress({ ...newAddress, longitude: e.target.value ? Number(e.target.value) : null })} /></div>
+                  <div><Label>Latitude ({t('optional')})</Label><Input type="number" step="any" value={newAddress.latitude ?? ''} onChange={e => setNewAddress({ ...newAddress, latitude: e.target.value ? Number(e.target.value) : null })} /></div>
+                  <div><Label>Longitude ({t('optional')})</Label><Input type="number" step="any" value={newAddress.longitude ?? ''} onChange={e => setNewAddress({ ...newAddress, longitude: e.target.value ? Number(e.target.value) : null })} /></div>
                 </div>
-                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!newAddress.is_primary} onChange={e => setNewAddress({ ...newAddress, is_primary: e.target.checked })} />Set as primary delivery address</label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!newAddress.is_primary} onChange={e => setNewAddress({ ...newAddress, is_primary: e.target.checked })} />{t('cust_set_primary')}</label>
                 <div className="flex gap-2">
-                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleAddAddress}>Save Address</Button>
-                  <Button variant="outline" onClick={() => setAddingAddress(false)}>Cancel</Button>
+                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleAddAddress}>{t('cust_save_address')}</Button>
+                  <Button variant="outline" onClick={() => setAddingAddress(false)}>{t('cancel')}</Button>
                 </div>
               </CardContent></Card>
             )}
-            {addresses.length === 0 && !addingAddress && <div className="text-center py-10 text-slate-400 text-sm">No addresses yet</div>}
+            {addresses.length === 0 && !addingAddress && <div className="text-center py-10 text-slate-400 text-sm">{t('cust_no_addresses')}</div>}
             {addresses.map(addr => (
               <Card key={addr.id}><CardContent className="pt-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-slate-700">{addr.label}</span>
-                      {addr.is_primary && <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full">Primary</span>}
+                      {addr.is_primary && <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full">{t('cust_primary')}</span>}
                     </div>
                     <p className="text-sm text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{addr.address}, {addr.city}</p>
                     {addr.delivery_instructions && <p className="text-xs text-slate-400 mt-1">📋 {addr.delivery_instructions}</p>}
@@ -650,38 +652,38 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'contacts' && (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setAddingContact(true)}><Plus className="w-4 h-4 mr-1" />Add Contact</Button>
+              <Button size="sm" variant="outline" onClick={() => setAddingContact(true)}><Plus className="w-4 h-4 mr-1" />{t('cust_add_contact')}</Button>
             </div>
             {addingContact && (
               <Card><CardContent className="pt-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Name</Label><Input value={newContact.name ?? ''} onChange={e => setNewContact({ ...newContact, name: e.target.value })} /></div>
-                  <div><Label>Role</Label><Input value={newContact.role ?? ''} onChange={e => setNewContact({ ...newContact, role: e.target.value })} placeholder="GM, Procurement, F&B Manager..." /></div>
+                  <div><Label>{t('name')}</Label><Input value={newContact.name ?? ''} onChange={e => setNewContact({ ...newContact, name: e.target.value })} /></div>
+                  <div><Label>{t('cust_role_contact')}</Label><Input value={newContact.role ?? ''} onChange={e => setNewContact({ ...newContact, role: e.target.value })} placeholder="GM, Procurement, F&B Manager..." /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Phone</Label><Input value={newContact.phone ?? ''} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} /></div>
+                  <div><Label>{t('phone')}</Label><Input value={newContact.phone ?? ''} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} /></div>
                   <div><Label>WhatsApp</Label><Input value={newContact.whatsapp ?? ''} onChange={e => setNewContact({ ...newContact, whatsapp: e.target.value })} /></div>
                 </div>
-                <div><Label>Email</Label><Input type="email" value={newContact.email ?? ''} onChange={e => setNewContact({ ...newContact, email: e.target.value })} /></div>
+                <div><Label>{t('email')}</Label><Input type="email" value={newContact.email ?? ''} onChange={e => setNewContact({ ...newContact, email: e.target.value })} /></div>
                 <div className="flex gap-4 text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.is_primary} onChange={e => setNewContact({ ...newContact, is_primary: e.target.checked })} />Primary contact</label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.receives_invoices} onChange={e => setNewContact({ ...newContact, receives_invoices: e.target.checked })} />Receives invoices</label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.receives_delivery_notices} onChange={e => setNewContact({ ...newContact, receives_delivery_notices: e.target.checked })} />Delivery notices</label>
+                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.is_primary} onChange={e => setNewContact({ ...newContact, is_primary: e.target.checked })} />{t('cust_primary_contact')}</label>
+                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.receives_invoices} onChange={e => setNewContact({ ...newContact, receives_invoices: e.target.checked })} />{t('cust_receives_invoices')}</label>
+                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!newContact.receives_delivery_notices} onChange={e => setNewContact({ ...newContact, receives_delivery_notices: e.target.checked })} />{t('cust_delivery_notices')}</label>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleAddContact}>Save Contact</Button>
-                  <Button variant="outline" onClick={() => setAddingContact(false)}>Cancel</Button>
+                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleAddContact}>{t('cust_save_contact')}</Button>
+                  <Button variant="outline" onClick={() => setAddingContact(false)}>{t('cancel')}</Button>
                 </div>
               </CardContent></Card>
             )}
-            {contacts.length === 0 && !addingContact && <div className="text-center py-10 text-slate-400 text-sm">No contacts yet</div>}
+            {contacts.length === 0 && !addingContact && <div className="text-center py-10 text-slate-400 text-sm">{t('cust_no_contacts')}</div>}
             {contacts.map(c => (
               <Card key={c.id}><CardContent className="pt-4">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-700">{c.name}</span>
-                      {c.is_primary && <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full">Primary</span>}
+                      {c.is_primary && <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full">{t('cust_primary')}</span>}
                       {c.role && <span className="text-xs text-slate-400">{c.role}</span>}
                     </div>
                     {c.phone && <p className="text-sm text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
@@ -693,8 +695,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     )}
                     {c.email && <p className="text-sm text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</p>}
                     <div className="flex gap-2">
-                      {c.receives_invoices && <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">Invoices</span>}
-                      {c.receives_delivery_notices && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Deliveries</span>}
+                      {c.receives_invoices && <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">{t('cust_tab_invoices')}</span>}
+                      {c.receives_delivery_notices && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{t('cust_tab_deliveries')}</span>}
                     </div>
                   </div>
                   <button onClick={async () => {
@@ -721,7 +723,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'deliveries' && (
           <Card><CardContent className="pt-4">
             {deliveries.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">No deliveries yet</p>
+              <p className="text-sm text-slate-400 text-center py-8">{t('cust_no_deliveries')}</p>
             ) : (
               <div className="space-y-1">
                 {deliveries.map(d => (
@@ -730,8 +732,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     <div className="flex-1">
                       <p className="font-medium text-slate-700">{new Date(d.delivery_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                       <p className="text-xs text-slate-400">
-                        Delivered: {d.delivered_350ml}×350ml, {d.delivered_750ml}×750ml
-                        {(d.collected_350ml + d.collected_750ml) > 0 && ` · Collected: ${d.collected_350ml}×350ml, ${d.collected_750ml}×750ml`}
+                        {t('cust_delivered_info')} {d.delivered_350ml}×350ml, {d.delivered_750ml}×750ml
+                        {(d.collected_350ml + d.collected_750ml) > 0 && ` · ${t('cust_collected_info')} ${d.collected_350ml}×350ml, ${d.collected_750ml}×750ml`}
                       </p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${d.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : d.status === 'failed' ? 'bg-red-100 text-red-600' : d.status === 'in_transit' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{d.status}</span>
@@ -747,14 +749,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'invoices' && (
           <Card><CardContent className="pt-4">
             {invoices.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">No invoices yet — generate one from the Overview tab</p>
+              <p className="text-sm text-slate-400 text-center py-8">{t('cust_no_invoices')}</p>
             ) : (
               <div className="space-y-1">
                 {invoices.map(inv => (
                   <div key={inv.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 text-sm">
                     <div className="flex-1 cursor-pointer" onClick={() => router.push(`/invoices/${inv.id}`)}>
                       <p className="font-medium text-slate-700">{inv.invoice_number}</p>
-                      <p className="text-xs text-slate-400">Due {new Date(inv.due_date).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-400">{t('billing_due_date')}: {new Date(inv.due_date).toLocaleDateString()}</p>
                     </div>
                     <p className="font-bold text-slate-800">{idr(Number(inv.total))}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'overdue' ? 'bg-red-100 text-red-600' : inv.status === 'sent' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{inv.status}</span>
@@ -766,7 +768,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                         await sb.from('invoices').update({ status: 'sent' }).eq('id', inv.id)
                         setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'sent' as any } : i))
                       }} className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100">
-                        Email
+                        {t('email')}
                       </button>
                     )}
                     {['sent', 'overdue'].includes(inv.status) && (
@@ -778,7 +780,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                         ])
                         setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' as any } : i))
                       }} className="text-xs text-emerald-600 hover:text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100">
-                        Paid
+                        {t('billing_paid')}
                       </button>
                     )}
                   </div>
@@ -792,14 +794,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'documents' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Attach contracts, permits, ID copies, or any files to this customer account.</p>
+              <p className="text-sm text-slate-500">{t('cust_document_desc')}</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingDoc}
                 className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
               >
                 {uploadingDoc ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                Upload File
+                {t('cust_upload_file')}
               </button>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUploadDocument} />
             </div>
@@ -809,8 +811,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 className="border-2 border-dashed border-slate-200 rounded-xl py-14 text-center cursor-pointer hover:border-cyan-300 hover:bg-cyan-50/50 transition-colors"
               >
                 <Paperclip className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                <p className="text-sm font-medium text-slate-400">Click or drag files here</p>
-                <p className="text-xs text-slate-300 mt-1">Contracts, permits, IDs, invoices — any file type</p>
+                <p className="text-sm font-medium text-slate-400">{t('cust_click_drag')}</p>
+                <p className="text-xs text-slate-300 mt-1">{t('cust_document_desc')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -851,17 +853,17 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             {/* Quick-create delivery button */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-slate-800">Delivery Schedule</h3>
-                <p className="text-sm text-slate-500 mt-0.5">Set delivery days and quantities. Monthly invoice is auto-generated on the 1st.</p>
+                <h3 className="font-semibold text-slate-800">{t('cust_delivery_schedule_title')}</h3>
+                <p className="text-sm text-slate-500 mt-0.5">{t('cust_schedule_desc')}</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={handleCreateDelivery}
                   className="inline-flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
-                  <Truck className="w-3.5 h-3.5" /> Schedule Delivery Now
+                  <Truck className="w-3.5 h-3.5" /> {t('cust_schedule_delivery_now')}
                 </button>
                 <button onClick={() => setEditingSub(!editingSub)}
                   className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
-                  <Edit2 className="w-3.5 h-3.5" /> {subscription ? 'Edit Schedule' : 'Set Up Schedule'}
+                  <Edit2 className="w-3.5 h-3.5" /> {subscription ? t('cust_edit_schedule') : t('cust_setup_schedule')}
                 </button>
               </div>
             </div>
@@ -869,7 +871,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             {editingSub ? (
               <Card><CardContent className="pt-5 space-y-5">
                 <div>
-                  <Label className="mb-2 block font-medium">Delivery Days</Label>
+                  <Label className="mb-2 block font-medium">{t('cust_delivery_days_label')}</Label>
                   <div className="flex flex-wrap gap-2">
                     {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                       <button key={day}
@@ -888,29 +890,29 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-400 mt-1.5">Select all days this customer receives deliveries</p>
+                  <p className="text-xs text-slate-400 mt-1.5">{t('cust_select_all_days')}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>350ml bottles per delivery</Label>
+                    <Label>{t('cust_350_per_delivery')}</Label>
                     <Input type="number" min="0" value={subForm.qty_350ml}
                       onChange={e => setSubForm((f: any) => ({ ...f, qty_350ml: parseInt(e.target.value) || 0 }))} />
                   </div>
                   <div>
-                    <Label>750ml bottles per delivery</Label>
+                    <Label>{t('cust_750_per_delivery')}</Label>
                     <Input type="number" min="0" value={subForm.qty_750ml}
                       onChange={e => setSubForm((f: any) => ({ ...f, qty_750ml: parseInt(e.target.value) || 0 }))} />
                   </div>
                 </div>
                 <div>
-                  <Label>Special instructions</Label>
+                  <Label>{t('cust_special_instructions_field')}</Label>
                   <Textarea value={subForm.special_instructions}
                     onChange={e => setSubForm((f: any) => ({ ...f, special_instructions: e.target.value }))}
                     placeholder="Access notes, contact on arrival, loading dock info..." rows={2} />
                 </div>
                 <div className="flex gap-2">
-                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSaveSubscription}>Save Schedule</Button>
-                  <Button variant="outline" onClick={() => setEditingSub(false)}>Cancel</Button>
+                  <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSaveSubscription}>{t('cust_save_schedule')}</Button>
+                  <Button variant="outline" onClick={() => setEditingSub(false)}>{t('cancel')}</Button>
                 </div>
               </CardContent></Card>
             ) : subscription ? (
@@ -932,11 +934,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-400">350ml per delivery</p>
+                      <p className="text-xs text-slate-400">{t('cust_350_per_del_label')}</p>
                       <p className="text-2xl font-bold text-slate-700">{subscription.qty_350ml ?? 0}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-400">750ml per delivery</p>
+                      <p className="text-xs text-slate-400">{t('cust_750_per_del_label')}</p>
                       <p className="text-2xl font-bold text-slate-700">{subscription.qty_750ml ?? 0}</p>
                     </div>
                   </div>
@@ -948,7 +950,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   <div className="border-t border-slate-100 pt-3">
                     <p className="text-xs text-slate-400">
                       <Calendar className="w-3 h-3 inline mr-1" />
-                      Monthly invoice auto-generates on the 1st of each month based on completed deliveries.
+                      {t('cust_auto_invoice')}
                     </p>
                   </div>
                 </div>
@@ -956,15 +958,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             ) : (
               <div className="text-center py-12 text-slate-400">
                 <RefreshCw className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p className="font-medium">No delivery schedule set</p>
-                <p className="text-sm mt-1">Click "Set Up Schedule" to configure recurring deliveries</p>
+                <p className="font-medium">{t('cust_no_schedule')}</p>
+                <p className="text-sm mt-1">{t('cust_setup_hint')}</p>
               </div>
             )}
 
             {/* Recent deliveries mini-table */}
             {deliveries.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-2">Recent Deliveries</p>
+                <p className="text-sm font-medium text-slate-600 mb-2">{t('cust_recent_deliveries')}</p>
                 <div className="space-y-1">
                   {deliveries.slice(0, 5).map(d => (
                     <div key={d.id} className="flex items-center gap-3 text-sm bg-white border border-slate-100 rounded-lg px-3 py-2">
@@ -988,15 +990,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         {tab === 'history' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">All field changes and contact edits are logged here automatically.</p>
+              <p className="text-sm text-slate-500">{t('cust_history_desc')}</p>
               <button onClick={loadHistory} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Refresh
+                <Clock className="w-3 h-3" /> {t('refresh')}
               </button>
             </div>
             {historyLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
             ) : fieldHistory.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-sm">No edit history yet — changes made via the Edit button will appear here.</div>
+              <div className="text-center py-10 text-slate-400 text-sm">{t('cust_no_history')}</div>
             ) : (
               <div className="space-y-2">
                 {fieldHistory.map(entry => {
@@ -1017,7 +1019,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                           <div className="flex-1 min-w-0">
                             <span className="font-medium text-slate-700">{fieldLabel}</span>
                             {!isContactEvent && (
-                              <span className="text-slate-400"> changed</span>
+                              <span className="text-slate-400"> {t('cust_changed')}</span>
                             )}
                             {entry.old_value && (
                               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
@@ -1051,11 +1053,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           <div className="space-y-4">
             <Card><CardContent className="pt-4">
               <div className="flex gap-3">
-                <Textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note, log a call, record a meeting..." rows={3} className="flex-1" />
-                <Button className="bg-cyan-600 hover:bg-cyan-700 self-end" onClick={handleAddNote}>Add</Button>
+                <Textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('cust_note_placeholder')} rows={3} className="flex-1" />
+                <Button className="bg-cyan-600 hover:bg-cyan-700 self-end" onClick={handleAddNote}>{t('cust_add_note')}</Button>
               </div>
             </CardContent></Card>
-            {notes.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No notes yet</p>}
+            {notes.length === 0 && <p className="text-sm text-slate-400 text-center py-4">{t('cust_no_notes')}</p>}
             {notes.map(n => (
               <div key={n.id} className="flex gap-3 text-sm">
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">

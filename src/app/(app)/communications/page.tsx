@@ -11,6 +11,7 @@ import {
   Hash, MessageSquare, Circle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage } from '@/components/providers/language-provider'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ function waTimeStr(ts: string) {
 // ─── WhatsApp Tab ─────────────────────────────────────────────────────────────
 
 function WhatsAppTab() {
+  const { t } = useLanguage()
   const [conversations, setConversations] = useState<WAConversation[]>([])
   const [selected, setSelected] = useState<WAConversation | null>(null)
   const [messages, setMessages] = useState<WAMessage[]>([])
@@ -243,7 +245,7 @@ function WhatsAppTab() {
             </div>
             <div>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: WA_TEXT }}>WhatsApp</p>
-              <p style={{ margin: 0, fontSize: 12, color: WA_MUTED }}>Kembali Water</p>
+              <p style={{ margin: 0, fontSize: 12, color: WA_MUTED }}>{t('whatsapp_kembali_biz')}</p>
             </div>
           </div>
           <button onClick={() => { setShowBroadcast(true); setBroadcastResult(null) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 8, borderRadius: '50%' }} title="Broadcast to all">
@@ -258,7 +260,7 @@ function WhatsAppTab() {
         <div style={{ padding: '8px 12px', background: WA_PANEL, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', background: WA_MID, borderRadius: 8, padding: '6px 12px', gap: 8 }}>
             <Search size={16} color={WA_MUTED} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search or start new chat"
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('whatsapp_search')}
               style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: WA_TEXT, fontFamily: 'inherit' }} />
           </div>
         </div>
@@ -272,8 +274,8 @@ function WhatsAppTab() {
           ) : filtered.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: WA_MUTED, fontSize: 14 }}>
               <MessageCircle size={40} color={WA_MID} style={{ margin: '0 auto 8px' }} />
-              <p style={{ margin: 0 }}>No conversations yet</p>
-              <p style={{ margin: '4px 0 0', fontSize: 12 }}>Click + to start a new chat</p>
+              <p style={{ margin: 0 }}>{t('whatsapp_no_convs')}</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12 }}>{t('whatsapp_start_hint')}</p>
             </div>
           ) : filtered.map(conv => {
             const name = conv.contact_name || (conv.customer as any)?.name || conv.phone
@@ -310,10 +312,10 @@ function WhatsAppTab() {
           <div style={{ width: 200, height: 200, background: WA_MID, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MessageCircle size={80} color={WA_MUTED} />
           </div>
-          <p style={{ color: WA_TEXT, fontSize: 32, fontWeight: 300, margin: 0 }}>WhatsApp</p>
+          <p style={{ color: WA_TEXT, fontSize: 32, fontWeight: 300, margin: 0 }}>{t('whatsapp_biz_title')}</p>
           <p style={{ color: WA_MUTED, fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 400 }}>
-            Send and receive messages to your customers via WhatsApp Business.<br />
-            Select a conversation or start a new one.
+            {t('whatsapp_send_receive')}<br />
+            {t('whatsapp_select_conv')}
           </p>
           {!process.env.NEXT_PUBLIC_TWILIO_CONFIGURED && (
             <div style={{ background: '#2a2f32', borderRadius: 8, padding: '12px 20px', maxWidth: 400, border: '1px solid #3a4044' }}>
@@ -400,7 +402,7 @@ function WhatsAppTab() {
                 value={msgInput}
                 onChange={e => setMsgInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                placeholder="Type a message"
+                placeholder={t('whatsapp_type_message')}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: WA_TEXT, fontFamily: 'inherit' }}
               />
             </div>
@@ -417,7 +419,7 @@ function WhatsAppTab() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div style={{ background: '#233138', borderRadius: 12, padding: 24, width: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: WA_TEXT, fontSize: 17, fontWeight: 600 }}>📢 Broadcast Message</h3>
+              <h3 style={{ margin: 0, color: WA_TEXT, fontSize: 17, fontWeight: 600 }}>📢 {t('whatsapp_broadcast_title')}</h3>
               <button onClick={() => setShowBroadcast(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <X size={18} color={WA_MUTED} />
               </button>
@@ -426,7 +428,7 @@ function WhatsAppTab() {
               Send a message to <strong style={{ color: WA_TEXT }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</strong>. Use for announcements, price changes, holiday notices, etc.
             </p>
             <textarea value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)}
-              placeholder="Type your broadcast message..."
+              placeholder={t('whatsapp_type_message')}
               rows={4}
               style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '10px 12px', color: WA_TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
             {broadcastResult && (
@@ -437,10 +439,10 @@ function WhatsAppTab() {
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button onClick={() => setShowBroadcast(false)} style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: WA_MUTED, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={() => setShowBroadcast(false)} style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: WA_MUTED, cursor: 'pointer', fontSize: 14 }}>{t('cancel')}</button>
               <button onClick={sendBroadcast} disabled={!broadcastMsg.trim() || broadcasting}
                 style={{ padding: '10px 20px', borderRadius: 8, background: WA_GREEN, border: 'none', color: '#fff', cursor: broadcastMsg.trim() && !broadcasting ? 'pointer' : 'default', fontSize: 14, fontWeight: 600, opacity: broadcastMsg.trim() && !broadcasting ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {broadcasting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send Broadcast
+                {broadcasting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} {t('whatsapp_send_broadcast')}
               </button>
             </div>
           </div>
@@ -452,35 +454,35 @@ function WhatsAppTab() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div style={{ background: '#233138', borderRadius: 12, padding: 24, width: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, color: WA_TEXT, fontSize: 18, fontWeight: 600 }}>New Conversation</h3>
+              <h3 style={{ margin: 0, color: WA_TEXT, fontSize: 18, fontWeight: 600 }}>{t('whatsapp_new_conv')}</h3>
               <button onClick={() => setShowNew(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <X size={20} color={WA_MUTED} />
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>WhatsApp Number *</label>
+                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>{t('whatsapp_number_label')}</label>
                 <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+628123456789"
                   style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '10px 12px', color: WA_TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>Contact Name</label>
+                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>{t('whatsapp_contact_name')}</label>
                 <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Budi Santoso"
                   style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '10px 12px', color: WA_TEXT, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>Link to Customer (optional)</label>
+                <label style={{ display: 'block', fontSize: 13, color: WA_MUTED, marginBottom: 4 }}>{t('whatsapp_link_customer')}</label>
                 <select value={newCustomerId} onChange={e => setNewCustomerId(e.target.value)}
                   style={{ width: '100%', background: '#2a3942', border: '1px solid #3a4a54', borderRadius: 8, padding: '10px 12px', color: newCustomerId ? WA_TEXT : WA_MUTED, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-                  <option value="">— No customer link —</option>
+                  <option value="">{t('whatsapp_no_customer')}</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                <button onClick={() => setShowNew(false)} style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: WA_MUTED, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                <button onClick={() => setShowNew(false)} style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #3a4a54', color: WA_MUTED, cursor: 'pointer', fontSize: 14 }}>{t('cancel')}</button>
                 <button onClick={createConversation} disabled={!newPhone.trim()}
                   style={{ padding: '10px 20px', borderRadius: 8, background: WA_GREEN, border: 'none', color: '#fff', cursor: newPhone.trim() ? 'pointer' : 'default', fontSize: 14, fontWeight: 600, opacity: newPhone.trim() ? 1 : 0.5 }}>
-                  Start Chat
+                  {t('whatsapp_start_chat')}
                 </button>
               </div>
             </div>
@@ -494,6 +496,7 @@ function WhatsAppTab() {
 // ─── Gmail Tab ────────────────────────────────────────────────────────────────
 
 function GmailTab() {
+  const { t } = useLanguage()
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [threads, setThreads] = useState<GmailThread[]>([])
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
@@ -662,11 +665,11 @@ function GmailTab() {
           <div style={{ width: 72, height: 72, background: '#e8f0fe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <svg width="36" height="36" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="#1a73e8"/></svg>
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#202124', marginBottom: 8, fontFamily: 'Google Sans, sans-serif' }}>Connect Gmail</h2>
-          <p style={{ fontSize: 14, color: '#5f6368', marginBottom: 24, lineHeight: 1.6 }}>Connect <strong>contact@kembaliwater.com</strong> to use Gmail directly inside your ERP.</p>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#202124', marginBottom: 8, fontFamily: 'Google Sans, sans-serif' }}>{t('gmail_connect_title')}</h2>
+          <p style={{ fontSize: 14, color: '#5f6368', marginBottom: 24, lineHeight: 1.6 }}>{t('gmail_connect_desc')}</p>
           <a href="/api/gmail/auth" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#1a73e8', color: '#fff', borderRadius: 4, padding: '10px 24px', fontSize: 14, fontWeight: 500, textDecoration: 'none', fontFamily: 'Google Sans, sans-serif' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-            Sign in with Google
+            {t('gmail_sign_in_google')}
           </a>
         </div>
       </div>
@@ -690,17 +693,17 @@ function GmailTab() {
         <div style={{ padding: '4px 16px 16px' }}>
           <button onClick={() => { setComposing(true); setComposeMin(false) }}
             style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#c2e7ff', border: 'none', borderRadius: 16, padding: '16px 24px 16px 18px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', fontFamily: 'inherit', fontSize: 14, fontWeight: 500, color: '#001d35' }}>
-            <Pencil style={{ width: 22, height: 22 }} />Compose
+            <Pencil style={{ width: 22, height: 22 }} />{t('comms_compose')}
           </button>
         </div>
         {[
-          { label: 'Inbox', q: 'in:inbox', count: unreadCount },
-          { label: 'Starred', q: 'is:starred' },
-          { label: 'Sent', q: 'in:sent' },
-          { label: 'Drafts', q: 'in:drafts' },
-          { label: 'All Mail', q: 'in:all' },
-          { label: 'Spam', q: 'in:spam' },
-          { label: 'Trash', q: 'in:trash' },
+          { label: t('gmail_inbox'), q: 'in:inbox', count: unreadCount },
+          { label: t('gmail_starred'), q: 'is:starred' },
+          { label: t('gmail_sent'), q: 'in:sent' },
+          { label: t('gmail_drafts'), q: 'in:drafts' },
+          { label: t('gmail_all_mail'), q: 'in:all' },
+          { label: t('gmail_spam'), q: 'in:spam' },
+          { label: t('gmail_trash'), q: 'in:trash' },
         ].map(item => (
           <button key={item.q} onClick={() => navFolder(item.q, item.label)}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 4px 26px', height: 36, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: folder === item.q ? 700 : 400, color: '#202124', background: folder === item.q ? '#d3e3fd' : 'transparent', borderRadius: '0 16px 16px 0', marginRight: 16 }}>
@@ -745,7 +748,7 @@ function GmailTab() {
               ) : threads.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#5f6368' }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-                  <p style={{ fontSize: 16, fontWeight: 400 }}>No messages in {folderLabel}</p>
+                  <p style={{ fontSize: 16, fontWeight: 400 }}>{t('gmail_no_messages')} {folderLabel}</p>
                 </div>
               ) : threads.map((thread) => {
                 const { name } = parseFrom(thread.from)
@@ -789,7 +792,7 @@ function GmailTab() {
                 {selected.subject || '(no subject)'}
               </h1>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                {[{ icon: Archive, title: 'Archive', action: () => archiveThread(selected.id) }, { icon: MailOpen, title: 'Mark unread', action: () => {} }, { icon: Clock, title: 'Snooze', action: () => {} }, { icon: MoreHorizontal, title: 'More', action: () => {} }].map(({ icon: Icon, title, action }) => (
+                {[{ icon: Archive, title: t('gmail_archive'), action: () => archiveThread(selected.id) }, { icon: MailOpen, title: t('gmail_mark_unread'), action: () => {} }, { icon: Clock, title: t('gmail_snooze'), action: () => {} }, { icon: MoreHorizontal, title: t('gmail_more'), action: () => {} }].map(({ icon: Icon, title, action }) => (
                   <button key={title} onClick={action} title={title} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
                     <Icon style={{ width: 20, height: 20, color: '#5f6368' }} />
                   </button>
@@ -845,7 +848,7 @@ function GmailTab() {
                         )}
                         {isLast && (
                           <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-                            {[{ label: 'Reply', icon: Reply, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: 'Reply all', icon: ReplyAll, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: 'Forward', icon: Forward, action: () => {} }].map(({ label, icon: Icon, action }) => (
+                            {[{ label: t('comms_reply'), icon: Reply, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: t('gmail_reply_all'), icon: ReplyAll, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: t('gmail_forward'), icon: Forward, action: () => {} }].map(({ label, icon: Icon, action }) => (
                               <button key={label} onClick={action} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1px solid #dadce0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#444746', fontFamily: 'inherit' }}>
                                 <Icon style={{ width: 16, height: 16 }} /> {label}
                               </button>
@@ -860,12 +863,12 @@ function GmailTab() {
               {replyOpen && replyTo && (
                 <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.15)', marginTop: 8 }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0', fontSize: 14, color: '#5f6368', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Reply to <strong style={{ color: '#202124' }}>{parseFrom(replyTo.from).email}</strong></span>
+                    <span>{t('gmail_reply_to')} <strong style={{ color: '#202124' }}>{parseFrom(replyTo.from).email}</strong></span>
                     <button onClick={() => { setReplyOpen(false); setReplyBody('') }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
                       <X style={{ width: 16, height: 16, color: '#5f6368' }} />
                     </button>
                   </div>
-                  <textarea autoFocus value={replyBody} onChange={e => setReplyBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply() } }} placeholder="Write your reply…"
+                  <textarea autoFocus value={replyBody} onChange={e => setReplyBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply() } }} placeholder={t('gmail_write_reply')}
                     style={{ width: '100%', minHeight: 140, border: 'none', outline: 'none', padding: 16, fontSize: 14, fontFamily: 'Roboto, Arial, sans-serif', resize: 'vertical', boxSizing: 'border-box', color: '#202124', lineHeight: 1.6 }} />
                   {/* Reply attachment chips */}
                   {replyAttachments.length > 0 && (
@@ -886,7 +889,7 @@ function GmailTab() {
                   <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f3f4', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button onClick={sendReply} disabled={sending || !replyBody.trim()}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, background: sending || !replyBody.trim() ? '#f1f3f4' : '#0b57d0', color: sending || !replyBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} Send
+                      {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} {t('comms_send')}
                     </button>
                     {/* Reply attach button */}
                     <button type="button" onClick={() => replyAttachInputRef.current?.click()} title="Attach files"
@@ -910,7 +913,7 @@ function GmailTab() {
       {composing && (
         <div style={{ position: 'fixed', bottom: 0, right: 32, zIndex: 50, width: 520, background: '#fff', borderRadius: '8px 8px 0 0', boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', height: composeMin ? 48 : 520, transition: 'height 0.15s ease' }}>
           <div onClick={() => setComposeMin(!composeMin)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#404040', borderRadius: '8px 8px 0 0', cursor: 'pointer', flexShrink: 0 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#fff', fontFamily: 'inherit' }}>New Message</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#fff', fontFamily: 'inherit' }}>{t('gmail_new_message')}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={e => { e.stopPropagation(); setComposeMin(!composeMin) }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px' }}>
                 {composeMin ? <ChevronUp style={{ width: 18, height: 18, color: '#fff' }} /> : <ChevronDown style={{ width: 18, height: 18, color: '#fff' }} />}
@@ -923,12 +926,12 @@ function GmailTab() {
           {!composeMin && (
             <>
               <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 12px' }}>
-                <input autoFocus value={composeTo} onChange={e => setComposeTo(e.target.value)} placeholder="To" style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
+                <input autoFocus value={composeTo} onChange={e => setComposeTo(e.target.value)} placeholder={t('gmail_to')} style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
               </div>
               <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 12px' }}>
-                <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} placeholder="Subject" style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124', fontWeight: 500 }} />
+                <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} placeholder={t('gmail_subject')} style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124', fontWeight: 500 }} />
               </div>
-              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder="Write your message..."
+              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder={t('gmail_write_message')}
                 style={{ flex: 1, minHeight: 200, border: 'none', outline: 'none', padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
               {/* Attachment chips */}
               {composeAttachments.length > 0 && (
@@ -949,7 +952,7 @@ function GmailTab() {
               <div style={{ padding: '8px 12px', borderTop: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button onClick={sendCompose} disabled={composeSending || !composeTo.trim() || !composeBody.trim()}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: composeSending || !composeTo.trim() || !composeBody.trim() ? '#f1f3f4' : '#0b57d0', color: composeSending || !composeTo.trim() || !composeBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : null} Send
+                  {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : null} {t('comms_send')}
                 </button>
                 {/* Attach file button */}
                 <button type="button" onClick={() => attachInputRef.current?.click()}
