@@ -8,9 +8,11 @@ import {
   MapPin, Plus, Trash2, X, Check, Sparkles, Globe, Bell, FileText, MessageSquare
 } from 'lucide-react'
 import { getPricing, setPricing } from '@/lib/db'
+import { useLanguage } from '@/components/providers/language-provider'
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<'pricing' | 'company' | 'locations' | 'invoice' | 'system' | 'kpi'>('pricing')
+  const { language, setLanguage, t } = useLanguage()
 
   // Pricing
   const [price350, setPrice350] = useState('')
@@ -153,16 +155,16 @@ export default function SettingsPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap">
           {([
-            { key: 'pricing', label: 'Pricing' },
-            { key: 'invoice', label: 'Invoice' },
-            { key: 'locations', label: 'Locations' },
-            { key: 'company', label: 'Company' },
-            { key: 'kpi', label: 'KPI Targets' },
-            { key: 'system', label: 'System' },
-          ] as const).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {t.label}
+            { key: 'pricing', label: t('settings_pricing') },
+            { key: 'invoice', label: t('settings_invoice') },
+            { key: 'locations', label: t('settings_locations') },
+            { key: 'company', label: t('settings_company') },
+            { key: 'kpi', label: t('settings_kpi') },
+            { key: 'system', label: t('settings_system') },
+          ] as const).map(tab_item => (
+            <button key={tab_item.key} onClick={() => setTab(tab_item.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === tab_item.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              {tab_item.label}
             </button>
           ))}
         </div>
@@ -369,20 +371,16 @@ export default function SettingsPage() {
                 <Globe className="w-5 h-5 text-slate-500" />
                 <p className="font-semibold text-slate-800">Language / Bahasa</p>
               </div>
-              <p className="text-sm text-slate-500 mb-4">Choose the display language for the ERP interface.</p>
+              <p className="text-sm text-slate-500 mb-4">{t('settings_language_desc')}</p>
               <div className="flex gap-3">
                 {[
-                  { code: 'en', label: 'English', flag: '🇬🇧' },
-                  { code: 'id', label: 'Bahasa Indonesia', flag: '🇮🇩' },
+                  { code: 'en' as const, label: 'English', flag: '🇬🇧' },
+                  { code: 'id' as const, label: 'Bahasa Indonesia', flag: '🇮🇩' },
                 ].map(lang => {
-                  const current = typeof window !== 'undefined' ? (localStorage.getItem('erp_language') ?? 'en') : 'en'
-                  const isActive = current === lang.code
+                  const isActive = language === lang.code
                   return (
                     <button key={lang.code}
-                      onClick={() => {
-                        localStorage.setItem('erp_language', lang.code)
-                        window.location.reload()
-                      }}
+                      onClick={() => setLanguage(lang.code)}
                       className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-medium text-sm transition-all ${isActive ? 'border-cyan-500 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}>
                       <span className="text-xl">{lang.flag}</span>
                       {lang.label}
@@ -391,7 +389,6 @@ export default function SettingsPage() {
                   )
                 })}
               </div>
-              <p className="text-xs text-slate-400 mt-3">Full translation coming soon. Currently saves your preference for when translations are ready.</p>
             </div>
 
             {/* Migration runner */}

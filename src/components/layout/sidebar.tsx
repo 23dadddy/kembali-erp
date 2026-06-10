@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { getCustomers, getInvoices, getStaff, getLeads } from '@/lib/db'
+import { useLanguage } from '@/components/providers/language-provider'
 
 // ─── Unread badge component ──────────────────────────────────────────────────
 function Badge({ count }: { count: number }) {
@@ -72,6 +73,7 @@ const commsItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { t } = useLanguage()
 
   // Live unread counts
   const [waUnread, setWaUnread] = useState(0)
@@ -165,36 +167,100 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
-        {groups.map((group, gi) => (
-          <div key={gi}>
-            {group.label && (
-              <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
-                {group.label}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map(({ label, href, icon: Icon }) => {
-                const active = pathname === href || pathname.startsWith(href + '/')
-                return (
-                  <Link key={href} href={href} prefetch={true}
-                    className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
-                    style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
-                    <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
-                    {label}
-                  </Link>
-                )
-              })}
-            </div>
+        {/* Dashboard */}
+        <div className="space-y-0.5">
+          {[{ label: t('nav_dashboard'), href: '/dashboard', icon: LayoutDashboard }].map(({ label, href, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link key={href} href={href} prefetch={true}
+                className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                {label}
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Operations */}
+        <div>
+          <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_operations')}</p>
+          <div className="space-y-0.5">
+            {[
+              { label: t('nav_orders'), href: '/orders', icon: ShoppingCart },
+              { label: t('nav_dispatch'), href: '/dispatch', icon: Truck },
+              { label: t('nav_customers'), href: '/customers', icon: Users },
+              { label: t('nav_sales'), href: '/crm', icon: ScrollText },
+              { label: t('nav_support'), href: '/support', icon: Headphones },
+              { label: t('nav_inventory'), href: '/inventory', icon: Package },
+              { label: t('nav_production'), href: '/production', icon: Factory },
+            ].map(({ label, href, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                  style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                  {label}
+                </Link>
+              )
+            })}
           </div>
-        ))}
+        </div>
+
+        {/* Finance */}
+        <div>
+          <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_finance')}</p>
+          <div className="space-y-0.5">
+            {[
+              { label: t('nav_billing'), href: '/billing', icon: FileText },
+              { label: t('nav_accounting'), href: '/accounting', icon: DollarSign },
+            ].map(({ label, href, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                  style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* People & Fleet */}
+        <div>
+          <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_people_fleet')}</p>
+          <div className="space-y-0.5">
+            {[
+              { label: t('nav_people'), href: '/people', icon: UserCog },
+              { label: t('nav_fleet'), href: '/fleet', icon: Truck },
+            ].map(({ label, href, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800')}
+                  style={active ? { background: '#0EA5A4', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-slate-500')} />
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Communications section with live badges */}
         <div>
           <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
-            Communications
+            {t('nav_communications')}
           </p>
           <div className="space-y-0.5">
-            {commsItems.map(({ label, href, icon: Icon, badgeKey }) => {
+            {[
+              { label: t('nav_email'), href: '/communications', icon: Mail, badgeKey: 'email' as const },
+              { label: t('nav_whatsapp'), href: '/whatsapp', icon: MessageCircle, badgeKey: 'whatsapp' as const },
+              { label: t('nav_chat'), href: '/chat', icon: MessagesSquare, badgeKey: 'chat' as const },
+            ].map(({ label, href, icon: Icon, badgeKey }) => {
               const active = pathname === href || pathname.startsWith(href + '/')
               const count = badgeCounts[badgeKey] ?? 0
               return (
@@ -213,10 +279,10 @@ export function Sidebar() {
         {/* System */}
         <div>
           <p className="font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
-            System
+            {t('nav_system')}
           </p>
           <div className="space-y-0.5">
-            {[{ label: 'Settings', href: '/settings', icon: Settings }].map(({ label, href, icon: Icon }) => {
+            {[{ label: t('nav_settings'), href: '/settings', icon: Settings }].map(({ label, href, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
@@ -236,7 +302,7 @@ export function Sidebar() {
           className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           style={{ fontSize: '13px' }}>
           <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
-          Sign Out
+          {t('nav_sign_out')}
         </button>
         <p className="text-slate-600 px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v2.0</p>
       </div>
