@@ -49,8 +49,8 @@
 }
 
 :root {
-  /* Base — warm cream from Kembali app */
-  --background: #F0EBE3;
+  /* Base */
+  --background: #FFFFFF;
   --foreground: #1A1A1A;
 
   /* Cards */
@@ -81,8 +81,8 @@
   --destructive: #EF4444;
 
   /* Borders & inputs */
-  --border: #DDD7CF;
-  --input: #DDD7CF;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
   --ring: #5BA3A0;
 
   /* Charts */

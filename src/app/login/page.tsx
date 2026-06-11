@@ -34,7 +34,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#F0EBE3' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
