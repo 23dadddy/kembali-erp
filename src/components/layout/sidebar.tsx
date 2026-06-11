@@ -159,10 +159,9 @@ export function Sidebar() {
 
   return (
     <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#0F172A' }}>
-      {/* Wordmark */}
-      <div className="px-5 py-5 border-b border-slate-800">
-        <div className="font-semibold text-white tracking-tight" style={{ fontSize: '15px' }}>Kembali Water</div>
-        <div className="text-slate-500 mt-0.5" style={{ fontSize: '11px' }}>Operations Hub</div>
+      {/* Logo */}
+      <div className="px-4 py-4 border-b border-slate-800 flex items-center">
+        <img src="/logo.png" alt="Kembali Water" className="h-8 w-auto brightness-0 invert" />
       </div>
 
       {/* Nav */}
