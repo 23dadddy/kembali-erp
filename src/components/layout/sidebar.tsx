@@ -158,9 +158,9 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#EDE6DC' }}>
+    <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#F8FAFC' }}>
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-[#D5CEC4]">
+      <div className="px-4 py-5 border-b border-slate-200">
         <img src="/logo.png" alt="Kembali Water" className="w-full max-w-[148px]" style={{ filter: 'brightness(0)' }} />
       </div>
 
@@ -172,7 +172,7 @@ export function Sidebar() {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} prefetch={true}
-                className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                 style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                 <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                 {label}
@@ -197,7 +197,7 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                   style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
@@ -218,7 +218,7 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                   style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
@@ -239,7 +239,7 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                   style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
@@ -264,7 +264,7 @@ export function Sidebar() {
               const count = badgeCounts[badgeKey] ?? 0
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                   style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   <span className="flex-1 min-w-0 truncate">{label}</span>
@@ -285,7 +285,7 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
                   style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
@@ -296,9 +296,9 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="px-2 py-4 border-t border-[#D5CEC4] space-y-0.5">
+      <div className="px-2 py-4 border-t border-slate-200 space-y-0.5">
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[#5A5248] hover:bg-[#D9D0C5] hover:text-[#1A1A1A] transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[#5A5248] hover:bg-slate-100 hover:text-[#1A1A1A] transition-colors"
           style={{ fontSize: '13px' }}>
           <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-[#8C8078]" />
           {t('nav_sign_out')}
