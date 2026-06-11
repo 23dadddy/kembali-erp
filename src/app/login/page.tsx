@@ -38,7 +38,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/logo.png" alt="Kembali Water" className="h-20 w-auto mb-3" style={{ filter: 'brightness(0) invert(1)' }} />
+          <img src="/logo.png" alt="Kembali Water" className="w-56 mb-2" style={{ filter: 'brightness(0) invert(1)' }} />
           <p className="text-slate-400 text-sm">Operations Hub</p>
         </div>
 

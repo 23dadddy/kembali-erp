@@ -160,8 +160,8 @@ export function Sidebar() {
   return (
     <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#0F172A' }}>
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-slate-800 flex items-center">
-        <img src="/logo.png" alt="Kembali Water" className="h-8 w-auto" style={{ filter: 'brightness(0) invert(1)' }} />
+      <div className="px-4 py-5 border-b border-slate-800">
+        <img src="/logo.png" alt="Kembali Water" className="w-full max-w-[148px]" style={{ filter: 'brightness(0) invert(1)' }} />
       </div>
 
       {/* Nav */}
