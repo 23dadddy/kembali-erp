@@ -24,7 +24,7 @@ export function Topbar({ title, titleIsKey }: TopbarProps) {
         </div>
         <NotificationsBell />
         <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-cyan-600 text-white text-xs">KW</AvatarFallback>
+          <AvatarFallback className="text-white text-xs" style={{ background: '#3D7B70' }}>KW</AvatarFallback>
         </Avatar>
       </div>
     </header>

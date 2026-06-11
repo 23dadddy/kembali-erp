@@ -49,45 +49,45 @@
 }
 
 :root {
-  /* Base */
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  /* Base — warm cream from Kembali app */
+  --background: #F0EBE3;
+  --foreground: #1A1A1A;
 
   /* Cards */
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #1A1A1A;
 
   /* Popover */
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #1A1A1A;
 
-  /* Primary — Kembali teal */
-  --primary: #0EA5A4;
+  /* Primary — Kembali sage teal */
+  --primary: #3D7B70;
   --primary-foreground: #FFFFFF;
 
   /* Secondary */
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
+  --secondary: #EDE6DC;
+  --secondary-foreground: #1A1A1A;
 
   /* Muted */
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --muted: #EDE6DC;
+  --muted-foreground: #6B6B6B;
 
   /* Accent */
-  --accent: #CCFBF1;
-  --accent-foreground: #0F172A;
+  --accent: #D6EDEA;
+  --accent-foreground: #1A1A1A;
 
   /* Destructive */
   --destructive: #EF4444;
 
   /* Borders & inputs */
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #0EA5A4;
+  --border: #DDD7CF;
+  --input: #DDD7CF;
+  --ring: #3D7B70;
 
   /* Charts */
-  --chart-1: #0EA5A4;
-  --chart-2: #3B82F6;
+  --chart-1: #3D7B70;
+  --chart-2: #4A8B82;
   --chart-3: #F59E0B;
   --chart-4: #22C55E;
   --chart-5: #EF4444;
@@ -95,15 +95,29 @@
   /* Radius */
   --radius: 0.5rem;
 
-  /* Sidebar — dark */
-  --sidebar: #0F172A;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #0EA5A4;
+  /* Sidebar — deep forest green */
+  --sidebar: #1A2B1A;
+  --sidebar-foreground: #E8EDE8;
+  --sidebar-primary: #4A8B82;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E293B;
+  --sidebar-accent: #243324;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #1E293B;
-  --sidebar-ring: #0EA5A4;
+  --sidebar-border: #243324;
+  --sidebar-ring: #4A8B82;
+}
+
+@theme inline {
+  /* Override cyan → Kembali sage teal so all cyan-* classes match brand */
+  --color-cyan-50: #F0F7F6;
+  --color-cyan-100: #D6EDEA;
+  --color-cyan-200: #AEDBD4;
+  --color-cyan-300: #7DC4BB;
+  --color-cyan-400: #52ADA2;
+  --color-cyan-500: #3D9689;
+  --color-cyan-600: #3D7B70;
+  --color-cyan-700: #2E6259;
+  --color-cyan-800: #1E4A42;
+  --color-cyan-900: #0F2E28;
 }
 
 @layer base {

@@ -34,21 +34,21 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1A2B1A' }}>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/logo.png" alt="Kembali Water" className="w-56 mb-2" style={{ filter: 'brightness(0) invert(1)' }} />
-          <p className="text-slate-400 text-sm">Operations Hub</p>
+          <img src="/logo.png" alt="Kembali Water" className="w-56 mb-3" style={{ filter: 'brightness(0) invert(1)' }} />
+          <p className="text-sm" style={{ color: '#7A9E7A' }}>Operations Hub</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700">
-          <h2 className="text-lg font-semibold text-white mb-6">Sign in to your account</h2>
+        <div className="rounded-2xl p-6 shadow-xl border" style={{ background: '#243324', borderColor: '#2D3F2D' }}>
+          <h2 className="text-base font-semibold text-white mb-5">Sign in to your account</h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: '#A8C4A8' }}>Email</label>
               <input
                 type="email"
                 value={email}
@@ -56,12 +56,13 @@ function LoginForm() {
                 placeholder="you@kembaliwater.com"
                 required
                 autoComplete="email"
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                className="w-full rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 transition placeholder-[#7A9E7A]"
+                style={{ background: '#1A2B1A', border: '1px solid #2D3F2D', '--tw-ring-color': '#3D7B70' } as React.CSSProperties}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: '#A8C4A8' }}>Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -70,12 +71,14 @@ function LoginForm() {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-2.5 pr-11 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                  className="w-full rounded-xl px-4 py-2.5 pr-11 text-white text-sm focus:outline-none focus:ring-2 transition placeholder-[#7A9E7A]"
+                  style={{ background: '#1A2B1A', border: '1px solid #2D3F2D', '--tw-ring-color': '#3D7B70' } as React.CSSProperties}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-white transition-colors"
+                  style={{ color: '#7A9E7A' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -91,14 +94,17 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+              style={{ background: '#3D7B70' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#2E6259')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#3D7B70')}
             >
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</> : 'Sign In'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-xs mt-6" style={{ color: '#4A6B4A' }}>
           © {new Date().getFullYear()} Kembali Water · All rights reserved
         </p>
       </div>
