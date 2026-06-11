@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Droplets, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
@@ -38,11 +38,8 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-cyan-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/30">
-            <Droplets className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Kembali Water</h1>
-          <p className="text-slate-400 text-sm mt-1">Operations Hub</p>
+          <img src="/logo.png" alt="Kembali Water" className="h-16 w-auto mb-3" style={{ filter: 'invert(1)' }} />
+          <p className="text-slate-400 text-sm">Operations Hub</p>
         </div>
 
         {/* Card */}
