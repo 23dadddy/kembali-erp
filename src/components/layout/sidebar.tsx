@@ -173,7 +173,7 @@ export function Sidebar() {
             return (
               <Link key={href} href={href} prefetch={true}
                 className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                 <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                 {label}
               </Link>
@@ -198,7 +198,7 @@ export function Sidebar() {
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                  style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
@@ -219,7 +219,7 @@ export function Sidebar() {
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                  style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
@@ -240,7 +240,7 @@ export function Sidebar() {
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                  style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
@@ -265,7 +265,7 @@ export function Sidebar() {
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                  style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   <span className="flex-1 min-w-0 truncate">{label}</span>
                   <Badge count={count} />
@@ -286,7 +286,7 @@ export function Sidebar() {
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
-                  style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
                   <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
