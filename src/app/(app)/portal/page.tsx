@@ -8,8 +8,10 @@ import {
   Package, RotateCcw, MapPin, Loader2, ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useLanguage } from '@/components/providers/language-provider'
 
 export default function PortalPage() {
+  const { t } = useLanguage()
   const [drivers, setDrivers] = useState<any[]>([])
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,14 +57,14 @@ export default function PortalPage() {
 
   return (
     <>
-      <Topbar title="Driver App Portal" />
+      <Topbar title={t('portal_title')} />
       <div className="p-6 space-y-6">
 
         {/* Info banner */}
         <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 flex items-start gap-3">
           <Smartphone className="w-5 h-5 text-cyan-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-cyan-800 text-sm">Driver Mobile Access</p>
+            <p className="font-semibold text-cyan-800 text-sm">{t('portal_driver_access')}</p>
             <p className="text-xs text-cyan-700 mt-0.5">
               Drivers access their deliveries at <strong>kembali-erp.vercel.app/deliver/[delivery-id]. Driver portal: /driver/portal</strong>.
               Share the direct link or scan QR from the TrakOps board.
@@ -74,10 +76,10 @@ export default function PortalPage() {
         {!loading && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Active Drivers', value: drivers.length, color: 'text-cyan-600' },
-              { label: "Today's Deliveries", value: deliveries.length, color: 'text-slate-700' },
-              { label: 'Completed', value: deliveries.filter(d => d.status === 'completed').length, color: 'text-emerald-600' },
-              { label: 'Pending / Transit', value: deliveries.filter(d => ['pending', 'in_transit'].includes(d.status)).length, color: 'text-amber-600' },
+              { label: t('portal_active_drivers'), value: drivers.length, color: 'text-cyan-600' },
+              { label: t('portal_todays_deliveries'), value: deliveries.length, color: 'text-slate-700' },
+              { label: t('completed'), value: deliveries.filter(d => d.status === 'completed').length, color: 'text-emerald-600' },
+              { label: t('portal_pending_transit'), value: deliveries.filter(d => ['pending', 'in_transit'].includes(d.status)).length, color: 'text-amber-600' },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-white rounded-xl border p-4 text-center">
                 <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -89,13 +91,13 @@ export default function PortalPage() {
 
         {/* Filter */}
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-sm font-medium text-slate-600">Filter by driver:</label>
+          <label className="text-sm font-medium text-slate-600">{t('portal_filter_driver')}</label>
           <select
             value={selectedDriver}
             onChange={e => setSelectedDriver(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm"
           >
-            <option value="all">All Drivers</option>
+            <option value="all">{t('portal_all_drivers')}</option>
             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
@@ -105,17 +107,17 @@ export default function PortalPage() {
         ) : deliveries.length === 0 ? (
           <div className="bg-white rounded-xl border p-10 text-center">
             <Truck className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">No deliveries scheduled for today</p>
+            <p className="text-sm text-slate-400">{t('portal_no_deliveries')}</p>
             <Link href="/trakops" className="text-xs text-cyan-600 hover:underline mt-2 inline-block">
-              Go to TrakOps →
+              {t('portal_go_trakops')} →
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {Object.entries(byDriver).map(([driverId, dls]) => {
               const driver = dls[0]?.driver
-              const driverName = driver?.name ?? (driverId === '__unassigned__' ? 'Unassigned' : 'Unknown')
-              const completed = dls.filter(d => d.status === 'completed').length
+              const driverName = driver?.name ?? (driverId === '__unassigned__' ? t('portal_unassigned') : 'Unknown')
+              const completedCount = dls.filter(d => d.status === 'completed').length
               return (
                 <div key={driverId} className="bg-white rounded-xl border overflow-hidden">
                   <div className="bg-slate-50 border-b px-4 py-3 flex items-center justify-between">
@@ -125,7 +127,7 @@ export default function PortalPage() {
                       {driver?.phone && <span className="text-xs text-slate-400">· {driver.phone}</span>}
                     </div>
                     <span className="text-xs text-slate-500 bg-white border rounded-full px-3 py-1">
-                      {completed}/{dls.length} done
+                      {completedCount}/{dls.length} {t('portal_done')}
                     </span>
                   </div>
                   <div className="divide-y">
@@ -145,7 +147,7 @@ export default function PortalPage() {
                             href={`/deliver/${d.id}`}
                             className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-800 font-medium whitespace-nowrap"
                           >
-                            Open App <ExternalLink className="w-3 h-3" />
+                            {t('portal_open_app')} <ExternalLink className="w-3 h-3" />
                           </Link>
                         )}
                       </div>

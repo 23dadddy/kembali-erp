@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,7 @@ const DEFAULT_ITEMS = {
 const EMPTY_VEHICLE: Partial<Vehicle> = { name: '', plate_number: '', type: 'truck', status: 'active', capacity_350ml: 0, capacity_750ml: 0, current_odometer: 0 }
 
 export default function FleetPage() {
+  const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('vehicles')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenance, setMaintenance] = useState<VehicleMaintenance[]>([])
@@ -184,25 +186,25 @@ export default function FleetPage() {
   const completionPct = (items: Record<string, boolean>) => { const vals = Object.values(items); return vals.length ? Math.round((vals.filter(Boolean).length / vals.length) * 100) : 0 }
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'vehicles', label: `Vehicles (${vehicles.length})`, icon: Truck },
-    { id: 'maintenance', label: `Maintenance (${maintenance.length})`, icon: Wrench },
-    { id: 'fuel', label: `Fuel Logs (${fuelLogs.length})`, icon: Fuel },
-    { id: 'safety', label: 'Safety', icon: Shield },
-    { id: 'checklists', label: 'Driver Checklists', icon: ClipboardCheck },
+    { id: 'vehicles', label: `${t('fleet_vehicles')} (${vehicles.length})`, icon: Truck },
+    { id: 'maintenance', label: `${t('fleet_maintenance')} (${maintenance.length})`, icon: Wrench },
+    { id: 'fuel', label: `${t('fleet_fuel')} (${fuelLogs.length})`, icon: Fuel },
+    { id: 'safety', label: t('fleet_safety'), icon: Shield },
+    { id: 'checklists', label: t('fleet_checklists'), icon: ClipboardCheck },
   ]
 
   return (
     <>
-      <Topbar title="Fleet" />
+      <Topbar title="fleet_title" titleIsKey />
 
       {/* Stats bar */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
         <div className="grid grid-cols-4 gap-4 max-w-5xl">
           {[
-            { label: 'Active Vehicles', value: activeVehicles.length, icon: Truck, color: 'text-slate-800' },
-            { label: 'In Maintenance', value: vehicles.filter(v => v.status === 'maintenance').length, icon: Wrench, color: vehicles.filter(v => v.status === 'maintenance').length > 0 ? 'text-amber-600' : 'text-slate-600' },
-            { label: 'Open Incidents', value: openIncidents, icon: AlertTriangle, color: openIncidents > 0 ? 'text-red-600' : 'text-slate-600' },
-            { label: 'Total Fuel Cost', value: idr(totalFuelCost), icon: Fuel, color: 'text-slate-800', small: true },
+            { label: t('fleet_operational_count'), value: activeVehicles.length, icon: Truck, color: 'text-slate-800' },
+            { label: t('fleet_in_maint_count'), value: vehicles.filter(v => v.status === 'maintenance').length, icon: Wrench, color: vehicles.filter(v => v.status === 'maintenance').length > 0 ? 'text-amber-600' : 'text-slate-600' },
+            { label: t('fleet_safety'), value: openIncidents, icon: AlertTriangle, color: openIncidents > 0 ? 'text-red-600' : 'text-slate-600' },
+            { label: t('fleet_total_fuel_cost'), value: idr(totalFuelCost), icon: Fuel, color: 'text-slate-800', small: true },
           ].map(({ label, value, icon: Icon, color, small }) => (
             <div key={label} className="flex items-center gap-3">
               <Icon className="w-5 h-5 text-slate-300 flex-shrink-0" />
@@ -234,7 +236,7 @@ export default function FleetPage() {
       {/* VEHICLES TAB */}
       {tab === 'vehicles' && (
         <div className="p-6 max-w-5xl space-y-4">
-          <div className="flex justify-end"><Button onClick={() => { setForm(EMPTY_VEHICLE); setEditingId(null); setShowVehicleForm(true) }}><Plus className="w-4 h-4 mr-1.5" /> Add Vehicle</Button></div>
+          <div className="flex justify-end"><Button onClick={() => { setForm(EMPTY_VEHICLE); setEditingId(null); setShowVehicleForm(true) }}><Plus className="w-4 h-4 mr-1.5" /> {t('fleet_add_vehicle')}</Button></div>
           {showVehicleForm && (
             <Card><CardHeader><CardTitle className="text-sm">{editingId ? 'Edit Vehicle' : 'Add Vehicle'}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -268,7 +270,7 @@ export default function FleetPage() {
             </Card>
           )}
           {loading && <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>}
-          {vehicles.length === 0 && !loading && <div className="text-center py-12 text-slate-400 text-sm"><Truck className="w-8 h-8 mx-auto mb-2 text-slate-200" />No vehicles yet.</div>}
+          {vehicles.length === 0 && !loading && <div className="text-center py-12 text-slate-400 text-sm"><Truck className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('fleet_no_vehicles')}</div>}
           <div className="grid grid-cols-1 gap-3">
             {vehicles.map(v => (
               <Card key={v.id}><CardContent className="pt-4">

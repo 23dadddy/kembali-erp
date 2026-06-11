@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ import {
 type Tab = 'production' | 'cleaning'
 
 export default function ProductionPage() {
+  const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('production')
   const [runs, setRuns] = useState<any[]>([])
   const [batches, setBatches] = useState<any[]>([])
@@ -157,7 +159,7 @@ export default function ProductionPage() {
 
   return (
     <>
-      <Topbar title="Production & Manufacturing" />
+      <Topbar title="production_title" titleIsKey />
       <div className="p-6 max-w-5xl space-y-6">
 
         {/* Live inventory snapshot */}
@@ -204,8 +206,8 @@ export default function ProductionPage() {
         {/* Tabs */}
         <div className="flex gap-1 border-b border-slate-200">
           {[
-            { id: 'production' as Tab, label: `Production Runs (${runs.length})` },
-            { id: 'cleaning' as Tab, label: `Cleaning Batches (${batches.length})` },
+            { id: 'production' as Tab, label: `${t('production_runs')} (${runs.length})` },
+            { id: 'cleaning' as Tab, label: `${t('production_cleaning')} (${batches.length})` },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -283,7 +285,7 @@ export default function ProductionPage() {
             )}
 
             {runs.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm"><Droplets className="w-8 h-8 mx-auto mb-2 text-slate-200" />No production runs logged yet</div>
+              <div className="text-center py-12 text-slate-400 text-sm"><Droplets className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('production_no_runs')}</div>
             ) : (
               <div className="space-y-2">
                 {runs.map(r => (
@@ -359,7 +361,7 @@ export default function ProductionPage() {
             )}
 
             {batches.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm"><Beaker className="w-8 h-8 mx-auto mb-2 text-slate-200" />No cleaning batches logged yet</div>
+              <div className="text-center py-12 text-slate-400 text-sm"><Beaker className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('production_no_batches')}</div>
             ) : (
               <div className="space-y-2">
                 {batches.map(b => (

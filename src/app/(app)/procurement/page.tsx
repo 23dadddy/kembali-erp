@@ -7,6 +7,7 @@ import {
   Package, Plus, Loader2, Check, X, Warehouse, AlertTriangle,
   TrendingDown, Edit2, ArrowUp, ArrowDown, BarChart3, ShoppingCart
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const CATEGORIES = ['bottle', 'cap', 'label', 'water', 'packaging', 'cleaning', 'other']
 const CATEGORY_COLORS: Record<string, string> = {
@@ -20,6 +21,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function ProcurementPage() {
+  const { t } = useLanguage()
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [items, setItems] = useState<any[]>([])
   const [movements, setMovements] = useState<any[]>([])
@@ -133,25 +135,25 @@ export default function ProcurementPage() {
 
   return (
     <>
-      <Topbar title="Procurement & Supplies" />
+      <Topbar title={t('proc_title')} />
       <div className="p-6 max-w-6xl space-y-6">
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Total Items</p>
+            <p className="text-xs text-slate-400">{t('proc_total_items')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{items.length}</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Warehouses</p>
+            <p className="text-xs text-slate-400">{t('proc_warehouses_stat')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{warehouses.length}</p>
           </div>
           <div className={`border rounded-xl p-4 shadow-sm ${lowStockItems.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-100'}`}>
-            <p className={`text-xs ${lowStockItems.length > 0 ? 'text-red-400' : 'text-slate-400'}`}>Low Stock Alerts</p>
+            <p className={`text-xs ${lowStockItems.length > 0 ? 'text-red-400' : 'text-slate-400'}`}>{t('proc_low_stock_alerts')}</p>
             <p className={`text-2xl font-bold mt-1 ${lowStockItems.length > 0 ? 'text-red-700' : 'text-slate-800'}`}>{lowStockItems.length}</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Total Inventory Value</p>
+            <p className="text-xs text-slate-400">{t('proc_total_value')}</p>
             <p className="text-xl font-bold text-cyan-600 mt-1">{fmt(totalValue)}</p>
           </div>
         </div>
@@ -162,13 +164,13 @@ export default function ProcurementPage() {
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
-                <p className="text-sm font-semibold text-red-700">Low Stock — {lowStockItems.length} item{lowStockItems.length > 1 ? 's' : ''} need reordering</p>
+                <p className="text-sm font-semibold text-red-700">{t('proc_low_stock_banner')} — {lowStockItems.length}</p>
               </div>
               <button
                 onClick={() => setTab('movements')}
                 className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors"
               >
-                <ShoppingCart className="w-3.5 h-3.5" /> Create Purchase Orders
+                <ShoppingCart className="w-3.5 h-3.5" /> {t('proc_create_po')}
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -184,10 +186,10 @@ export default function ProcurementPage() {
         {/* Tabs */}
         <div className="flex items-center gap-3">
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {(['inventory', 'movements', 'warehouses'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${tab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                {t}
+            {(['inventory', 'movements', 'warehouses'] as const).map(tabKey => (
+              <button key={tabKey} onClick={() => setTab(tabKey)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${tab === tabKey ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                {tabKey === 'inventory' ? t('proc_inventory') : tabKey === 'movements' ? t('proc_movements_tab') : t('proc_warehouses_tab')}
               </button>
             ))}
           </div>
@@ -196,23 +198,23 @@ export default function ProcurementPage() {
             <>
               <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
                 value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="all">All Categories</option>
+                <option value="all">{t('proc_all_categories')}</option>
                 {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
               <button onClick={() => setShowMovementForm(true)}
                 className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-medium text-slate-700 transition-colors">
-                <ShoppingCart className="w-4 h-4" /> Log Movement
+                <ShoppingCart className="w-4 h-4" /> {t('proc_log_movement')}
               </button>
               <button onClick={() => setShowItemForm(true)}
                 className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                <Plus className="w-4 h-4" /> Add Item
+                <Plus className="w-4 h-4" /> {t('proc_add_item')}
               </button>
             </>
           )}
           {tab === 'warehouses' && (
             <button onClick={() => setShowWarehouseForm(true)}
               className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> Add Warehouse
+              <Plus className="w-4 h-4" /> {t('proc_add_warehouse')}
             </button>
           )}
         </div>
@@ -220,52 +222,52 @@ export default function ProcurementPage() {
         {/* Item Form */}
         {showItemForm && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Add Inventory Item</h3>
+            <h3 className="font-semibold text-slate-800">{t('proc_add_item_title')}</h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-medium text-slate-600 block mb-1">Item Name *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_item_name')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. 350ml Glass Bottle, Metal Cap"
                   value={itemForm.name} onChange={e => setItemForm({ ...itemForm, name: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">SKU</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_sku')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.sku} onChange={e => setItemForm({ ...itemForm, sku: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Category</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_category')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })}>
                   {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Warehouse</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_warehouse')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.warehouse_id} onChange={e => setItemForm({ ...itemForm, warehouse_id: e.target.value })}>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Unit</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_unit')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.unit} onChange={e => setItemForm({ ...itemForm, unit: e.target.value })}>
                   {['pcs', 'kg', 'liter', 'box', 'roll', 'bag'].map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Current Qty</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_current_qty')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.quantity} onChange={e => setItemForm({ ...itemForm, quantity: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Reorder Point</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_reorder_point')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.reorder_point} onChange={e => setItemForm({ ...itemForm, reorder_point: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Unit Cost (Rp)</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_unit_cost')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={itemForm.unit_cost} onChange={e => setItemForm({ ...itemForm, unit_cost: Number(e.target.value) })} />
               </div>
@@ -273,7 +275,7 @@ export default function ProcurementPage() {
             <div className="flex gap-2">
               <button onClick={saveItem} disabled={saving || !itemForm.name}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Save Item</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('proc_save_item')}</>}
               </button>
               <button onClick={() => setShowItemForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50">
                 <X className="w-4 h-4" />
@@ -285,38 +287,38 @@ export default function ProcurementPage() {
         {/* Movement Form */}
         {showMovementForm && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Log Stock Movement</h3>
+            <h3 className="font-semibold text-slate-800">{t('proc_log_movement_title')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-medium text-slate-600 block mb-1">Item *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_item_name').replace(' *', '')} *</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={movementForm.item_id} onChange={e => setMovementForm({ ...movementForm, item_id: e.target.value })}>
-                  <option value="">Select item...</option>
+                  <option value="">{t('proc_select_item')}</option>
                   {items.map(i => <option key={i.id} value={i.id}>{i.name} — {i.quantity} {i.unit} in stock</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Type</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_type')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={movementForm.direction} onChange={e => setMovementForm({ ...movementForm, direction: e.target.value as any })}>
-                  <option value="in">Stock In (received)</option>
-                  <option value="out">Stock Out (used/sold)</option>
-                  <option value="adjustment">Adjustment</option>
+                  <option value="in">{t('proc_stock_in')}</option>
+                  <option value="out">{t('proc_stock_out')}</option>
+                  <option value="adjustment">{t('proc_adjustment')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Quantity *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('quantity')} *</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={movementForm.quantity} onChange={e => setMovementForm({ ...movementForm, quantity: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Reason</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_reason')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. Purchase order, damaged, used in production"
                   value={movementForm.reason} onChange={e => setMovementForm({ ...movementForm, reason: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Reference / PO Number</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('proc_po_number')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={movementForm.reference} onChange={e => setMovementForm({ ...movementForm, reference: e.target.value })} />
               </div>
@@ -324,7 +326,7 @@ export default function ProcurementPage() {
             <div className="flex gap-2">
               <button onClick={saveMovement} disabled={saving || !movementForm.item_id || !movementForm.quantity}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Log Movement</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('proc_log_movement')}</>}
               </button>
               <button onClick={() => setShowMovementForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50">
                 <X className="w-4 h-4" />
@@ -342,17 +344,17 @@ export default function ProcurementPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Item</th>
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Warehouse</th>
-                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">In Stock</th>
-                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Reorder At</th>
-                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Unit Cost</th>
-                      <th className="text-right px-5 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Value</th>
+                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_item_name').replace(' *', '')}</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_warehouse')}</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_in_stock')}</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_reorder_at')}</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_unit_cost')}</th>
+                      <th className="text-right px-5 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide">{t('proc_value')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {filteredItems.length === 0 ? (
-                      <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">No items found</td></tr>
+                      <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">{t('proc_no_items')}</td></tr>
                     ) : filteredItems.map(item => {
                       const isLow = item.reorder_point > 0 && item.quantity <= item.reorder_point
                       return (
@@ -391,16 +393,16 @@ export default function ProcurementPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">Date</th>
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Item</th>
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Type</th>
-                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">Qty</th>
-                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">Reason</th>
+                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('date')}</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">{t('proc_item_name').replace(' *', '')}</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">{t('proc_type')}</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">{t('quantity')}</th>
+                      <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('proc_reason')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {movements.length === 0 ? (
-                      <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">No movements yet</td></tr>
+                      <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">{t('proc_no_movements')}</td></tr>
                     ) : movements.map(m => (
                       <tr key={m.id} className="hover:bg-slate-50">
                         <td className="px-5 py-3 text-slate-500 text-xs">{fmtDate(m.created_at)}</td>
@@ -428,23 +430,23 @@ export default function ProcurementPage() {
               <>
                 {showWarehouseForm && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-                    <h3 className="font-semibold text-slate-800">New Warehouse / Storage Location</h3>
+                    <h3 className="font-semibold text-slate-800">{t('proc_new_warehouse_title')}</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-slate-600 block mb-1">Name *</label>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_name_label')} *</label>
                         <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                           placeholder="e.g. Main Warehouse, Production Facility"
                           value={warehouseForm.name} onChange={e => setWarehouseForm({ ...warehouseForm, name: e.target.value })} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-slate-600 block mb-1">Address</label>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">{t('address')}</label>
                         <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                           value={warehouseForm.address} onChange={e => setWarehouseForm({ ...warehouseForm, address: e.target.value })} />
                       </div>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                       <input type="checkbox" checked={warehouseForm.is_primary} onChange={e => setWarehouseForm({ ...warehouseForm, is_primary: e.target.checked })} />
-                      Set as primary warehouse
+                      {t('proc_set_primary')}
                     </label>
                     <div className="flex gap-2">
                       <button onClick={saveWarehouse} disabled={saving || !warehouseForm.name}
@@ -464,12 +466,12 @@ export default function ProcurementPage() {
                         </div>
                         <div>
                           <p className="font-semibold text-slate-800">{wh.name}</p>
-                          {wh.is_primary && <span className="text-xs text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full">Primary</span>}
+                          {wh.is_primary && <span className="text-xs text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full">{t('proc_primary')}</span>}
                         </div>
                       </div>
                       {wh.address && <p className="text-sm text-slate-500">{wh.address}</p>}
                       <p className="text-xs text-slate-400 mt-2">
-                        {items.filter(i => i.warehouse_id === wh.id).length} items · {fmt(items.filter(i => i.warehouse_id === wh.id).reduce((s, i) => s + i.quantity * i.unit_cost, 0))} value
+                        {items.filter(i => i.warehouse_id === wh.id).length} {t('proc_items_label')} · {fmt(items.filter(i => i.warehouse_id === wh.id).reduce((s, i) => s + i.quantity * i.unit_cost, 0))} {t('proc_value_label')}
                       </p>
                     </div>
                   ))}

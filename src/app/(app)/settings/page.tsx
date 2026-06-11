@@ -149,7 +149,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Topbar title="Settings" />
+      <Topbar title="settings_title" titleIsKey />
       <div className="p-6 max-w-3xl space-y-6">
 
         {/* Tabs */}
@@ -173,7 +173,7 @@ export default function SettingsPage() {
           <Section title="Bottle Pricing & Thresholds" icon={DollarSign}>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">350ml — Price per bottle</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('settings_price_350')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Rp</span>
                   <input type="number" step="500" className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm"
@@ -181,7 +181,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">750ml — Price per bottle</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('settings_price_750')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Rp</span>
                   <input type="number" step="500" className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm"
@@ -201,7 +201,7 @@ export default function SettingsPage() {
               <button onClick={savePricing} disabled={savingPrice}
                 className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
                 {savingPrice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Save Pricing
+                {t('settings_save_pricing')}
               </button>
               {priceSaved && <span className="ml-3 text-sm text-emerald-600 flex items-center gap-1 inline-flex"><CheckCircle2 className="w-4 h-4" /> Saved!</span>}
             </div>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
               <button onClick={saveInvoiceSettings} disabled={savingInvoice}
                 className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
                 {savingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Save Settings
+                {t('settings_save_invoice')}
               </button>
               {invoiceSaved && <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Saved!</span>}
             </div>
@@ -246,7 +246,7 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <button onClick={() => setShowLocForm(!showLocForm)}
                 className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                <Plus className="w-4 h-4" /> Add Location
+                <Plus className="w-4 h-4" /> {t('settings_add_location')}
               </button>
             </div>
 

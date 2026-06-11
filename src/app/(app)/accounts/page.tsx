@@ -7,18 +7,20 @@ import {
   BookOpen, Plus, Loader2, Check, X, ChevronRight, Search,
   TrendingUp, TrendingDown, DollarSign, Shield, PieChart
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
-const TYPE_CONFIG: Record<string, { color: string; label: string; icon: React.ElementType }> = {
-  asset: { color: 'bg-blue-100 text-blue-700', label: 'Asset', icon: DollarSign },
-  liability: { color: 'bg-red-100 text-red-600', label: 'Liability', icon: TrendingDown },
-  equity: { color: 'bg-purple-100 text-purple-700', label: 'Equity', icon: Shield },
-  revenue: { color: 'bg-emerald-100 text-emerald-700', label: 'Revenue', icon: TrendingUp },
-  expense: { color: 'bg-amber-100 text-amber-700', label: 'Expense', icon: TrendingDown },
+const TYPE_CONFIG: Record<string, { color: string; labelKey: string; icon: React.ElementType }> = {
+  asset: { color: 'bg-blue-100 text-blue-700', labelKey: 'acc_asset', icon: DollarSign },
+  liability: { color: 'bg-red-100 text-red-600', labelKey: 'acc_liability', icon: TrendingDown },
+  equity: { color: 'bg-purple-100 text-purple-700', labelKey: 'acc_equity', icon: Shield },
+  revenue: { color: 'bg-emerald-100 text-emerald-700', labelKey: 'acc_revenue', icon: TrendingUp },
+  expense: { color: 'bg-amber-100 text-amber-700', labelKey: 'acc_expense', icon: TrendingDown },
 }
 
 const TYPES = ['asset', 'liability', 'equity', 'revenue', 'expense'] as const
 
 export default function AccountsPage() {
+  const { t } = useLanguage()
   const [accounts, setAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -85,7 +87,7 @@ export default function AccountsPage() {
 
   return (
     <>
-      <Topbar title="Chart of Accounts" />
+      <Topbar title={t('acc_title')} />
       <div className="p-6 max-w-4xl space-y-6">
 
         {/* Type summary */}
@@ -99,7 +101,7 @@ export default function AccountsPage() {
                 className={`rounded-xl p-3 border text-left transition-all ${filterType === type ? 'ring-2 ring-cyan-400' : ''} ${cfg.color.includes('blue') ? 'bg-blue-50 border-blue-100' : cfg.color.includes('red') ? 'bg-red-50 border-red-100' : cfg.color.includes('purple') ? 'bg-purple-50 border-purple-100' : cfg.color.includes('emerald') ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
                 <Icon className={`w-4 h-4 mb-1 ${cfg.color.split(' ')[1]}`} />
                 <p className={`text-lg font-bold ${cfg.color.split(' ')[1]}`}>{count}</p>
-                <p className={`text-xs ${cfg.color.split(' ')[1]} opacity-70`}>{cfg.label}</p>
+                <p className={`text-xs ${cfg.color.split(' ')[1]} opacity-70`}>{t(cfg.labelKey as any)}</p>
               </button>
             )
           })}
@@ -115,45 +117,45 @@ export default function AccountsPage() {
           </div>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Add Account
+            <Plus className="w-4 h-4" /> {t('acc_new_account')}
           </button>
         </div>
 
         {/* Form */}
         {showForm && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold text-slate-800">New Account</h3>
+            <h3 className="font-semibold text-slate-800">{t('acc_add_account_title')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Code *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_code_label')} *</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. 4001"
                   value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Name *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_name_label')} *</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. Sales Revenue — 350ml"
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Type *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_type')} *</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm capitalize"
                   value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })}>
-                  {TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
+                  {TYPES.map(typ => <option key={typ} value={typ} className="capitalize">{typ}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Subtype</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_subtype')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. current_asset"
                   value={form.subtype} onChange={e => setForm({ ...form, subtype: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Parent Account</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('acc_parent')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.parent_id} onChange={e => setForm({ ...form, parent_id: e.target.value })}>
-                  <option value="">— None (top level) —</option>
+                  <option value="">{t('acc_top_level')}</option>
                   {parentAccounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
                 </select>
               </div>
@@ -161,7 +163,7 @@ export default function AccountsPage() {
             <div className="flex gap-2">
               <button onClick={saveAccount} disabled={saving || !form.code || !form.name}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Save Account</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('acc_save')}</>}
               </button>
               <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
             </div>
@@ -174,7 +176,7 @@ export default function AccountsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-            <p>No accounts found</p>
+            <p>{t('acc_no_accounts')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -183,8 +185,8 @@ export default function AccountsPage() {
               return (
                 <div key={type} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                   <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.color}`}>{cfg.label}</span>
-                    <span className="text-xs text-slate-400">{grouped[type].length} accounts</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.color}`}>{t(cfg.labelKey as any)}</span>
+                    <span className="text-xs text-slate-400">{grouped[type].length} {t('acc_account_name').toLowerCase()}s</span>
                   </div>
                   <table className="w-full text-sm">
                     <tbody className="divide-y divide-slate-50">
@@ -201,7 +203,7 @@ export default function AccountsPage() {
                           <td className="px-5 py-2.5 text-right">
                             <button onClick={() => toggleActive(account.id, !account.active)}
                               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${account.active ? 'text-emerald-600 hover:bg-red-50 hover:text-red-500' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}>
-                              {account.active ? 'Active' : 'Inactive'}
+                              {account.active ? t('price_active') : t('inactive')}
                             </button>
                           </td>
                         </tr>

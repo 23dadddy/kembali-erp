@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { getCustomers } from '@/lib/db'
 import type { Customer } from '@/types'
+import { useLanguage } from '@/components/providers/language-provider'
 
 type MainTab = 'orders' | 'subscriptions'
 
@@ -31,6 +32,7 @@ const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { mon
 // ─── SUBSCRIPTIONS SUB-PAGE ───────────────────────────────────────────────────
 function SubscriptionsContent() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,39 +81,39 @@ function SubscriptionsContent() {
   return (
     <div className="p-6 max-w-5xl space-y-6">
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">Active Subscriptions</p><p className="text-2xl font-bold text-emerald-600 mt-1">{activeSubs.length}</p></div>
-        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">Total</p><p className="text-2xl font-bold text-slate-800 mt-1">{subscriptions.length}</p></div>
-        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">350ml / week (active)</p><p className="text-2xl font-bold text-slate-800 mt-1">{activeSubs.reduce((s, sub) => s + (sub.qty_350ml ?? 0) * (sub.delivery_days?.length ?? 1), 0)}</p></div>
-        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">750ml / week (active)</p><p className="text-2xl font-bold text-slate-800 mt-1">{activeSubs.reduce((s, sub) => s + (sub.qty_750ml ?? 0) * (sub.delivery_days?.length ?? 1), 0)}</p></div>
+        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">{t('orders_sub_active')}</p><p className="text-2xl font-bold text-emerald-600 mt-1">{activeSubs.length}</p></div>
+        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">{t('orders_sub_total')}</p><p className="text-2xl font-bold text-slate-800 mt-1">{subscriptions.length}</p></div>
+        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">{t('orders_sub_weekly_350')}</p><p className="text-2xl font-bold text-slate-800 mt-1">{activeSubs.reduce((s, sub) => s + (sub.qty_350ml ?? 0) * (sub.delivery_days?.length ?? 1), 0)}</p></div>
+        <div className="bg-white border border-slate-100 rounded-xl p-4"><p className="text-xs text-slate-400">{t('orders_sub_weekly_750')}</p><p className="text-2xl font-bold text-slate-800 mt-1">{activeSubs.reduce((s, sub) => s + (sub.qty_750ml ?? 0) * (sub.delivery_days?.length ?? 1), 0)}</p></div>
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-          {['active', 'paused', 'cancelled', 'all'].map(s => <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{s}</button>)}
+          {[['active', t('active')], ['paused', t('pause')], ['cancelled', t('cancelled')], ['all', t('all')]].map(([s, label]) => <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{label}</button>)}
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium"><Plus className="w-4 h-4" /> New Subscription</button>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium"><Plus className="w-4 h-4" /> {t('orders_sub_new')}</button>
       </div>
 
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-          <h3 className="font-semibold text-slate-800">New Customer Subscription</h3>
+          <h3 className="font-semibold text-slate-800">{t('orders_sub_new')}</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Customer *</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.customer_id} onChange={e => setForm({ ...form, customer_id: e.target.value })}><option value="">Select customer...</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Start Date</label><input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">350ml Qty</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.qty_350ml} onChange={e => setForm({ ...form, qty_350ml: Number(e.target.value) })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">750ml Qty</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.qty_750ml} onChange={e => setForm({ ...form, qty_750ml: Number(e.target.value) })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_sub_customer')} *</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.customer_id} onChange={e => setForm({ ...form, customer_id: e.target.value })}><option value="">{t('dispatch_select_customer')}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_sub_start')}</label><input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_sub_qty_350')}</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.qty_350ml} onChange={e => setForm({ ...form, qty_350ml: Number(e.target.value) })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_sub_qty_750')}</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.qty_750ml} onChange={e => setForm({ ...form, qty_750ml: Number(e.target.value) })} /></div>
           </div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1.5">Delivery Days</label><div className="flex gap-2 flex-wrap">{DAYS.map(d => <button key={d} type="button" onClick={() => toggleDay(d)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${form.delivery_days.includes(d) ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{d.slice(0, 3)}</button>)}</div></div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Special Instructions</label><input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.special_instructions} onChange={e => setForm({ ...form, special_instructions: e.target.value })} /></div>
+          <div><label className="text-xs font-medium text-slate-600 block mb-1.5">{t('orders_sub_days')}</label><div className="flex gap-2 flex-wrap">{DAYS.map(d => <button key={d} type="button" onClick={() => toggleDay(d)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${form.delivery_days.includes(d) ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{d.slice(0, 3)}</button>)}</div></div>
+          <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_sub_instructions')}</label><input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.special_instructions} onChange={e => setForm({ ...form, special_instructions: e.target.value })} /></div>
           <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving || !form.customer_id} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Create Subscription</>}</button>
+            <button onClick={handleSave} disabled={saving || !form.customer_id} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('create')} {t('orders_subscriptions')}</>}</button>
             <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
           </div>
         </div>
       )}
 
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
-        : filteredSubs.length === 0 ? <div className="text-center py-16 text-slate-400"><RefreshCw className="w-10 h-10 mx-auto mb-3 text-slate-200" /><p>No subscriptions found</p></div>
+        : filteredSubs.length === 0 ? <div className="text-center py-16 text-slate-400"><RefreshCw className="w-10 h-10 mx-auto mb-3 text-slate-200" /><p>{t('orders_sub_no_subs')}</p></div>
         : (
           <div className="space-y-3">
             {filteredSubs.map(sub => (
@@ -132,8 +134,8 @@ function SubscriptionsContent() {
                     {sub.special_instructions && <p className="text-xs text-slate-400 mt-1">{sub.special_instructions}</p>}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    {sub.status === 'active' && <button onClick={() => updateSubStatus(sub.id, 'paused')} className="text-xs border border-amber-200 text-amber-600 hover:bg-amber-50 px-2 py-1.5 rounded-lg flex items-center gap-1"><Pause className="w-3 h-3" />Pause</button>}
-                    {sub.status === 'paused' && <button onClick={() => updateSubStatus(sub.id, 'active')} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded-lg flex items-center gap-1"><Play className="w-3 h-3" />Resume</button>}
+                    {sub.status === 'active' && <button onClick={() => updateSubStatus(sub.id, 'paused')} className="text-xs border border-amber-200 text-amber-600 hover:bg-amber-50 px-2 py-1.5 rounded-lg flex items-center gap-1"><Pause className="w-3 h-3" />{t('orders_sub_pause')}</button>}
+                    {sub.status === 'paused' && <button onClick={() => updateSubStatus(sub.id, 'active')} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded-lg flex items-center gap-1"><Play className="w-3 h-3" />{t('orders_sub_resume')}</button>}
                     <button onClick={() => router.push(`/customers/${sub.customer_id}`)} className="text-xs border border-slate-200 hover:bg-slate-50 px-2 py-1.5 rounded-lg text-slate-500 flex items-center gap-1"><ChevronRight className="w-3 h-3" /></button>
                   </div>
                 </div>
@@ -148,15 +150,16 @@ function SubscriptionsContent() {
 // ─── ORDERS MAIN COMPONENT ────────────────────────────────────────────────────
 export default function OrdersPage() {
   const [mainTab, setMainTab] = useState<MainTab>('orders')
+  const { t } = useLanguage()
   return (
     <>
-      <Topbar title="Orders" />
+      <Topbar title="orders_title" titleIsKey />
       <div className="bg-white border-b border-slate-200 px-6">
         <div className="flex gap-1">
-          {([{ id: 'orders', label: 'Orders' }, { id: 'subscriptions', label: 'Subscriptions' }] as { id: MainTab; label: string }[]).map(({ id, label }) => (
+          {([{ id: 'orders', labelKey: 'nav_orders' }, { id: 'subscriptions', labelKey: 'orders_subscriptions' }] as { id: MainTab; labelKey: any }[]).map(({ id, labelKey }) => (
             <button key={id} onClick={() => setMainTab(id)}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${mainTab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -168,6 +171,7 @@ export default function OrdersPage() {
 
 function OrdersContent() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [orders, setOrders] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -273,19 +277,19 @@ function OrdersContent() {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Total Orders</p>
+            <p className="text-xs text-slate-400">{t('orders_total')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{orders.length}</p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-amber-500">Pending</p>
+            <p className="text-xs text-amber-500">{t('orders_pending')}</p>
             <p className="text-2xl font-bold text-amber-700 mt-1">{counts.pending}</p>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-blue-500">Scheduled</p>
+            <p className="text-xs text-blue-500">{t('orders_scheduled')}</p>
             <p className="text-2xl font-bold text-blue-700 mt-1">{counts.scheduled}</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Standing Orders</p>
+            <p className="text-xs text-slate-400">{t('orders_standing')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{counts.standing}</p>
           </div>
         </div>
@@ -295,7 +299,7 @@ function OrdersContent() {
           {/* Search */}
           <input
             type="text"
-            placeholder="Search customer..."
+            placeholder={t('orders_search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-44 bg-white"
@@ -304,24 +308,24 @@ function OrdersContent() {
           <div className="flex items-center gap-2">
             <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
               className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-            <span className="text-slate-400 text-xs">to</span>
+            <span className="text-slate-400 text-xs">{t('to')}</span>
             <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
               className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
             {(filterDateFrom || filterDateTo) && (
               <button onClick={() => { setFilterDateFrom(''); setFilterDateTo('') }}
-                className="text-xs text-slate-400 hover:text-red-500 transition-colors">✕ Clear</button>
+                className="text-xs text-slate-400 hover:text-red-500 transition-colors">✕ {t('clear')}</button>
             )}
           </div>
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {['pending', 'scheduled', 'delivered', 'all'].map(s => (
+            {[['pending', t('pending')], ['scheduled', t('scheduled')], ['delivered', t('delivered')], ['all', t('all')]].map(([s, label]) => (
               <button key={s} onClick={() => setFilterStatus(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                {s}
+                {label}
               </button>
             ))}
           </div>
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {[['all', 'All types'], ['one_off', 'One-off'], ['standing', 'Standing']].map(([v, l]) => (
+            {[['all', t('all_types')], ['one_off', t('one_off')], ['standing', t('standing')]].map(([v, l]) => (
               <button key={v} onClick={() => setFilterType(v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterType === v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                 {l}
@@ -331,59 +335,59 @@ function OrdersContent() {
           <div className="flex-1" />
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> New Order
+            <Plus className="w-4 h-4" /> {t('orders_new')}
           </button>
         </div>
 
         {/* New order form */}
         {showForm && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold text-slate-800">New Order</h3>
+            <h3 className="font-semibold text-slate-800">{t('orders_new')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-medium text-slate-600 block mb-1">Customer *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_customer')} *</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.customer_id} onChange={e => setForm({ ...form, customer_id: e.target.value })}>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.city}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Order Type</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_type')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.order_type} onChange={e => setForm({ ...form, order_type: e.target.value as any })}>
-                  <option value="one_off">One-off</option>
-                  <option value="standing">Standing (recurring)</option>
+                  <option value="one_off">{t('one_off')}</option>
+                  <option value="standing">{t('standing')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Scheduled Date</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_scheduled_date')}</label>
                 <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.scheduled_date} onChange={e => setForm({ ...form, scheduled_date: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">350ml Qty</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_qty_350')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.qty_350ml} onChange={e => setForm({ ...form, qty_350ml: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">750ml Qty</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_qty_750')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.qty_750ml} onChange={e => setForm({ ...form, qty_750ml: Number(e.target.value) })} />
               </div>
               {form.order_type === 'standing' && (<>
                 <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Par 350ml (target stock)</label>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_par_350')}</label>
                   <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     value={form.par_350ml} onChange={e => setForm({ ...form, par_350ml: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">Par 750ml (target stock)</label>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">{t('orders_par_750')}</label>
                   <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     value={form.par_750ml} onChange={e => setForm({ ...form, par_750ml: Number(e.target.value) })} />
                 </div>
               </>)}
               <div className="col-span-2">
-                <label className="text-xs font-medium text-slate-600 block mb-1">Notes</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('notes')}</label>
                 <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
               </div>
@@ -391,7 +395,7 @@ function OrdersContent() {
             <div className="flex gap-2">
               <button onClick={saveOrder} disabled={saving || !form.customer_id}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Create Order</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('create')} {t('nav_orders')}</>}
               </button>
               <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
             </div>
@@ -404,7 +408,7 @@ function OrdersContent() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <ShoppingCart className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-            <p>No orders found</p>
+            <p>{t('orders_no_orders')}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -423,7 +427,7 @@ function OrdersContent() {
                         <p className="font-semibold text-slate-800">{order.customer?.name}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${order.order_type === 'standing' ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500'}`}>
-                          {order.order_type === 'standing' ? 'Standing' : 'One-off'}
+                          {order.order_type === 'standing' ? t('standing') : t('one_off')}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-slate-400 flex-wrap">
@@ -437,18 +441,18 @@ function OrdersContent() {
                       {order.status === 'pending' && (
                         <button onClick={() => createDelivery(order)}
                           className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
-                          <Truck className="w-3 h-3" /> Schedule
+                          <Truck className="w-3 h-3" /> {t('orders_create_delivery')}
                         </button>
                       )}
                       {order.status === 'pending' && (
                         <button onClick={() => updateStatus(order.id, 'cancelled')}
                           className="text-xs border border-red-200 text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors">
-                          Cancel
+                          {t('cancelled')}
                         </button>
                       )}
                       <button onClick={() => router.push(`/customers/${order.customer_id}`)}
                         className="text-xs border border-slate-200 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors text-slate-500">
-                        View
+                        {t('view')}
                       </button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ const emptyForm = { customer_id: '', due_date: due.toISOString().split('T')[0], 
 // ─── INVOICES TAB ─────────────────────────────────────────────────────────────
 function InvoicesTab() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -176,13 +178,13 @@ function InvoicesTab() {
     <div className="p-6 space-y-4">
       {pendingPayments.length > 0 && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><p className="text-sm font-semibold text-emerald-800">{pendingPayments.length} Payment Notification{pendingPayments.length > 1 ? 's' : ''} — needs verification</p></div>
+          <div className="flex items-center gap-2 mb-3"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><p className="text-sm font-semibold text-emerald-800">{pendingPayments.length} {t('billing_payment_notifications')}</p></div>
           <div className="space-y-2">
             {pendingPayments.map(p => (
               <div key={p.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 text-sm">
                 <div className="flex-1 min-w-0"><span className="font-medium text-slate-800">{(p.customer as any)?.name}</span><span className="text-slate-400 mx-2">·</span><span className="text-slate-600">{(p.invoice as any)?.invoice_number}</span></div>
                 <span className="text-emerald-700 font-semibold">{idr(Number(p.amount))}</span>
-                <button onClick={() => verifyPayment(p.id, p.invoice_id)} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Verify & Mark Paid</button>
+                <button onClick={() => verifyPayment(p.id, p.invoice_id)} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{t('billing_verify_mark_paid')}</button>
               </div>
             ))}
           </div>
@@ -191,10 +193,10 @@ function InvoicesTab() {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Draft', value: counts.draft, color: 'text-slate-600' },
-          { label: 'Sent / Unpaid', value: counts.sent, color: 'text-blue-600' },
-          { label: 'Overdue', value: counts.overdue, color: 'text-red-600' },
-          { label: 'Paid (Total)', value: idr(totalPaid), color: 'text-emerald-600' },
+          { label: t('billing_draft'), value: counts.draft, color: 'text-slate-600' },
+          { label: t('billing_sent'), value: counts.sent, color: 'text-blue-600' },
+          { label: t('billing_overdue'), value: counts.overdue, color: 'text-red-600' },
+          { label: t('billing_paid'), value: idr(totalPaid), color: 'text-emerald-600' },
         ].map(({ label, value, color }) => (
           <Card key={label}><CardContent className="pt-4 pb-4"><div className="flex items-center gap-3"><DollarSign className={`w-5 h-5 ${color}`} /><div><p className="text-xs text-slate-500">{label}</p><p className={`text-xl font-bold ${color}`}>{value}</p></div></div></CardContent></Card>
         ))}
@@ -202,28 +204,28 @@ function InvoicesTab() {
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-3">
-          <div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><Input placeholder="Search invoices..." className="pl-8 w-56" value={search} onChange={e => setSearch(e.target.value)} /></div>
-          <Select value={statusFilter} onValueChange={v => setStatusFilter(v ?? 'all')}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="draft">Draft</SelectItem><SelectItem value="sent">Sent</SelectItem><SelectItem value="paid">Paid</SelectItem><SelectItem value="overdue">Overdue</SelectItem></SelectContent></Select>
+          <div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><Input placeholder={t('search')} className="pl-8 w-56" value={search} onChange={e => setSearch(e.target.value)} /></div>
+          <Select value={statusFilter} onValueChange={v => setStatusFilter(v ?? 'all')}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('billing_all_status')}</SelectItem><SelectItem value="draft">{t('billing_draft')}</SelectItem><SelectItem value="sent">{t('billing_sent')}</SelectItem><SelectItem value="paid">{t('billing_paid')}</SelectItem><SelectItem value="overdue">{t('billing_overdue')}</SelectItem></SelectContent></Select>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {overdueEligible > 0 && <><button onClick={markOverdue} className="inline-flex items-center gap-2 rounded-md border bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm font-medium px-3 py-2">Mark {overdueEligible} Overdue</button><button onClick={sendOverdueReminders} disabled={sendingReminders} className="inline-flex items-center gap-2 rounded-md border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium px-3 py-2 disabled:opacity-50">{sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}Reminders</button></>}
-          {invoices.filter(i => i.status === 'draft').length > 0 && <button onClick={bulkSendDrafts} disabled={bulkSending} className="inline-flex items-center gap-2 rounded-md border bg-blue-50 border-blue-200 text-blue-700 text-sm font-medium px-3 py-2 disabled:opacity-50">{bulkSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}Send All Drafts ({invoices.filter(i => i.status === 'draft').length})</button>}
-          <button onClick={() => { setStmtOpen(true); setStmtResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-3 py-2"><Mail className="w-4 h-4" />Statements</button>
-          <button onClick={() => { setGenOpen(true); setGenResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-3 py-2"><Zap className="w-4 h-4" />Generate Monthly</button>
+          {overdueEligible > 0 && <><button onClick={markOverdue} className="inline-flex items-center gap-2 rounded-md border bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm font-medium px-3 py-2">{t('billing_mark_overdue')} {overdueEligible}</button><button onClick={sendOverdueReminders} disabled={sendingReminders} className="inline-flex items-center gap-2 rounded-md border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium px-3 py-2 disabled:opacity-50">{sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}{t('billing_reminders')}</button></>}
+          {invoices.filter(i => i.status === 'draft').length > 0 && <button onClick={bulkSendDrafts} disabled={bulkSending} className="inline-flex items-center gap-2 rounded-md border bg-blue-50 border-blue-200 text-blue-700 text-sm font-medium px-3 py-2 disabled:opacity-50">{bulkSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}{t('billing_send_all_drafts')} ({invoices.filter(i => i.status === 'draft').length})</button>}
+          <button onClick={() => { setStmtOpen(true); setStmtResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-3 py-2"><Mail className="w-4 h-4" />{t('billing_send_statements')}</button>
+          <button onClick={() => { setGenOpen(true); setGenResult(null) }} className="inline-flex items-center gap-2 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-3 py-2"><Zap className="w-4 h-4" />{t('billing_generate')}</button>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2"><Plus className="w-4 h-4" />New Invoice</DialogTrigger>
+            <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2"><Plus className="w-4 h-4" />{t('billing_new_invoice')}</DialogTrigger>
             <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>New Invoice</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('billing_new_invoice')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-2">
-                <div className="space-y-1"><Label>Customer *</Label><Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v ?? '' })}><SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger><SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1"><Label>Due Date</Label><Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>
+                <div className="space-y-1"><Label>{t('billing_customer')} *</Label><Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v ?? '' })}><SelectTrigger><SelectValue placeholder={t('dispatch_select_customer')} /></SelectTrigger><SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-1"><Label>{t('billing_due_date')}</Label><Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label>350ml qty</Label><Input type="number" min="0" value={form.qty_350ml} onChange={e => setForm({ ...form, qty_350ml: parseInt(e.target.value) || 0 })} /></div>
-                  <div className="space-y-1"><Label>750ml qty</Label><Input type="number" min="0" value={form.qty_750ml} onChange={e => setForm({ ...form, qty_750ml: parseInt(e.target.value) || 0 })} /></div>
+                  <div className="space-y-1"><Label>{t('dispatch_qty_350')}</Label><Input type="number" min="0" value={form.qty_350ml} onChange={e => setForm({ ...form, qty_350ml: parseInt(e.target.value) || 0 })} /></div>
+                  <div className="space-y-1"><Label>{t('dispatch_qty_750')}</Label><Input type="number" min="0" value={form.qty_750ml} onChange={e => setForm({ ...form, qty_750ml: parseInt(e.target.value) || 0 })} /></div>
                 </div>
-                {preview > 0 && <div className="bg-slate-50 rounded-lg p-3 text-sm"><span className="text-slate-500">Total: </span><span className="font-bold text-slate-800">{idr(preview)}</span></div>}
-                <div className="space-y-1"><Label>Notes</Label><Input placeholder="Optional notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-                <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSave} disabled={saving || !form.customer_id}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Create Invoice</Button></div>
+                {preview > 0 && <div className="bg-slate-50 rounded-lg p-3 text-sm"><span className="text-slate-500">{t('total')}: </span><span className="font-bold text-slate-800">{idr(preview)}</span></div>}
+                <div className="space-y-1"><Label>{t('notes')}</Label><Input placeholder="Optional notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+                <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setOpen(false)}>{t('cancel')}</Button><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSave} disabled={saving || !form.customer_id}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{t('billing_create_invoice')}</Button></div>
               </div>
             </DialogContent>
           </Dialog>
@@ -232,10 +234,10 @@ function InvoicesTab() {
 
       <div className="bg-white rounded-xl border">
         <Table>
-          <TableHeader><TableRow className="bg-slate-50"><TableHead>Invoice #</TableHead><TableHead>Customer</TableHead><TableHead>Issue Date</TableHead><TableHead>Due Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="bg-slate-50"><TableHead>{t('billing_invoice_number')}</TableHead><TableHead>{t('billing_customer')}</TableHead><TableHead>{t('billing_issue_date')}</TableHead><TableHead>{t('billing_due_date')}</TableHead><TableHead>{t('total')}</TableHead><TableHead>{t('billing_status')}</TableHead><TableHead></TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>
             {loading ? <SkeletonRows cols={8} rows={8} /> : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400"><FileText className="w-8 h-8 text-slate-200 mx-auto mb-2" /><p className="font-medium">No invoices</p></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400"><FileText className="w-8 h-8 text-slate-200 mx-auto mb-2" /><p className="font-medium">{t('billing_no_invoices')}</p></TableCell></TableRow>
             ) : filtered.map(inv => (
               <TableRow key={inv.id} className="hover:bg-slate-50">
                 <TableCell className="font-mono text-sm font-medium">{inv.invoice_number}</TableCell>
@@ -244,10 +246,10 @@ function InvoicesTab() {
                 <TableCell className="text-sm text-slate-500">{inv.due_date}{['sent','overdue'].includes(inv.status) && inv.due_date < new Date().toISOString().split('T')[0] && <span className="ml-1.5 text-xs text-red-500 font-medium">{Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86400000)}d overdue</span>}</TableCell>
                 <TableCell className="font-medium">{idr(Number(inv.total))}</TableCell>
                 <TableCell><Badge className={`text-xs ${statusColors[inv.status]}`}>{inv.status}</Badge></TableCell>
-                <TableCell><Select value={inv.status} onValueChange={v => v && changeStatus(inv.id, v)}><SelectTrigger className="h-7 text-xs w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="sent">Sent</SelectItem><SelectItem value="paid">Paid</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem></SelectContent></Select></TableCell>
+                <TableCell><Select value={inv.status} onValueChange={v => v && changeStatus(inv.id, v)}><SelectTrigger className="h-7 text-xs w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">{t('billing_draft')}</SelectItem><SelectItem value="sent">{t('billing_sent')}</SelectItem><SelectItem value="paid">{t('billing_paid')}</SelectItem><SelectItem value="overdue">{t('billing_overdue')}</SelectItem><SelectItem value="cancelled">{t('cancelled')}</SelectItem></SelectContent></Select></TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    {['sent','overdue'].includes(inv.status) && <button onClick={() => markAsPaid(inv)} className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg"><DollarSign className="w-3 h-3" />Paid</button>}
+                    {['sent','overdue'].includes(inv.status) && <button onClick={() => markAsPaid(inv)} className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg"><DollarSign className="w-3 h-3" />{t('billing_paid')}</button>}
                     <button onClick={() => router.push(`/invoices/${inv.id}`)} className="p-1.5 hover:bg-slate-100 rounded-lg"><ExternalLink className="w-3.5 h-3.5 text-slate-400" /></button>
                   </div>
                 </TableCell>
@@ -261,19 +263,19 @@ function InvoicesTab() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) setGenOpen(false) }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <div><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Zap className="w-5 h-5 text-violet-500" />Generate Monthly Invoices</h2><p className="text-sm text-slate-500 mt-1">Auto-creates invoices from completed deliveries.</p></div>
+              <div><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Zap className="w-5 h-5 text-violet-500" />{t('billing_generate')}</h2><p className="text-sm text-slate-500 mt-1">{t('billing_generate_desc')}</p></div>
               <button onClick={() => setGenOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 text-xl">×</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><label className="block text-sm font-medium text-slate-700 mb-1">Billing Period</label><input type="month" value={genMonth} onChange={e => { setGenMonth(e.target.value); setGenResult(null) }} className="border rounded-lg px-3 py-2 text-sm w-full" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">{t('billing_period')}</label><input type="month" value={genMonth} onChange={e => { setGenMonth(e.target.value); setGenResult(null) }} className="border rounded-lg px-3 py-2 text-sm w-full" /></div>
               {genResult && (
                 <div className={`rounded-xl p-4 ${genResult.created > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
                   <p className="text-sm font-semibold text-slate-800">{genResult.dryRun ? 'Preview: ' : ''}{genResult.created} invoice{genResult.created !== 1 ? 's' : ''} {genResult.dryRun ? 'would be created' : 'created'}, {genResult.skipped} skipped</p>
                 </div>
               )}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => generateMonthlyInvoices(true)} disabled={generating} className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 flex items-center justify-center gap-2">{generating && <Loader2 className="w-4 h-4 animate-spin" />}Preview</button>
-                <button onClick={() => generateMonthlyInvoices(false)} disabled={generating} className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">{generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}Generate</button>
+                <button onClick={() => generateMonthlyInvoices(true)} disabled={generating} className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 flex items-center justify-center gap-2">{generating && <Loader2 className="w-4 h-4 animate-spin" />}{t('billing_preview')}</button>
+                <button onClick={() => generateMonthlyInvoices(false)} disabled={generating} className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">{generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}{t('generate')}</button>
               </div>
             </div>
           </div>
@@ -284,15 +286,15 @@ function InvoicesTab() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) setStmtOpen(false) }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <div><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Mail className="w-5 h-5 text-teal-500" />Send Monthly Statements</h2><p className="text-sm text-slate-500 mt-1">Email account statements to all active customers.</p></div>
+              <div><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Mail className="w-5 h-5 text-teal-500" />{t('billing_send_statements')}</h2><p className="text-sm text-slate-500 mt-1">{t('billing_statements_desc')}</p></div>
               <button onClick={() => setStmtOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 text-xl">×</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><label className="block text-sm font-medium text-slate-700 mb-1">Statement Period</label><input type="month" value={stmtMonth} onChange={e => { setStmtMonth(e.target.value); setStmtResult(null) }} className="border rounded-lg px-3 py-2 text-sm w-full" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">{t('billing_statement_period')}</label><input type="month" value={stmtMonth} onChange={e => { setStmtMonth(e.target.value); setStmtResult(null) }} className="border rounded-lg px-3 py-2 text-sm w-full" /></div>
               {stmtResult && <div className={`rounded-xl p-4 ${stmtResult.sent > 0 ? 'bg-teal-50 border border-teal-200' : 'bg-slate-50 border border-slate-200'}`}><p className="text-sm font-semibold text-slate-800">{stmtResult.sent} sent · {stmtResult.skipped} skipped · {stmtResult.errors} errors</p></div>}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setStmtOpen(false)} className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button onClick={sendMonthlyStatements} disabled={sendingStmts} className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">{sendingStmts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}Send Statements</button>
+                <button onClick={() => setStmtOpen(false)} className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">{t('cancel')}</button>
+                <button onClick={sendMonthlyStatements} disabled={sendingStmts} className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center gap-2">{sendingStmts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}{t('billing_send_statements')}</button>
               </div>
             </div>
           </div>
@@ -304,6 +306,7 @@ function InvoicesTab() {
 
 // ─── CREDIT NOTES TAB ─────────────────────────────────────────────────────────
 function CreditNotesTab() {
+  const { t } = useLanguage()
   const [notes, setNotes] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
@@ -356,26 +359,26 @@ function CreditNotesTab() {
     <div className="p-6 space-y-4">
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Outstanding', value: idr(totalIssued), color: 'text-blue-600' },
-          { label: 'Applied', value: notes.filter(n => n.status === 'applied').length, color: 'text-emerald-600' },
-          { label: 'Total Issued', value: notes.filter(n => n.status !== 'voided').length, color: 'text-slate-700' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{label}</p><p className={`text-2xl font-bold ${color}`}>{value}</p></div>
+          { labelKey: 'billing_cn_outstanding' as const, value: idr(totalIssued), color: 'text-blue-600' },
+          { labelKey: 'billing_cn_applied' as const, value: notes.filter(n => n.status === 'applied').length, color: 'text-emerald-600' },
+          { labelKey: 'billing_cn_total_issued' as const, value: notes.filter(n => n.status !== 'voided').length, color: 'text-slate-700' },
+        ].map(({ labelKey, value, color }) => (
+          <div key={labelKey} className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{t(labelKey)}</p><p className={`text-2xl font-bold ${color}`}>{value}</p></div>
         ))}
       </div>
 
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2"><Plus className="w-4 h-4" />Issue Credit Note</DialogTrigger>
+          <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2"><Plus className="w-4 h-4" />{t('billing_issue_credit_note')}</DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Issue Credit Note</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t('billing_issue_credit_note')}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
-              <div><Label>Customer *</Label><Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v ?? '', invoice_id: '' })}><SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger><SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
-              {invoices.length > 0 && <div><Label>Related Invoice (optional)</Label><Select value={form.invoice_id} onValueChange={v => setForm({ ...form, invoice_id: v ?? '' })}><SelectTrigger><SelectValue placeholder="Select invoice" /></SelectTrigger><SelectContent><SelectItem value="">— No specific invoice —</SelectItem>{invoices.map(i => <SelectItem key={i.id} value={i.id}>{i.invoice_number} · {idr(Number(i.total))}</SelectItem>)}</SelectContent></Select></div>}
-              <div><Label>Credit Amount (IDR) *</Label><Input type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="e.g. 150000" /></div>
-              <div><Label>Reason *</Label><Input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Short delivery, damaged bottles..." /></div>
-              <div><Label>Internal Notes</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-              <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSave} disabled={saving || !form.customer_id || !form.amount}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Issue Credit Note</Button></div>
+              <div><Label>{t('billing_customer')} *</Label><Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v ?? '', invoice_id: '' })}><SelectTrigger><SelectValue placeholder={t('dispatch_select_customer')} /></SelectTrigger><SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+              {invoices.length > 0 && <div><Label>{t('billing_related_invoice')}</Label><Select value={form.invoice_id} onValueChange={v => setForm({ ...form, invoice_id: v ?? '' })}><SelectTrigger><SelectValue placeholder={t('billing_select_invoice')} /></SelectTrigger><SelectContent><SelectItem value="">— {t('billing_no_invoice')} —</SelectItem>{invoices.map(i => <SelectItem key={i.id} value={i.id}>{i.invoice_number} · {idr(Number(i.total))}</SelectItem>)}</SelectContent></Select></div>}
+              <div><Label>{t('billing_credit_amount')} *</Label><Input type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="e.g. 150000" /></div>
+              <div><Label>{t('billing_credit_note_reason')} *</Label><Input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Short delivery, damaged bottles..." /></div>
+              <div><Label>{t('billing_internal_notes')}</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+              <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setOpen(false)}>{t('cancel')}</Button><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSave} disabled={saving || !form.customer_id || !form.amount}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{t('billing_issue_credit_note')}</Button></div>
             </div>
           </DialogContent>
         </Dialog>
@@ -383,10 +386,10 @@ function CreditNotesTab() {
 
       <div className="bg-white rounded-xl border">
         <Table>
-          <TableHeader><TableRow className="bg-slate-50"><TableHead>Credit Note #</TableHead><TableHead>Customer</TableHead><TableHead>Related Invoice</TableHead><TableHead>Amount</TableHead><TableHead>Reason</TableHead><TableHead>Issued</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="bg-slate-50"><TableHead>{t('billing_credit_note_number')}</TableHead><TableHead>{t('billing_customer')}</TableHead><TableHead>{t('billing_invoice_number')}</TableHead><TableHead>{t('amount')}</TableHead><TableHead>{t('billing_credit_note_reason')}</TableHead><TableHead>{t('billing_issue_date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>
             {loading ? <SkeletonRows cols={8} rows={5} /> : notes.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400"><FileText className="w-8 h-8 mx-auto mb-2 text-slate-200" /><p>No credit notes yet</p></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400"><FileText className="w-8 h-8 mx-auto mb-2 text-slate-200" /><p>{t('billing_no_credit_notes')}</p></TableCell></TableRow>
             ) : notes.map(n => (
               <TableRow key={n.id}>
                 <TableCell className="font-mono font-medium">{n.credit_note_number}</TableCell>
@@ -396,7 +399,7 @@ function CreditNotesTab() {
                 <TableCell className="text-slate-600 max-w-48 truncate">{n.reason}</TableCell>
                 <TableCell className="text-slate-500">{new Date(n.issued_at).toLocaleDateString('en-GB')}</TableCell>
                 <TableCell><Badge className={cnStatusColors[n.status] ?? ''}>{n.status}</Badge></TableCell>
-                <TableCell>{n.status === 'issued' && <div className="flex gap-1"><button onClick={() => updateStatus(n.id, 'applied')} className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg">Apply</button><button onClick={() => updateStatus(n.id, 'voided')} className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-500 font-medium px-2 py-1 rounded-lg">Void</button></div>}</TableCell>
+                <TableCell>{n.status === 'issued' && <div className="flex gap-1"><button onClick={() => updateStatus(n.id, 'applied')} className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg">{t('billing_apply')}</button><button onClick={() => updateStatus(n.id, 'voided')} className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-500 font-medium px-2 py-1 rounded-lg">{t('billing_void')}</button></div>}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -407,22 +410,23 @@ function CreditNotesTab() {
 }
 
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'invoices', label: 'Invoices' },
-  { id: 'credit-notes', label: 'Credit Notes' },
+const TAB_KEYS_BILLING = [
+  { id: 'invoices' as Tab, labelKey: 'billing_invoices' as const },
+  { id: 'credit-notes' as Tab, labelKey: 'billing_credit_notes' as const },
 ]
 
 export default function BillingPage() {
   const [tab, setTab] = useState<Tab>('invoices')
+  const { t } = useLanguage()
   return (
     <>
-      <Topbar title="Billing" />
+      <Topbar title="billing_title" titleIsKey />
       <div className="bg-white border-b border-slate-200 px-6">
         <div className="flex gap-1">
-          {TABS.map(({ id, label }) => (
+          {TAB_KEYS_BILLING.map(({ id, labelKey }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>

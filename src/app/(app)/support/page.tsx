@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import {
   MessageSquare, Plus, Loader2, Check, X, AlertCircle,
   CheckCircle2, Clock, Building2, Search, Send, Lock, Eye, Download,
@@ -39,6 +40,7 @@ const fmtRelative = (d: string) => {
 }
 
 export default function SupportPage() {
+  const { t: tr } = useLanguage()
   const [tickets, setTickets] = useState<any[]>([])
   const [comments, setComments] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
@@ -159,7 +161,7 @@ export default function SupportPage() {
 
   return (
     <>
-      <Topbar title="Support Tickets" />
+      <Topbar title="support_title" titleIsKey />
       <div className="flex h-[calc(100vh-57px)]">
 
         {/* ── Left panel ── */}
@@ -167,15 +169,15 @@ export default function SupportPage() {
           <div className="grid grid-cols-3 gap-2 p-3 border-b border-slate-100">
             <div className="bg-red-50 rounded-xl p-2 text-center">
               <p className="text-xl font-bold text-red-600">{counts.open}</p>
-              <p className="text-xs text-red-400">Open</p>
+              <p className="text-xs text-red-400">{tr('support_open')}</p>
             </div>
             <div className="bg-amber-50 rounded-xl p-2 text-center">
               <p className="text-xl font-bold text-amber-600">{counts.in_progress}</p>
-              <p className="text-xs text-amber-400">Active</p>
+              <p className="text-xs text-amber-400">{tr('support_active')}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-2 text-center">
               <p className="text-xl font-bold text-slate-700">{counts.urgent}</p>
-              <p className="text-xs text-slate-400">Urgent</p>
+              <p className="text-xs text-slate-400">{tr('support_urgent')}</p>
             </div>
           </div>
 
@@ -205,7 +207,7 @@ export default function SupportPage() {
             {['open', 'in_progress', 'resolved', 'all'].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
                 className={`px-2 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                {s === 'in_progress' ? 'Active' : s}
+                {s === 'in_progress' ? tr('active') : s === 'open' ? tr('support_open') : s === 'resolved' ? tr('support_resolved') : tr('all')}
               </button>
             ))}
           </div>
@@ -216,7 +218,7 @@ export default function SupportPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p className="text-sm">No tickets</p>
+                <p className="text-sm">{tr('support_no_tickets')}</p>
               </div>
             ) : filtered.map(ticket => {
               const priCfg = PRIORITY_CONFIG[ticket.priority] ?? PRIORITY_CONFIG.medium

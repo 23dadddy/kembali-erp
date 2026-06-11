@@ -7,11 +7,13 @@ import {
   Tag, Plus, Loader2, Check, X, TrendingUp, TrendingDown,
   DollarSign, Calendar, AlertCircle, Edit2
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const fmt = (n: number) => `Rp ${(n ?? 0).toLocaleString('id-ID')}`
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 export default function PricingPage() {
+  const { t } = useLanguage()
   const [prices, setPrices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -65,7 +67,7 @@ export default function PricingPage() {
 
   return (
     <>
-      <Topbar title="Pricing" />
+      <Topbar title={t('price_title')} />
       <div className="p-6 max-w-4xl space-y-6">
 
         {/* Current prices */}
@@ -77,7 +79,7 @@ export default function PricingPage() {
             <div key={size} className={`bg-white border rounded-2xl p-6 shadow-sm border-slate-100`}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Current price — {size}</p>
+                  <p className="text-sm text-slate-400">{size === '350ml' ? t('price_350ml') : t('price_750ml')}</p>
                   <p className={`text-3xl font-bold mt-1 ${color === 'cyan' ? 'text-cyan-600' : 'text-violet-600'}`}>
                     {price ? fmt(price.price_per_unit) : '—'}
                   </p>
@@ -94,7 +96,7 @@ export default function PricingPage() {
               </div>
               <button onClick={() => { setForm(f => ({ ...f, bottle_size: size })); setShowForm(true) }}
                 className={`mt-4 w-full py-2 rounded-xl text-sm font-medium border transition-colors ${color === 'cyan' ? 'border-cyan-200 text-cyan-600 hover:bg-cyan-50' : 'border-violet-200 text-violet-600 hover:bg-violet-50'}`}>
-                Update Price
+                {t('price_new_tier')}
               </button>
             </div>
           ))}
@@ -129,7 +131,7 @@ export default function PricingPage() {
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Bottle Size</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('price_bottle_size')}</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={form.bottle_size} onChange={e => setForm({ ...form, bottle_size: e.target.value })}>
                   <option value="350ml">350ml</option>
@@ -137,7 +139,7 @@ export default function PricingPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">New Price (Rp)</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('price_per_unit')}</label>
                 <input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. 6000"
                   value={form.price_per_unit} onChange={e => setForm({ ...form, price_per_unit: e.target.value })} />
@@ -151,7 +153,7 @@ export default function PricingPage() {
             <div className="flex gap-2">
               <button onClick={savePrice} disabled={saving || !form.price_per_unit}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Save New Price</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('price_save')}</>}
               </button>
               <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
             </div>
@@ -175,16 +177,16 @@ export default function PricingPage() {
           ) : prices.length === 0 ? (
             <div className="text-center py-10 text-slate-400">
               <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-              <p className="text-sm">No pricing history yet</p>
+              <p className="text-sm">{t('price_no_pricing')}</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">Size</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">Price</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Effective From</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('price_bottle_size')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">{t('price_per_unit')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">{t('price_min_qty')}</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -195,9 +197,9 @@ export default function PricingPage() {
                     <td className="px-4 py-3 text-slate-500">{fmtDate(p.effective_from)}</td>
                     <td className="px-5 py-3">
                       {p.active ? (
-                        <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium">Active</span>
+                        <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium">{t('price_active')}</span>
                       ) : (
-                        <span className="bg-slate-100 text-slate-400 text-xs px-2 py-0.5 rounded-full">Superseded</span>
+                        <span className="bg-slate-100 text-slate-400 text-xs px-2 py-0.5 rounded-full">{t('inactive')}</span>
                       )}
                     </td>
                   </tr>

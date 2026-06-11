@@ -9,6 +9,7 @@ import {
   TrendingUp, Package, RotateCcw, AlertTriangle,
   DollarSign, Truck, Users, BarChart3, Loader2, Download
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
 interface ReportData {
   totalRevenue: number
@@ -40,6 +41,7 @@ function exportCSV(rows: Record<string, any>[], filename: string) {
 }
 
 export default function ReportsPage() {
+  const { t } = useLanguage()
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('30') // days
@@ -134,13 +136,13 @@ export default function ReportsPage() {
 
   return (
     <>
-      <Topbar title="Reports & Analytics" />
+      <Topbar title={t('rep_title')} />
       <div className="p-6 space-y-6">
 
         {/* Period selector + export */}
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
-            {[['7', '7 days'], ['30', '30 days'], ['90', '90 days'], ['365', 'All time']].map(([v, label]) => (
+            {[['7', t('rep_7days')], ['30', t('rep_30days')], ['90', t('rep_90days')], ['365', t('rep_all_time')]].map(([v, label]) => (
               <button
                 key={v}
                 onClick={() => setPeriod(v)}
@@ -158,13 +160,13 @@ export default function ReportsPage() {
                 onClick={() => exportCSV(data.topCustomers.map(c => ({ Customer: c.name, Deliveries: c.deliveries, Revenue_IDR: c.revenue })), `top-customers-${period}d.csv`)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border rounded-lg hover:bg-slate-50 transition-colors"
               >
-                <Download className="w-3.5 h-3.5" /> Customers CSV
+                <Download className="w-3.5 h-3.5" /> {t('rep_customers_csv')}
               </button>
               <button
                 onClick={() => exportCSV(data.monthlyRevenue.map(m => ({ Month: m.month, Revenue_IDR: m.revenue, Deliveries: m.deliveries })), 'monthly-revenue.csv')}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border rounded-lg hover:bg-slate-50 transition-colors"
               >
-                <Download className="w-3.5 h-3.5" /> Revenue CSV
+                <Download className="w-3.5 h-3.5" /> {t('rep_revenue_csv')}
               </button>
             </div>
           )}
@@ -179,10 +181,10 @@ export default function ReportsPage() {
             {/* KPI row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Revenue', value: idr(data.totalRevenue), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'Deliveries', value: data.totalDeliveries.toLocaleString(), icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { label: 'Overdue invoices', value: `${data.overdueInvoices} (${idr(data.overdueValue)})`, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
-                { label: 'Customers with loss', value: data.bottleLossAlerts.length.toString(), icon: Package, color: 'text-amber-600', bg: 'bg-amber-50' },
+                { label: t('rep_revenue'), value: idr(data.totalRevenue), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { label: t('rep_deliveries'), value: data.totalDeliveries.toLocaleString(), icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50' },
+                { label: t('rep_overdue_invoices'), value: `${data.overdueInvoices} (${idr(data.overdueValue)})`, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
+                { label: t('rep_customers_with_loss'), value: data.bottleLossAlerts.length.toString(), icon: Package, color: 'text-amber-600', bg: 'bg-amber-50' },
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <Card key={label}>
                   <CardContent className="pt-5">
@@ -205,7 +207,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4" /> Bottle Recovery Rate
+                    <RotateCcw className="w-4 h-4" /> {t('rep_bottle_recovery')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -216,7 +218,7 @@ export default function ReportsPage() {
                     <div key={label}>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="font-medium text-slate-700">{label}</span>
-                        <span className={`font-bold ${rate >= 92 ? 'text-emerald-600' : 'text-red-500'}`}>{rate}% recovered</span>
+                        <span className={`font-bold ${rate >= 92 ? 'text-emerald-600' : 'text-red-500'}`}>{rate}% {t('rep_recovered')}</span>
                       </div>
                       <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                         <div
@@ -225,15 +227,15 @@ export default function ReportsPage() {
                         />
                       </div>
                       <div className="flex gap-4 mt-1.5 text-xs text-slate-400">
-                        <span>Delivered: {delivered.toLocaleString()}</span>
-                        <span>Collected: {collected.toLocaleString()}</span>
-                        <span>Damaged: {damaged}</span>
-                        <span>Outstanding: {delivered - collected}</span>
+                        <span>{t('rep_delivered')} {delivered.toLocaleString()}</span>
+                        <span>{t('rep_collected')} {collected.toLocaleString()}</span>
+                        <span>{t('rep_damaged')} {damaged}</span>
+                        <span>{t('rep_outstanding')} {delivered - collected}</span>
                       </div>
                     </div>
                   ))}
                   <div className="pt-2 border-t text-xs text-slate-400">
-                    Target: ≥92% recovery (within 8% loss threshold)
+                    {t('rep_recovery_target')}
                   </div>
                 </CardContent>
               </Card>
@@ -242,12 +244,12 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" /> Monthly Revenue
+                    <BarChart3 className="w-4 h-4" /> {t('rep_monthly_revenue')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {data.monthlyRevenue.length === 0 ? (
-                    <p className="text-sm text-slate-400">No data yet</p>
+                    <p className="text-sm text-slate-400">{t('rep_no_data')}</p>
                   ) : (
                     <div className="space-y-2">
                       {data.monthlyRevenue.map(({ month, revenue, deliveries }) => {
@@ -274,12 +276,12 @@ export default function ReportsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Top Customers by Revenue
+                  <Users className="w-4 h-4" /> {t('rep_top_customers')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {data.topCustomers.length === 0 ? (
-                  <p className="text-sm text-slate-400">No delivery data yet</p>
+                  <p className="text-sm text-slate-400">{t('rep_no_delivery_data')}</p>
                 ) : (
                   <div className="space-y-2">
                     {data.topCustomers.map((c, i) => {
@@ -309,7 +311,7 @@ export default function ReportsPage() {
               <Card className="border-amber-200">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2 text-amber-700">
-                    <AlertTriangle className="w-4 h-4" /> Bottle Loss Alerts — Customers Exceeding 8% Threshold
+                    <AlertTriangle className="w-4 h-4" /> {t('rep_bottle_loss_alerts')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -321,8 +323,8 @@ export default function ReportsPage() {
                           <span className="text-slate-400 ml-2 text-xs">{c.city}</span>
                         </div>
                         <div className="flex gap-4 text-xs text-slate-500">
-                          {c.outstanding350 > 0 && <span>350ml outstanding: <strong>{c.outstanding350}</strong></span>}
-                          {c.outstanding750 > 0 && <span>750ml outstanding: <strong>{c.outstanding750}</strong></span>}
+                          {c.outstanding350 > 0 && <span>{t('rep_350ml_outstanding')} <strong>{c.outstanding350}</strong></span>}
+                          {c.outstanding750 > 0 && <span>{t('rep_750ml_outstanding')} <strong>{c.outstanding750}</strong></span>}
                         </div>
                         <span className="font-bold text-amber-700">{idr(c.chargeable)}</span>
                       </div>

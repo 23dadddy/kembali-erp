@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
 import { CustomerType, Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/lib/db'
+import { useLanguage } from '@/components/providers/language-provider'
 
 function subscriptionDuration(startDate: string | null | undefined): string {
   if (!startDate) return '—'
@@ -81,6 +82,7 @@ const emptyForm: CustomerForm = {
 }
 
 export default function CustomersPage() {
+  const { t } = useLanguage()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [open, setOpen] = useState(false)
@@ -143,7 +145,7 @@ export default function CustomersPage() {
 
   return (
     <>
-      <Topbar title="Customers" />
+      <Topbar title="customers_title" titleIsKey />
       <div className="p-6 space-y-4">
         {error && (
           <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
@@ -155,24 +157,24 @@ export default function CustomersPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search customers..."
+                placeholder={t('customers_search')}
                 className="pl-8 w-64"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? 'all')}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="All Types" /></SelectTrigger>
+              <SelectTrigger className="w-36"><SelectValue placeholder={t('customers_all')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="hotel">Hotel</SelectItem>
-                <SelectItem value="restaurant">Restaurant</SelectItem>
-                <SelectItem value="resort">Resort</SelectItem>
-                <SelectItem value="cafe">Cafe</SelectItem>
-                <SelectItem value="office">Office</SelectItem>
-                <SelectItem value="retail">Retail</SelectItem>
-                <SelectItem value="business">Business</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="all">{t('customers_all')}</SelectItem>
+                <SelectItem value="hotel">{t('customers_hotel')}</SelectItem>
+                <SelectItem value="restaurant">{t('customers_restaurant')}</SelectItem>
+                <SelectItem value="resort">{t('customers_resort')}</SelectItem>
+                <SelectItem value="cafe">{t('customers_cafe')}</SelectItem>
+                <SelectItem value="office">{t('customers_office')}</SelectItem>
+                <SelectItem value="retail">{t('customers_retail')}</SelectItem>
+                <SelectItem value="business">{t('customers_business')}</SelectItem>
+                <SelectItem value="other">{t('customers_other')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -189,24 +191,24 @@ export default function CustomersPage() {
             a.download = 'customers.csv'; a.click()
           }} disabled={filtered.length === 0}
             className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 transition-colors disabled:opacity-40">
-            <Download className="w-4 h-4" /> Export
+            <Download className="w-4 h-4" /> {t('export')}
           </button>
           <Link href="/customers/import" className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 transition-colors">
-            <Upload className="w-4 h-4" /> Import CSV
+            <Upload className="w-4 h-4" /> {t('import')}
           </Link>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium px-4 py-2 transition-colors">
               <Plus className="w-4 h-4" />
-              Add Customer
+              {t('customers_new')}
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>New Customer</DialogTitle>
+                <DialogTitle>{t('customers_new')}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1">
-                    <Label>Business Name *</Label>
+                    <Label>{t('customers_name')} *</Label>
                     <Input
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -214,60 +216,59 @@ export default function CustomersPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>Type *</Label>
+                    <Label>{t('customers_type')} *</Label>
                     <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: (v ?? 'hotel') as CustomerType })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="hotel">Hotel</SelectItem>
-                        <SelectItem value="restaurant">Restaurant</SelectItem>
-                        <SelectItem value="resort">Resort</SelectItem>
-                        <SelectItem value="cafe">Cafe</SelectItem>
-                        <SelectItem value="office">Office</SelectItem>
-                        <SelectItem value="retail">Retail</SelectItem>
-                        <SelectItem value="business">Business</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="hotel">{t('customers_hotel')}</SelectItem>
+                        <SelectItem value="restaurant">{t('customers_restaurant')}</SelectItem>
+                        <SelectItem value="resort">{t('customers_resort')}</SelectItem>
+                        <SelectItem value="cafe">{t('customers_cafe')}</SelectItem>
+                        <SelectItem value="office">{t('customers_office')}</SelectItem>
+                        <SelectItem value="retail">{t('customers_retail')}</SelectItem>
+                        <SelectItem value="business">{t('customers_business')}</SelectItem>
+                        <SelectItem value="other">{t('customers_other')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label>City *</Label>
+                    <Label>{t('city')} *</Label>
                     <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="e.g. Nusa Dua" />
                   </div>
                   <div className="col-span-2 space-y-1">
-                    <Label>Address *</Label>
-                    <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street address" />
+                    <Label>{t('address')} *</Label>
+                    <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
                   </div>
                   <div className="space-y-1">
-                    <Label>Contact Name</Label>
+                    <Label>{t('customers_contact_name')}</Label>
                     <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
                   </div>
                   <div className="space-y-1">
-                    <Label>Contact Phone</Label>
+                    <Label>{t('customers_contact_phone')}</Label>
                     <Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
                   </div>
                   <div className="col-span-2 space-y-1">
-                    <Label>Contact Email</Label>
+                    <Label>{t('customers_contact_email')}</Label>
                     <Input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
                   </div>
                   <div className="col-span-2 space-y-1">
-                    <Label>Notes</Label>
+                    <Label>{t('notes')}</Label>
                     <Textarea
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
                       rows={2}
-                      placeholder="Delivery instructions, preferences, etc."
                     />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setOpen(false)}>{t('cancel')}</Button>
                   <Button
                     className="bg-cyan-600 hover:bg-cyan-700"
                     onClick={handleSave}
                     disabled={saving || !form.name || !form.address || !form.city}
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Save Customer
+                    {t('save')}
                   </Button>
                 </div>
               </div>
@@ -279,16 +280,16 @@ export default function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead>Customer</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead>{t('customers_col_name')}</TableHead>
+                <TableHead>{t('customers_col_type')}</TableHead>
+                <TableHead>{t('customers_col_city')}</TableHead>
+                <TableHead>{t('customers_col_contact')}</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-1">
-                    <CalendarDays className="w-3.5 h-3.5" /> Sub Duration
+                    <CalendarDays className="w-3.5 h-3.5" /> {t('customers_col_duration')}
                   </div>
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('customers_col_status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -299,8 +300,7 @@ export default function CustomersPage() {
                   <TableCell colSpan={6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Building2 className="w-8 h-8 text-slate-200" />
-                      <p className="font-medium">{search ? 'No results found' : 'No customers yet'}</p>
-                      <p className="text-sm">Add your first customer to get started</p>
+                      <p className="font-medium">{search ? t('customers_no_customers') : t('customers_add_first')}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -338,15 +338,15 @@ export default function CustomersPage() {
                       {subStarts[c.id] ? (
                         <div>
                           <div className="font-medium text-slate-700">{subscriptionDuration(subStarts[c.id])}</div>
-                          <div className="text-xs text-slate-400">since {new Date(subStarts[c.id]).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</div>
+                          <div className="text-xs text-slate-400">{t('customers_since')} {new Date(subStarts[c.id]).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</div>
                         </div>
                       ) : (
-                        <span className="text-slate-300 text-xs">No subscription</span>
+                        <span className="text-slate-300 text-xs">—</span>
                       )}
                     </TableCell>
                     <TableCell>
                       <Badge className={c.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                        {c.active ? 'Active' : 'Inactive'}
+                        {c.active ? t('active') : t('inactive')}
                       </Badge>
                     </TableCell>
                   </TableRow>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function FinanceContent() {
+  const { t } = useLanguage()
   const [tab, setTab] = useState<'overview' | 'expenses' | 'payments'>('overview')
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
@@ -78,17 +80,17 @@ function FinanceContent() {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Revenue Collected', value: idr(totalIncoming), icon: TrendingUp, color: 'text-emerald-700', bg: 'bg-emerald-50' },
-          { label: 'Total Expenses', value: idr(totalExpenses), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Net Cashflow', value: idr(netCashflow), icon: DollarSign, color: netCashflow >= 0 ? 'text-emerald-700' : 'text-red-600', bg: netCashflow >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
-          { label: 'Accounts Receivable', value: idr(totalAR), icon: CreditCard, color: 'text-amber-700', bg: 'bg-amber-50' },
+          { label: t('accounting_total_revenue'), value: idr(totalIncoming), icon: TrendingUp, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+          { label: t('accounting_total_expenses'), value: idr(totalExpenses), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: t('accounting_net_profit'), value: idr(netCashflow), icon: DollarSign, color: netCashflow >= 0 ? 'text-emerald-700' : 'text-red-600', bg: netCashflow >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
+          { label: t('billing_total_outstanding'), value: idr(totalAR), icon: CreditCard, color: 'text-amber-700', bg: 'bg-amber-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className={bg}><CardContent className="pt-4"><div className="flex items-center justify-between"><div><p className="text-xs text-slate-500">{label}</p><p className={`text-base font-bold ${color}`}>{value}</p></div><Icon className={`w-5 h-5 ${color} opacity-50`} /></div></CardContent></Card>
         ))}
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">
-        {[{ id: 'overview', label: 'Overview' }, { id: 'expenses', label: `Expenses (${monthExpenses.length})` }, { id: 'payments', label: `Payments (${monthPayments.length})` }].map(({ id, label }) => (
+        {[{ id: 'overview', label: t('accounting_overview') }, { id: 'expenses', label: `${t('accounting_expenses')} (${monthExpenses.length})` }, { id: 'payments', label: `${t('accounting_payments')} (${monthPayments.length})` }].map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id as any)} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>{label}</button>
         ))}
       </div>
@@ -154,7 +156,7 @@ function FinanceContent() {
               </CardContent>
             </Card>
           )}
-          {monthExpenses.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><Receipt className="w-8 h-8 mx-auto mb-2 text-slate-200" />No expenses this month</div>
+          {monthExpenses.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><Receipt className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('accounting_no_expenses')}</div>
             : <div className="space-y-2">
               {monthExpenses.map(e => (
                 <Card key={e.id}><CardContent className="pt-3 pb-3">
@@ -194,7 +196,7 @@ function FinanceContent() {
               </CardContent>
             </Card>
           )}
-          {monthPayments.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-200" />No payments recorded this month</div>
+          {monthPayments.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('accounting_no_payments')}</div>
             : <div className="space-y-2">
               {monthPayments.map(p => {
                 const customer = customers.find(c => c.id === p.customer_id)
@@ -227,35 +229,36 @@ function LinkedPage({ route, icon: Icon, label, description }: { route: string; 
   )
 }
 
-const TABS = [
-  { id: 'overview' as Tab, label: 'Overview', icon: BarChart3 },
-  { id: 'expenses' as Tab, label: 'Expenses & Payments', icon: Receipt },
-  { id: 'purchase-orders' as Tab, label: 'Purchase Orders', icon: ShoppingCart },
-  { id: 'accounts' as Tab, label: 'Accounts', icon: BookOpen },
-  { id: 'reports' as Tab, label: 'Reports', icon: TrendingUp },
-  { id: 'payroll' as Tab, label: 'Payroll', icon: Banknote },
+const TAB_KEYS = [
+  { id: 'overview' as Tab, labelKey: 'accounting_overview' as const, icon: BarChart3 },
+  { id: 'expenses' as Tab, labelKey: 'accounting_expenses' as const, icon: Receipt },
+  { id: 'purchase-orders' as Tab, labelKey: 'accounting_purchase_orders' as const, icon: ShoppingCart },
+  { id: 'accounts' as Tab, labelKey: 'accounting_accounts' as const, icon: BookOpen },
+  { id: 'reports' as Tab, labelKey: 'accounting_reports' as const, icon: TrendingUp },
+  { id: 'payroll' as Tab, labelKey: 'accounting_payroll' as const, icon: Banknote },
 ]
 
 export default function AccountingPage() {
   const [tab, setTab] = useState<Tab>('overview')
+  const { t } = useLanguage()
   return (
     <>
-      <Topbar title="Accounting" />
+      <Topbar title="accounting_title" titleIsKey />
       <div className="bg-white border-b border-slate-200 px-6 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {TAB_KEYS.map(({ id, labelKey, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              <Icon className="w-4 h-4" />{label}
+              <Icon className="w-4 h-4" />{t(labelKey)}
             </button>
           ))}
         </div>
       </div>
       {(tab === 'overview' || tab === 'expenses') && <FinanceContent />}
-      {tab === 'purchase-orders' && <LinkedPage route="/purchase-orders" icon={ShoppingCart} label="Purchase Orders" description="Manage supplier purchase orders, track approvals and deliveries." />}
-      {tab === 'accounts' && <LinkedPage route="/accounts" icon={BookOpen} label="Accounts" description="Chart of accounts, general ledger, and account management." />}
-      {tab === 'reports' && <LinkedPage route="/reports" icon={TrendingUp} label="Financial Reports" description="P&L statements, balance sheets, and custom reports." />}
-      {tab === 'payroll' && <LinkedPage route="/payroll" icon={Banknote} label="Payroll" description="Process payroll, manage salaries, and payroll records." />}
+      {tab === 'purchase-orders' && <LinkedPage route="/purchase-orders" icon={ShoppingCart} label={t('accounting_purchase_orders')} description={t('accounting_link_purchase_orders')} />}
+      {tab === 'accounts' && <LinkedPage route="/accounts" icon={BookOpen} label={t('accounting_accounts')} description={t('accounting_link_accounts')} />}
+      {tab === 'reports' && <LinkedPage route="/reports" icon={TrendingUp} label={t('accounting_reports')} description={t('accounting_link_reports')} />}
+      {tab === 'payroll' && <LinkedPage route="/payroll" icon={Banknote} label={t('accounting_payroll')} description={t('accounting_link_payroll')} />}
     </>
   )
 }

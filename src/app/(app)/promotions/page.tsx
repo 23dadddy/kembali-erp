@@ -7,6 +7,7 @@ import {
   Tag, Plus, Loader2, Check, X, Percent, DollarSign,
   Gift, Calendar, CheckCircle2, AlertCircle, Copy
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   percent: { label: 'Percentage Off', icon: Percent, color: 'text-cyan-600' },
@@ -18,6 +19,7 @@ const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> =
 const fmt = (n: number) => `Rp ${(n ?? 0).toLocaleString('id-ID')}`
 
 export default function PromotionsPage() {
+  const { t } = useLanguage()
   const [promotions, setPromotions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -102,7 +104,7 @@ export default function PromotionsPage() {
 
   return (
     <>
-      <Topbar title="Promotions & Discounts" />
+      <Topbar title={t('promo_title')} />
       <div className="p-6 max-w-5xl space-y-6">
 
         {/* Stats */}
@@ -138,7 +140,7 @@ export default function PromotionsPage() {
           <div className="flex-1" />
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Create Promotion
+            <Plus className="w-4 h-4" /> {t('promo_new')}
           </button>
         </div>
 
@@ -201,7 +203,7 @@ export default function PromotionsPage() {
             <div className="flex gap-2">
               <button onClick={savePromo} disabled={saving || !form.code || !form.name}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Create Promotion</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('promo_new')}</>}
               </button>
               <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
             </div>
@@ -214,7 +216,7 @@ export default function PromotionsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <Tag className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-            <p>No promotions found</p>
+            <p>{t('promo_no_promos')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -238,9 +240,9 @@ export default function PromotionsPage() {
                           {copied === promo.code ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3 h-3 text-slate-400" />}
                         </button>
                         <span className="text-slate-600 text-sm">{promo.name}</span>
-                        {expired && <span className="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full">Expired</span>}
-                        {exhausted && <span className="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full">Exhausted</span>}
-                        {!inactive && <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Active</span>}
+                        {expired && <span className="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full">{t('promo_expired')}</span>}
+                        {exhausted && <span className="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full">{t('promo_expired')}</span>}
+                        {!inactive && <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">{t('promo_active')}</span>}
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                         <span className={`font-medium ${cfg.color}`}>

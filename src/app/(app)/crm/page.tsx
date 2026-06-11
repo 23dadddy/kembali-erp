@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { createClient } from '@/lib/supabase/client'
 import { idr } from '@/lib/format'
 import {
@@ -50,6 +51,7 @@ const EMPTY_LEAD = { status: 'new' as Stage, type: 'business', probability: 50 }
 
 export default function CRMPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [leads, setLeads] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [activities, setActivities] = useState<any[]>([])
@@ -196,7 +198,7 @@ export default function CRMPage() {
 
   return (
     <>
-      <Topbar title="CRM & Sales Pipeline" />
+      <Topbar title="crm_title" titleIsKey />
       <div className="flex h-[calc(100vh-57px)]">
         {/* Left panel — leads list */}
         <div className="w-80 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
@@ -204,15 +206,15 @@ export default function CRMPage() {
           <div className="grid grid-cols-3 gap-2 p-3 border-b border-slate-100">
             <div className="bg-slate-50 rounded-xl p-2 text-center">
               <p className="text-lg font-bold text-slate-700">{pipeline.length}</p>
-              <p className="text-xs text-slate-400">Active</p>
+              <p className="text-xs text-slate-400">{t('active')}</p>
             </div>
             <div className="bg-emerald-50 rounded-xl p-2 text-center">
               <p className="text-lg font-bold text-emerald-600">{wonCount}</p>
-              <p className="text-xs text-emerald-400">Won</p>
+              <p className="text-xs text-emerald-400">{t('crm_won')}</p>
             </div>
             <div className="bg-cyan-50 rounded-xl p-2 text-center">
               <p className="text-xs font-bold text-cyan-600">{idr(pipelineValue)}</p>
-              <p className="text-xs text-cyan-400">Pipeline</p>
+              <p className="text-xs text-cyan-400">{t('crm_pipeline_value')}</p>
             </div>
           </div>
 
@@ -229,7 +231,7 @@ export default function CRMPage() {
           {/* Search + filter */}
           <div className="px-3 py-2 space-y-2 border-b border-slate-100">
             <input className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-400"
-              placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} />
+              placeholder={t('crm_search')} value={search} onChange={e => setSearch(e.target.value)} />
             <div className="flex gap-1 flex-wrap">
               {['active', 'all', ...STAGES].map(s => (
                 <button key={s} onClick={() => setFilterStage(s)}
@@ -275,7 +277,7 @@ export default function CRMPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
                 <Target className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p className="text-sm">No leads found</p>
+                <p className="text-sm">{t('crm_no_leads')}</p>
               </div>
             ) : filtered.map(lead => {
               const cfg = STAGE_CONFIG[lead.status] ?? STAGE_CONFIG.new
@@ -303,7 +305,7 @@ export default function CRMPage() {
           {showForm ? (
             <div className="p-6 max-w-2xl space-y-4">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-                <h2 className="font-bold text-slate-800">{editingId ? 'Edit Lead' : 'New Lead'}</h2>
+                <h2 className="font-bold text-slate-800">{editingId ? t('edit') : t('crm_new_lead')}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-slate-600 block mb-1">Business Name *</label>

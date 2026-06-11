@@ -8,6 +8,7 @@ import {
   AlertCircle, CheckCircle2, RefreshCw, Building2, ChevronRight, Mail, Download
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   draft: { color: 'bg-slate-100 text-slate-500', label: 'Draft' },
@@ -21,6 +22,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 
 
 export default function ContractsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [contracts, setContracts] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,13 +130,13 @@ export default function ContractsPage() {
 
   return (
     <>
-      <Topbar title="Contracts" />
+      <Topbar title={t('contracts_title')} />
       <div className="p-6 max-w-5xl space-y-6">
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400">Active Contracts</p>
+            <p className="text-xs text-slate-400">{t('contracts_active')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{contracts.filter(c => c.status === 'active').length}</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
@@ -194,7 +196,7 @@ export default function ContractsPage() {
           </button>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> New Contract
+            <Plus className="w-4 h-4" /> {t('contracts_new')}
           </button>
         </div>
 
@@ -253,7 +255,7 @@ export default function ContractsPage() {
             <div className="flex gap-2">
               <button onClick={saveContract} disabled={saving || !form.customer_id || !form.title}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Save Contract</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('save')}</>}
               </button>
               <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
             </div>
@@ -266,7 +268,7 @@ export default function ContractsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <FileText className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-            <p>No contracts found</p>
+            <p>{t('contracts_no_contracts')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -284,7 +286,7 @@ export default function ContractsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-slate-800">{contract.title}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{contract.status === 'active' ? t('contracts_active') : contract.status === 'expired' ? t('contracts_expired') : t('contracts_draft_status')}</span>
                         {contract.auto_renew && <span className="text-xs bg-cyan-100 text-cyan-600 px-2 py-0.5 rounded-full flex items-center gap-1"><RefreshCw className="w-3 h-3" />Auto-renew</span>}
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">

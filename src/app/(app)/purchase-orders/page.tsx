@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Trash2, Package, Loader2, ChevronRight, Check, Mail } from 'lucide-react'
 import { SkeletonRows } from '@/components/ui/skeleton-rows'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-600',
@@ -27,6 +28,7 @@ interface POItem { description: string; quantity: number; unit: string; unit_pri
 const emptyItem = (): POItem => ({ description: '', quantity: 1, unit: 'unit', unit_price: 0 })
 
 export default function PurchaseOrdersPage() {
+  const { t } = useLanguage()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -119,14 +121,14 @@ export default function PurchaseOrdersPage() {
 
   return (
     <>
-      <Topbar title="Purchase Orders" />
+      <Topbar title={t('po_title')} />
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: 'Draft', value: orders.filter(o=>o.status==='draft').length, sub: idr(totalDraft), color: 'text-slate-600' },
-            { label: 'Sent / Pending', value: orders.filter(o=>o.status==='sent').length, sub: idr(totalPending), color: 'text-blue-600' },
-            { label: 'Received', value: orders.filter(o=>o.status==='received').length, sub: '', color: 'text-emerald-600' },
-            { label: 'Total Orders', value: orders.length, sub: '', color: 'text-slate-700' },
+            { label: t('po_draft'), value: orders.filter(o=>o.status==='draft').length, sub: idr(totalDraft), color: 'text-slate-600' },
+            { label: t('po_sent_pending'), value: orders.filter(o=>o.status==='sent').length, sub: idr(totalPending), color: 'text-blue-600' },
+            { label: t('po_received'), value: orders.filter(o=>o.status==='received').length, sub: '', color: 'text-emerald-600' },
+            { label: t('po_total_orders'), value: orders.length, sub: '', color: 'text-slate-700' },
           ].map(({ label, value, sub, color }) => (
             <div key={label} className="bg-white rounded-xl border p-4">
               <p className="text-xs text-slate-500">{label}</p>
@@ -138,7 +140,7 @@ export default function PurchaseOrdersPage() {
 
         <div className="flex justify-end">
           <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={() => setOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> New Purchase Order
+            <Plus className="w-4 h-4 mr-2" /> {t('po_new')}
           </Button>
         </div>
 
@@ -146,20 +148,20 @@ export default function PurchaseOrdersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead>PO #</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Order Date</TableHead>
-                <TableHead>Expected</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('po_number')}</TableHead>
+                <TableHead>{t('po_vendor')}</TableHead>
+                <TableHead>{t('po_order_date')}</TableHead>
+                <TableHead>{t('po_expected')}</TableHead>
+                <TableHead>{t('total')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? <SkeletonRows cols={7} rows={5} /> : orders.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-10 text-slate-400">
                   <Package className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                  No purchase orders yet
+                  {t('po_no_orders')}
                 </TableCell></TableRow>
               ) : orders.map(o => (
                 <TableRow key={o.id} className="hover:bg-slate-50">
@@ -177,22 +179,22 @@ export default function PurchaseOrdersPage() {
                       {(o.status === 'draft' || o.status === 'sent') && o.vendor_email && (
                         <button onClick={() => sendPOToVendor(o)} disabled={sendingPO === o.id}
                           className="text-xs bg-violet-50 hover:bg-violet-100 text-violet-700 font-medium px-2 py-1 rounded-lg flex items-center gap-1">
-                          {sendingPO === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}Email PO
+                          {sendingPO === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}{t('po_email_po')}
                         </button>
                       )}
                       {o.status === 'draft' && (
                         <button onClick={() => updateStatus(o.id, 'sent')}
-                          className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-lg">Send</button>
+                          className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-lg">{t('po_send')}</button>
                       )}
                       {o.status === 'sent' && (
                         <button onClick={() => updateStatus(o.id, 'received')}
                           className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-2 py-1 rounded-lg flex items-center gap-1">
-                          <Check className="w-3 h-3" />Received
+                          <Check className="w-3 h-3" />{t('po_received')}
                         </button>
                       )}
                       {['draft','sent'].includes(o.status) && (
                         <button onClick={() => updateStatus(o.id, 'cancelled')}
-                          className="text-xs text-slate-400 hover:text-red-500 px-2 py-1 rounded-lg">Cancel</button>
+                          className="text-xs text-slate-400 hover:text-red-500 px-2 py-1 rounded-lg">{t('po_cancel_order')}</button>
                       )}
                       <button onClick={() => setSelected(o)}
                         className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -210,21 +212,21 @@ export default function PurchaseOrdersPage() {
       {/* New PO Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>New Purchase Order</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('po_new')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label>Vendor Name *</Label><Input value={form.vendor_name} onChange={e => setForm({...form, vendor_name: e.target.value})} placeholder="e.g. CV Bali Packaging" /></div>
-              <div><Label>Contact Person</Label><Input value={form.vendor_contact} onChange={e => setForm({...form, vendor_contact: e.target.value})} /></div>
-              <div><Label>Email</Label><Input type="email" value={form.vendor_email} onChange={e => setForm({...form, vendor_email: e.target.value})} /></div>
-              <div><Label>Expected Delivery</Label><Input type="date" value={form.expected_date} onChange={e => setForm({...form, expected_date: e.target.value})} /></div>
+              <div className="col-span-2"><Label>{t('po_vendor_name')} *</Label><Input value={form.vendor_name} onChange={e => setForm({...form, vendor_name: e.target.value})} placeholder="e.g. CV Bali Packaging" /></div>
+              <div><Label>{t('po_contact_person')}</Label><Input value={form.vendor_contact} onChange={e => setForm({...form, vendor_contact: e.target.value})} /></div>
+              <div><Label>{t('email')}</Label><Input type="email" value={form.vendor_email} onChange={e => setForm({...form, vendor_email: e.target.value})} /></div>
+              <div><Label>{t('po_expected_delivery')}</Label><Input type="date" value={form.expected_date} onChange={e => setForm({...form, expected_date: e.target.value})} /></div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label>Items *</Label>
+                <Label>{t('po_items')} *</Label>
                 <button onClick={() => setItems(prev => [...prev, emptyItem()])}
                   className="text-xs text-cyan-600 hover:text-cyan-700 flex items-center gap-1 font-medium">
-                  <Plus className="w-3 h-3" /> Add Item
+                  <Plus className="w-3 h-3" /> {t('po_add_item')}
                 </button>
               </div>
               <div className="space-y-2">
@@ -242,17 +244,17 @@ export default function PurchaseOrdersPage() {
 
             {subtotal > 0 && (
               <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1 text-right">
-                <div className="flex justify-between text-slate-500"><span>Subtotal</span><span>{idr(subtotal)}</span></div>
+                <div className="flex justify-between text-slate-500"><span>{t('po_subtotal')}</span><span>{idr(subtotal)}</span></div>
                 <div className="flex justify-between text-slate-500"><span>PPN 11%</span><span>{idr(tax)}</span></div>
-                <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-200"><span>Total</span><span>{idr(subtotal + tax)}</span></div>
+                <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-200"><span>{t('total')}</span><span>{idr(subtotal + tax)}</span></div>
               </div>
             )}
 
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
+            <div><Label>{t('notes')}</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>{t('cancel')}</Button>
               <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleSave} disabled={saving || !form.vendor_name}>
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Create PO
+                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} {t('po_create')}
               </Button>
             </div>
           </div>
@@ -266,14 +268,14 @@ export default function PurchaseOrdersPage() {
             <DialogHeader><DialogTitle>{selected.po_number} — {selected.vendor_name}</DialogTitle></DialogHeader>
             <div className="space-y-3 py-2">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-400">Status</span><p className="font-medium capitalize">{selected.status}</p></div>
-                <div><span className="text-slate-400">Order Date</span><p className="font-medium">{selected.order_date}</p></div>
-                {selected.expected_date && <div><span className="text-slate-400">Expected</span><p className="font-medium">{selected.expected_date}</p></div>}
-                {selected.received_date && <div><span className="text-slate-400">Received</span><p className="font-medium">{selected.received_date}</p></div>}
+                <div><span className="text-slate-400">{t('status')}</span><p className="font-medium capitalize">{selected.status}</p></div>
+                <div><span className="text-slate-400">{t('po_order_date')}</span><p className="font-medium">{selected.order_date}</p></div>
+                {selected.expected_date && <div><span className="text-slate-400">{t('po_expected')}</span><p className="font-medium">{selected.expected_date}</p></div>}
+                {selected.received_date && <div><span className="text-slate-400">{t('po_received')}</span><p className="font-medium">{selected.received_date}</p></div>}
               </div>
               {selected.items?.length > 0 && (
                 <Table>
-                  <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Unit Price</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>{t('po_description')}</TableHead><TableHead className="text-right">{t('po_qty')}</TableHead><TableHead className="text-right">{t('po_unit_price')}</TableHead><TableHead className="text-right">{t('total')}</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {selected.items.map((item: any) => (
                       <TableRow key={item.id}>
@@ -287,9 +289,9 @@ export default function PurchaseOrdersPage() {
                 </Table>
               )}
               <div className="text-right text-sm space-y-0.5">
-                <p className="text-slate-500">Subtotal: {idr(Number(selected.subtotal))}</p>
+                <p className="text-slate-500">{t('po_subtotal')}: {idr(Number(selected.subtotal))}</p>
                 <p className="text-slate-500">PPN 11%: {idr(Number(selected.tax_amount))}</p>
-                <p className="font-bold text-slate-800">Total: {idr(Number(selected.total))}</p>
+                <p className="font-bold text-slate-800">{t('total')}: {idr(Number(selected.total))}</p>
               </div>
               {selected.notes && <p className="text-sm text-slate-500 bg-slate-50 rounded-lg p-3">{selected.notes}</p>}
             </div>

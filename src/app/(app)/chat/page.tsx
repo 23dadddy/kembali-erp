@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Hash, MessageSquare, User, Loader2, Circle } from 'lucide-react'
 
-const CHANNELS = [
-  { id: 'general', label: 'General', icon: '💬' },
-  { id: 'operations', label: 'Operations', icon: '🚛' },
-  { id: 'drivers', label: 'Drivers', icon: '🚚' },
-  { id: 'finance', label: 'Finance', icon: '💰' },
-  { id: 'management', label: 'Management', icon: '📊' },
+const CHANNEL_KEYS = [
+  { id: 'general', labelKey: 'chat_general' as const, icon: '💬' },
+  { id: 'operations', labelKey: 'chat_operations' as const, icon: '🚛' },
+  { id: 'drivers', labelKey: 'chat_drivers' as const, icon: '🚚' },
+  { id: 'finance', labelKey: 'chat_finance' as const, icon: '💰' },
+  { id: 'management', labelKey: 'chat_management' as const, icon: '📊' },
 ]
 
 interface Message {
@@ -30,6 +31,8 @@ interface StaffMember {
 }
 
 export default function ChatPage() {
+  const { t } = useLanguage()
+  const CHANNELS = CHANNEL_KEYS.map(c => ({ ...c, label: t(c.labelKey) }))
   // Single stable client for the component lifetime
   const sb = useRef(createClient()).current
   const [channel, setChannel] = useState('general')
@@ -197,13 +200,13 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <Topbar title="Team Chat" />
+      <Topbar title="nav_chat" titleIsKey />
       <div className="flex flex-1 overflow-hidden min-h-0">
 
         {/* Sidebar */}
         <div className="w-56 bg-slate-900 text-white flex flex-col flex-shrink-0">
           <div className="p-3 border-b border-slate-700">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Channels</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{t('comms_channels')}</p>
             {CHANNELS.map(ch => (
               <button
                 key={ch.id}
@@ -219,7 +222,7 @@ export default function ChatPage() {
           </div>
 
           <div className="p-3 flex-1 overflow-y-auto">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Direct Messages</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{t('comms_direct_messages')}</p>
             {staff.filter(s => s.id !== myStaff?.id).map(s => (
               <button
                 key={s.id}
@@ -266,8 +269,7 @@ export default function ChatPage() {
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <MessageSquare className="w-10 h-10 text-slate-200 mb-3" />
-                <p className="font-medium text-slate-400">No messages yet</p>
-                <p className="text-sm text-slate-300 mt-1">Be the first to say something in {currentTitle}</p>
+                <p className="font-medium text-slate-400">{t('chat_no_messages')}</p>
               </div>
             ) : (
               groupedMessages.map(({ date, msgs }) => (
@@ -297,7 +299,7 @@ export default function ChatPage() {
                             {showSender && (
                               <div className={`flex items-baseline gap-2 mb-0.5 ${isMe ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-xs font-semibold text-slate-700">
-                                  {isMe ? 'You' : (msg.sender as any)?.name ?? 'Unknown'}
+                                  {isMe ? t('chat_you') : (msg.sender as any)?.name ?? 'Unknown'}
                                 </span>
                                 <span className="text-xs text-slate-400">{formatTime(msg.created_at)}</span>
                               </div>
@@ -329,7 +331,7 @@ export default function ChatPage() {
               <input
                 ref={inputRef}
                 className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"
-                placeholder={`Message ${currentTitle}…`}
+                placeholder={t('chat_type_placeholder')}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}

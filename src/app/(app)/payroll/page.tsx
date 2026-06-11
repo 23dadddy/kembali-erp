@@ -7,11 +7,13 @@ import {
   DollarSign, Plus, Loader2, Check, X, Play, CheckCircle2,
   Users, TrendingUp, Calendar, ChevronRight, AlertCircle, Download
 } from 'lucide-react'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const fmt = (n: number) => `Rp ${(n ?? 0).toLocaleString('id-ID')}`
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 export default function PayrollPage() {
+  const { t } = useLanguage()
   const [runs, setRuns] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [selectedRun, setSelectedRun] = useState<any>(null)
@@ -196,14 +198,14 @@ export default function PayrollPage() {
 
   return (
     <>
-      <Topbar title="Payroll" />
+      <Topbar title={t('payroll_title')} />
       <div className="flex h-[calc(100vh-57px)]">
         {/* Runs List */}
         <div className="w-72 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
           <div className="p-4 border-b border-slate-100">
             <button onClick={() => setShowNewRun(true)}
               className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-xl text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> New Payroll Run
+              <Plus className="w-4 h-4" /> {t('payroll_new_run')}
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -212,7 +214,7 @@ export default function PayrollPage() {
             ) : runs.length === 0 ? (
               <div className="text-center py-12 text-slate-400 px-4">
                 <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p className="text-sm">No payroll runs yet</p>
+                <p className="text-sm">{t('payroll_no_runs')}</p>
               </div>
             ) : runs.map(run => (
               <button key={run.id} onClick={() => setSelectedRun(run)}
@@ -236,8 +238,8 @@ export default function PayrollPage() {
             <div className="flex items-center justify-center h-full text-slate-400">
               <div className="text-center">
                 <DollarSign className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-                <p className="font-medium">Select a payroll run</p>
-                <p className="text-sm mt-1">or create a new one</p>
+                <p className="font-medium">{t('payroll_select_run')}</p>
+                <p className="text-sm mt-1">{t('payroll_or_new')}</p>
               </div>
             </div>
           ) : (
@@ -247,7 +249,7 @@ export default function PayrollPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-slate-800">
-                      {new Date(selectedRun.period_start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Payroll
+                      {new Date(selectedRun.period_start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} {t('payroll_run_label')}
                     </h2>
                     <p className="text-sm text-slate-500 mt-0.5">{fmtDate(selectedRun.period_start)} – {fmtDate(selectedRun.period_end)}</p>
                     <span className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusColor[selectedRun.status] ?? statusColor.draft}`}>{selectedRun.status}</span>
@@ -257,18 +259,18 @@ export default function PayrollPage() {
                       <>
                         <button onClick={saveItems} disabled={saving}
                           className="flex items-center gap-1.5 text-sm border border-slate-200 bg-white px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors">
-                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} {t('payroll_save')}
                         </button>
                         <button onClick={approveRun}
                           className="flex items-center gap-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl transition-colors">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {t('payroll_approve')}
                         </button>
                       </>
                     )}
                     {selectedRun.status === 'approved' && (
                       <button onClick={markPaid}
                         className="flex items-center gap-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl transition-colors">
-                        <Play className="w-3.5 h-3.5" /> Mark Paid
+                        <Play className="w-3.5 h-3.5" /> {t('payroll_mark_paid')}
                       </button>
                     )}
                   </div>
@@ -276,15 +278,15 @@ export default function PayrollPage() {
 
                 <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
                   <div>
-                    <p className="text-xs text-slate-400">Gross Payroll</p>
+                    <p className="text-xs text-slate-400">{t('payroll_gross')}</p>
                     <p className="text-lg font-bold text-slate-800">{fmt(selectedRun.total_gross)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">Deductions</p>
+                    <p className="text-xs text-slate-400">{t('payroll_deductions')}</p>
                     <p className="text-lg font-bold text-red-600">{fmt(selectedRun.total_deductions)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">Net Payroll</p>
+                    <p className="text-xs text-slate-400">{t('payroll_net')}</p>
                     <p className="text-lg font-bold text-emerald-600">{fmt(selectedRun.total_net)}</p>
                   </div>
                 </div>
@@ -294,8 +296,8 @@ export default function PayrollPage() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-slate-800">Employee Breakdown</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{items.length} employees · edit inline then save</p>
+                    <h3 className="font-semibold text-slate-800">{t('payroll_employee_breakdown')}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{items.length} {t('payroll_employee')}s · {t('payroll_edit_inline')}</p>
                   </div>
                   {items.length > 0 && (
                     <button onClick={() => {
@@ -312,7 +314,7 @@ export default function PayrollPage() {
                       a.click()
                     }}
                       className="flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">
-                      <Download className="w-3.5 h-3.5" /> Export CSV
+                      <Download className="w-3.5 h-3.5" /> {t('payroll_export_csv')}
                     </button>
                   )}
                 </div>
@@ -320,20 +322,20 @@ export default function PayrollPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-400 uppercase">Employee</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Base</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Allow.</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">OT</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Bonus</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Deduct.</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Tax</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">Days</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-400 uppercase">Net Pay</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_employee')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_base')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_allow')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_ot')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_bonus')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_deduct')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_tax')}</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_days')}</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-400 uppercase">{t('payroll_net_pay')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {items.length === 0 ? (
-                        <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400">No employees in this run</td></tr>
+                        <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400">{t('payroll_no_employees')}</td></tr>
                       ) : items.map(item => (
                         <tr key={item.id} className="hover:bg-slate-50">
                           <td className="px-4 py-2.5">
@@ -371,7 +373,7 @@ export default function PayrollPage() {
                     {items.length > 0 && (
                       <tfoot>
                         <tr className="border-t-2 border-slate-200 bg-slate-50">
-                          <td className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Total</td>
+                          <td className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase">{t('payroll_total')}</td>
                           <td colSpan={7} />
                           <td className="px-4 py-3 text-right font-bold text-emerald-700">
                             {fmt(items.reduce((s, i) => s + (i.net_pay ?? 0), 0))}
@@ -391,16 +393,16 @@ export default function PayrollPage() {
       {showNewRun && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 className="font-bold text-slate-800 text-lg">New Payroll Run</h3>
+            <h3 className="font-bold text-slate-800 text-lg">{t('payroll_new_run_modal')}</h3>
             <p className="text-sm text-slate-500">A payroll run will be created with all {staff.length} active employees pre-filled from their salary records.</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Period Start</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('payroll_period_start')}</label>
                 <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={runForm.period_start} onChange={e => setRunForm({ ...runForm, period_start: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Period End</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{t('payroll_period_end')}</label>
                 <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                   value={runForm.period_end} onChange={e => setRunForm({ ...runForm, period_end: e.target.value })} />
               </div>
@@ -413,9 +415,9 @@ export default function PayrollPage() {
             <div className="flex gap-2 pt-1">
               <button onClick={createRun} disabled={saving}
                 className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Create Run</>}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('payroll_create_run')}</>}
               </button>
-              <button onClick={() => setShowNewRun(false)} className="border border-slate-200 px-4 py-2.5 rounded-xl text-sm hover:bg-slate-50">Cancel</button>
+              <button onClick={() => setShowNewRun(false)} className="border border-slate-200 px-4 py-2.5 rounded-xl text-sm hover:bg-slate-50">{t('cancel')}</button>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
   TrendingUp, TrendingDown, RotateCcw, DollarSign, Filter
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/components/providers/language-provider'
 
 const fmt = (n: number) => `Rp ${(n ?? 0).toLocaleString('id-ID')}`
 
@@ -18,6 +19,7 @@ const REPLACEMENT_COST: Record<string, number> = {
 
 export default function BottlesPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [balances, setBalances] = useState<any[]>([])
   const [inventory, setInventory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,28 +74,28 @@ export default function BottlesPage() {
 
   return (
     <>
-      <Topbar title="Bottle Tracking" />
+      <Topbar title={t('bottles_title')} />
       <div className="p-6 space-y-6">
 
         {/* Warehouse stock summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400 mb-1">350ml Filled</p>
+            <p className="text-xs text-slate-400 mb-1">350ml {t('bottles_in_facility')}</p>
             <p className="text-2xl font-bold text-slate-800">{inv350filled.toLocaleString()}</p>
             <p className="text-xs text-slate-400 mt-1">{inv350empty} clean empty</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400 mb-1">750ml Filled</p>
+            <p className="text-xs text-slate-400 mb-1">750ml {t('bottles_in_facility')}</p>
             <p className="text-2xl font-bold text-slate-800">{inv750filled.toLocaleString()}</p>
             <p className="text-xs text-slate-400 mt-1">{inv750empty} clean empty</p>
           </div>
           <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-xs text-slate-400 mb-1">Outstanding (all customers)</p>
+            <p className="text-xs text-slate-400 mb-1">{t('bottles_at_customers')}</p>
             <p className="text-2xl font-bold text-slate-800">{(totalOutstanding350 + totalOutstanding750).toLocaleString()}</p>
             <p className="text-xs text-slate-400 mt-1">{totalOutstanding350} × 350ml · {totalOutstanding750} × 750ml</p>
           </div>
           <div className={`border rounded-2xl p-4 shadow-sm ${chargeableCount > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-100'}`}>
-            <p className={`text-xs mb-1 ${chargeableCount > 0 ? 'text-red-400' : 'text-slate-400'}`}>Chargeable Lost</p>
+            <p className={`text-xs mb-1 ${chargeableCount > 0 ? 'text-red-400' : 'text-slate-400'}`}>{t('bottles_chargeable')}</p>
             <p className={`text-xl font-bold ${chargeableCount > 0 ? 'text-red-700' : 'text-slate-800'}`}>{fmt(totalChargeable)}</p>
             <p className={`text-xs mt-1 ${chargeableCount > 0 ? 'text-red-400' : 'text-slate-400'}`}>{chargeableCount} customer{chargeableCount !== 1 ? 's' : ''} over threshold</p>
           </div>
@@ -135,19 +137,19 @@ export default function BottlesPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <Package className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-            <p>{search || filterView !== 'all' ? 'No matching customers' : 'No bottle data yet'}</p>
+            <p>{search || filterView !== 'all' ? t('no_data') : t('bottles_no_data')}</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">Customer</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">350ml Out</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">750ml Out</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">350ml Chargeable</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">750ml Chargeable</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-slate-400 uppercase">Charge Amount</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('bottles_customer')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">350ml {t('bottles_outstanding')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">750ml {t('bottles_outstanding')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">350ml {t('bottles_chargeable')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-400 uppercase">750ml {t('bottles_chargeable')}</th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-slate-400 uppercase">{t('bottles_chargeable')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">

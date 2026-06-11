@@ -11,6 +11,7 @@ import {
   Loader2, Download, ChevronLeft
 } from 'lucide-react'
 import Papa from 'papaparse'
+import { useLanguage } from '@/components/providers/language-provider'
 
 interface ParsedRow {
   name: string
@@ -28,6 +29,7 @@ interface ParsedRow {
 const VALID_TYPES = ['hotel', 'restaurant', 'resort', 'business', 'other']
 
 export default function ImportCustomersPage() {
+  const { t } = useLanguage()
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
@@ -103,23 +105,23 @@ export default function ImportCustomersPage() {
 
   return (
     <>
-      <Topbar title="Import Customers" />
+      <Topbar title={t('import_title')} />
       <div className="p-6 space-y-6 max-w-3xl">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm">
-          <ChevronLeft className="w-4 h-4" /> Back to Customers
+          <ChevronLeft className="w-4 h-4" /> {t('import_back')}
         </button>
 
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Upload className="w-4 h-4" /> CSV Customer Import
+              <Upload className="w-4 h-4" /> {t('import_csv_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-500">Upload a CSV with your customer list. Required columns: <code className="bg-slate-100 px-1 rounded text-xs">name, type, city, address</code></p>
               <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                <Download className="w-4 h-4 mr-2" /> Template
+                <Download className="w-4 h-4 mr-2" /> {t('import_template')}
               </Button>
             </div>
 
@@ -131,7 +133,7 @@ export default function ImportCustomersPage() {
               className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors"
             >
               <Upload className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-500">Drop CSV here or click to upload</p>
+              <p className="text-sm font-medium text-slate-500">{t('import_drop_zone')}</p>
               <p className="text-xs text-slate-400 mt-1">Supports .csv files</p>
               <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
             </div>
@@ -149,7 +151,7 @@ export default function ImportCustomersPage() {
                 )}
                 {done && (
                   <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => router.push('/customers')}>
-                    View Customers →
+                    {t('import_view_customers')} →
                   </Button>
                 )}
               </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Topbar } from '@/components/layout/topbar'
+import { useLanguage } from '@/components/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,7 @@ const EMPTY_STAFF: Partial<Staff> = { name: '', role: 'driver', phone: '', email
 // ─── TAB: TEAM (HR) ────────────────────────────────────────────────────────────
 function TeamTab() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [subTab, setSubTab] = useState<'team' | 'pto'>('team')
   const [staff, setStaff] = useState<Staff[]>([])
   const [ptoRequests, setPtoRequests] = useState<any[]>([])
@@ -84,17 +86,17 @@ function TeamTab() {
     <div className="p-6 max-w-5xl space-y-6">
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Staff', value: staff.filter(s => s.active).length, icon: Users, color: 'text-slate-800' },
-          { label: 'Drivers', value: staff.filter(s => s.role === 'driver' && s.active).length, icon: Truck, color: 'text-blue-600' },
-          { label: 'PTO Pending', value: pendingPto.length, icon: Calendar, color: pendingPto.length > 0 ? 'text-amber-600' : 'text-slate-600' },
-          { label: 'Team Size', value: staff.length, icon: UserCog, color: 'text-slate-600' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label}><CardContent className="pt-4"><div className="flex items-center justify-between"><div><p className="text-xs text-slate-400">{label}</p><p className={`text-2xl font-bold ${color}`}>{value}</p></div><Icon className="w-6 h-6 text-slate-200" /></div></CardContent></Card>
+          { labelKey: 'people_total_staff' as const, value: staff.filter(s => s.active).length, icon: Users, color: 'text-slate-800' },
+          { labelKey: 'people_drivers' as const, value: staff.filter(s => s.role === 'driver' && s.active).length, icon: Truck, color: 'text-blue-600' },
+          { labelKey: 'people_pto_pending' as const, value: pendingPto.length, icon: Calendar, color: pendingPto.length > 0 ? 'text-amber-600' : 'text-slate-600' },
+          { labelKey: 'people_team_size' as const, value: staff.length, icon: UserCog, color: 'text-slate-600' },
+        ].map(({ labelKey, value, icon: Icon, color }) => (
+          <Card key={labelKey}><CardContent className="pt-4"><div className="flex items-center justify-between"><div><p className="text-xs text-slate-400">{t(labelKey)}</p><p className={`text-2xl font-bold ${color}`}>{value}</p></div><Icon className="w-6 h-6 text-slate-200" /></div></CardContent></Card>
         ))}
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">
-        {[{ id: 'team', label: `Team (${staff.length})` }, { id: 'pto', label: `Leave Requests (${ptoRequests.length})` }].map(({ id, label }) => (
+        {[{ id: 'team', label: `${t('people_team_label')} (${staff.length})` }, { id: 'pto', label: `${t('people_leave_requests')} (${ptoRequests.length})` }].map(({ id, label }) => (
           <button key={id} onClick={() => setSubTab(id as any)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${subTab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {label}
@@ -108,44 +110,44 @@ function TeamTab() {
             <div className="flex gap-2">
               {['all', 'driver', 'manager', 'cleaner', 'admin'].map(r => (
                 <button key={r} onClick={() => setFilterRole(r)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterRole === r ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                  {r === 'all' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1) + 's'}
+                  {r === 'all' ? t('people_all_roles') : r.charAt(0).toUpperCase() + r.slice(1) + 's'}
                 </button>
               ))}
             </div>
-            <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}><Plus className="w-4 h-4 mr-1.5" /> Add Staff</Button>
+            <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}><Plus className="w-4 h-4 mr-1.5" /> {t('people_add_staff')}</Button>
           </div>
 
           {showForm && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">{editingId ? 'Edit Staff Member' : 'Add New Staff Member'}</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{editingId ? t('people_edit_staff') : t('people_add_new_staff')}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Full Name *</Label><Input value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-                  <div><Label>Role *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as any })}>{['driver','cleaner','manager','admin','sales'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}</select></div>
+                  <div><Label>{t('people_full_name')} *</Label><Input value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+                  <div><Label>{t('people_role')} *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as any })}>{['driver','cleaner','manager','admin','sales'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}</select></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Phone</Label><Input value={form.phone ?? ''} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-                  <div><Label>Email</Label><Input type="email" value={form.email ?? ''} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                  <div><Label>{t('people_phone')}</Label><Input value={form.phone ?? ''} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+                  <div><Label>{t('email')}</Label><Input type="email" value={form.email ?? ''} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label>Employee Number</Label><Input value={form.employee_number ?? ''} onChange={e => setForm({ ...form, employee_number: e.target.value })} /></div>
-                  <div><Label>Start Date</Label><Input type="date" value={form.start_date ?? ''} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
-                  <div><Label>ID Number (KTP)</Label><Input value={form.id_number ?? ''} onChange={e => setForm({ ...form, id_number: e.target.value })} /></div>
+                  <div><Label>{t('people_employee_no')}</Label><Input value={form.employee_number ?? ''} onChange={e => setForm({ ...form, employee_number: e.target.value })} /></div>
+                  <div><Label>{t('people_start_date')}</Label><Input type="date" value={form.start_date ?? ''} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
+                  <div><Label>{t('people_id_number')}</Label><Input value={form.id_number ?? ''} onChange={e => setForm({ ...form, id_number: e.target.value })} /></div>
                 </div>
                 {form.role === 'driver' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>License Number (SIM)</Label><Input value={form.license_number ?? ''} onChange={e => setForm({ ...form, license_number: e.target.value })} /></div>
-                    <div><Label>License Expiry</Label><Input type="date" value={form.license_expiry ?? ''} onChange={e => setForm({ ...form, license_expiry: e.target.value })} /></div>
+                    <div><Label>{t('people_license')}</Label><Input value={form.license_number ?? ''} onChange={e => setForm({ ...form, license_number: e.target.value })} /></div>
+                    <div><Label>{t('people_license_expiry')}</Label><Input type="date" value={form.license_expiry ?? ''} onChange={e => setForm({ ...form, license_expiry: e.target.value })} /></div>
                   </div>
                 )}
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label>Salary Type</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={form.salary_type ?? 'monthly'} onChange={e => setForm({ ...form, salary_type: e.target.value as any })}>{['monthly','daily','hourly'].map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                  <div><Label>Salary (IDR)</Label><Input type="number" value={form.salary ?? ''} onChange={e => setForm({ ...form, salary: e.target.value ? Number(e.target.value) : undefined })} /></div>
-                  <div><Label>Emergency Contact</Label><Input value={form.emergency_contact ?? ''} onChange={e => setForm({ ...form, emergency_contact: e.target.value })} /></div>
+                  <div><Label>{t('people_salary_type')}</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={form.salary_type ?? 'monthly'} onChange={e => setForm({ ...form, salary_type: e.target.value as any })}>{['monthly','daily','hourly'].map(st => <option key={st} value={st}>{st}</option>)}</select></div>
+                  <div><Label>{t('people_salary_idr')}</Label><Input type="number" value={form.salary ?? ''} onChange={e => setForm({ ...form, salary: e.target.value ? Number(e.target.value) : undefined })} /></div>
+                  <div><Label>{t('people_emergency')}</Label><Input value={form.emergency_contact ?? ''} onChange={e => setForm({ ...form, emergency_contact: e.target.value })} /></div>
                 </div>
-                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!form.active} onChange={e => setForm({ ...form, active: e.target.checked })} />Active employee</label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!form.active} onChange={e => setForm({ ...form, active: e.target.checked })} />{t('people_active_employee')}</label>
                 <div className="flex gap-2">
-                  <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1" />{editingId ? 'Save Changes' : 'Add Staff Member'}</>}</Button>
+                  <Button className="bg-cyan-600 hover:bg-cyan-700 flex-1" onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1" />{editingId ? t('people_save_changes') : t('people_add_staff')}</>}</Button>
                   <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null) }}><X className="w-4 h-4" /></Button>
                 </div>
               </CardContent>
@@ -163,17 +165,17 @@ function TeamTab() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-800">{s.name}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[s.role] ?? 'bg-slate-100 text-slate-600'}`}>{s.role}</span>
-                        {!s.active && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Inactive</span>}
+                        {!s.active && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{t('people_inactive')}</span>}
                       </div>
                       <div className="flex gap-4 mt-1 text-xs text-slate-400">
                         {s.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</span>}
                         {s.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{s.email}</span>}
                         {s.salary && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />{idr(s.salary)}/{s.salary_type}</span>}
-                        {s.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Since {new Date(s.start_date).toLocaleDateString()}</span>}
+                        {s.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{t('people_since')} {new Date(s.start_date).toLocaleDateString()}</span>}
                       </div>
                       {s.role === 'driver' && s.license_expiry && (
                         <span className={`text-xs ${new Date(s.license_expiry) < new Date() ? 'text-red-500' : 'text-slate-400'}`}>
-                          {new Date(s.license_expiry) < new Date() ? '⚠️ License expired: ' : 'License expires: '}{new Date(s.license_expiry).toLocaleDateString()}
+                          {new Date(s.license_expiry) < new Date() ? t('people_license_expired') : t('people_license_expires')} {new Date(s.license_expiry).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -185,32 +187,32 @@ function TeamTab() {
                 </CardContent>
               </Card>
             ))}
-            {filtered.length === 0 && !loading && <div className="text-center py-12 text-slate-400 text-sm"><Users className="w-8 h-8 mx-auto mb-2 text-slate-200" />No team members yet.</div>}
+            {filtered.length === 0 && !loading && <div className="text-center py-12 text-slate-400 text-sm"><Users className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('people_no_staff')}</div>}
           </div>
         </div>
       )}
 
       {subTab === 'pto' && (
         <div className="space-y-4">
-          <div className="flex justify-end"><Button variant="outline" onClick={() => setShowPtoForm(true)}><Plus className="w-4 h-4 mr-1" /> Log Leave Request</Button></div>
+          <div className="flex justify-end"><Button variant="outline" onClick={() => setShowPtoForm(true)}><Plus className="w-4 h-4 mr-1" /> {t('people_log_leave')}</Button></div>
           {showPtoForm && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">New Leave Request</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('people_new_leave_request')}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Employee *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={ptoForm.employee_id ?? ''} onChange={e => setPtoForm({ ...ptoForm, employee_id: e.target.value })}><option value="">Select employee...</option>{staff.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                  <div><Label>Leave Type *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={ptoForm.type} onChange={e => setPtoForm({ ...ptoForm, type: e.target.value as any })}>{['annual','sick','personal','unpaid','public_holiday'].map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}</select></div>
+                  <div><Label>{t('people_employee')} *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={ptoForm.employee_id ?? ''} onChange={e => setPtoForm({ ...ptoForm, employee_id: e.target.value })}><option value="">{t('people_select_employee')}</option>{staff.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                  <div><Label>{t('people_leave_type')} *</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={ptoForm.type} onChange={e => setPtoForm({ ...ptoForm, type: e.target.value as any })}>{['annual','sick','personal','unpaid','public_holiday'].map(lt => <option key={lt} value={lt}>{lt.replace('_', ' ')}</option>)}</select></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Start Date *</Label><Input type="date" value={ptoForm.start_date ?? ''} onChange={e => setPtoForm({ ...ptoForm, start_date: e.target.value })} /></div>
-                  <div><Label>End Date *</Label><Input type="date" value={ptoForm.end_date ?? ''} onChange={e => setPtoForm({ ...ptoForm, end_date: e.target.value })} /></div>
+                  <div><Label>{t('people_start_date')} *</Label><Input type="date" value={ptoForm.start_date ?? ''} onChange={e => setPtoForm({ ...ptoForm, start_date: e.target.value })} /></div>
+                  <div><Label>{t('people_end_date')} *</Label><Input type="date" value={ptoForm.end_date ?? ''} onChange={e => setPtoForm({ ...ptoForm, end_date: e.target.value })} /></div>
                 </div>
-                <div><Label>Reason</Label><Input value={ptoForm.reason ?? ''} onChange={e => setPtoForm({ ...ptoForm, reason: e.target.value })} /></div>
-                <div className="flex gap-2"><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handlePtoSubmit}>Submit Request</Button><Button variant="outline" onClick={() => setShowPtoForm(false)}>Cancel</Button></div>
+                <div><Label>{t('notes')}</Label><Input value={ptoForm.reason ?? ''} onChange={e => setPtoForm({ ...ptoForm, reason: e.target.value })} /></div>
+                <div className="flex gap-2"><Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handlePtoSubmit}>{t('submit')}</Button><Button variant="outline" onClick={() => setShowPtoForm(false)}>{t('cancel')}</Button></div>
               </CardContent>
             </Card>
           )}
-          {ptoRequests.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />No leave requests yet</div>
+          {ptoRequests.length === 0 ? <div className="text-center py-12 text-slate-400 text-sm"><Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />{t('people_no_pto')}</div>
             : ptoRequests.map(p => {
               const employee = staff.find(s => s.id === p.employee_id)
               const days = p.start_date && p.end_date ? Math.ceil((new Date(p.end_date).getTime() - new Date(p.start_date).getTime()) / 86400000) + 1 : 0
@@ -227,8 +229,8 @@ function TeamTab() {
                     </div>
                     {p.status === 'pending' && (
                       <div className="flex gap-2">
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8" onClick={() => handlePtoAction(p.id, 'approved')}><Check className="w-3.5 h-3.5 mr-1" />Approve</Button>
-                        <Button size="sm" variant="outline" className="h-8 text-red-500" onClick={() => handlePtoAction(p.id, 'rejected')}><X className="w-3.5 h-3.5 mr-1" />Reject</Button>
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8" onClick={() => handlePtoAction(p.id, 'approved')}><Check className="w-3.5 h-3.5 mr-1" />{t('people_approve')}</Button>
+                        <Button size="sm" variant="outline" className="h-8 text-red-500" onClick={() => handlePtoAction(p.id, 'rejected')}><X className="w-3.5 h-3.5 mr-1" />{t('people_reject')}</Button>
                       </div>
                     )}
                   </div>
@@ -243,6 +245,7 @@ function TeamTab() {
 
 // ─── TAB: ATTENDANCE ──────────────────────────────────────────────────────────
 function AttendanceTab() {
+  const { t } = useLanguage()
   const [staff, setStaff] = useState<any[]>([])
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -299,22 +302,22 @@ function AttendanceTab() {
   return (
     <div className="p-6 space-y-4">
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Present Today</p><p className="text-2xl font-bold text-emerald-600">{presentCount}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Absent</p><p className="text-2xl font-bold text-red-500">{absentCount}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Total Staff</p><p className="text-2xl font-bold text-slate-700">{staff.length}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Hours Logged</p><p className="text-2xl font-bold text-blue-600">{totalHours.toFixed(1)}h</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{t('people_present_today')}</p><p className="text-2xl font-bold text-emerald-600">{presentCount}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{t('people_absent')}</p><p className="text-2xl font-bold text-red-500">{absentCount}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{t('people_total_staff')}</p><p className="text-2xl font-bold text-slate-700">{staff.length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">{t('people_hours_logged')}</p><p className="text-2xl font-bold text-blue-600">{totalHours.toFixed(1)}h</p></div>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex rounded-lg border overflow-hidden">
-          <button onClick={() => setViewMode('daily')} className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'daily' ? 'bg-cyan-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Daily</button>
-          <button onClick={() => setViewMode('monthly')} className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'monthly' ? 'bg-cyan-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Monthly</button>
+          <button onClick={() => setViewMode('daily')} className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'daily' ? 'bg-cyan-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{t('people_attendance_daily')}</button>
+          <button onClick={() => setViewMode('monthly')} className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'monthly' ? 'bg-cyan-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{t('people_attendance_monthly')}</button>
         </div>
         {viewMode === 'daily' ? <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm" /> : <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm" />}
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
         {loading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div> : viewMode === 'daily' ? (
           <table className="w-full">
-            <thead className="bg-slate-50 border-b"><tr><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Staff</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Role</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Status</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Clock In</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Clock Out</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Hours</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Actions</th></tr></thead>
+            <thead className="bg-slate-50 border-b"><tr><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_staff')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_role')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('status')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_check_in')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_check_out')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_hours')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('actions')}</th></tr></thead>
             <tbody className="divide-y divide-slate-50">
               {staff.map(s => {
                 const log = logs.find(l => l.staff_id === s.id)
@@ -323,7 +326,7 @@ function AttendanceTab() {
                   <tr key={s.id} className="hover:bg-slate-50/50">
                     <td className="px-4 py-3 font-medium text-slate-700">{s.name}</td>
                     <td className="px-4 py-3 text-slate-500 capitalize text-sm">{s.role}</td>
-                    <td className="px-4 py-3">{log ? <Badge className={STATUS_COLORS[log.status] ?? ''}>{log.status}</Badge> : <span className="text-xs text-slate-300">Not marked</span>}</td>
+                    <td className="px-4 py-3">{log ? <Badge className={STATUS_COLORS[log.status] ?? ''}>{log.status}</Badge> : <span className="text-xs text-slate-300">{t('people_not_marked')}</span>}</td>
                     <td className="px-4 py-3 text-sm text-slate-500">{log?.clock_in ? new Date(log.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-500">{log?.clock_out ? new Date(log.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-700">{log?.hours_worked ? `${log.hours_worked}h` : '—'}</td>
@@ -331,11 +334,11 @@ function AttendanceTab() {
                       <div className="flex gap-1 flex-wrap">
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-slate-300" /> : (
                           <>
-                            {(!log || log.status !== 'present') && <button onClick={() => markStatus(s.id, 'present')} className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg flex items-center gap-1"><UserCheck className="w-3 h-3" />Present</button>}
-                            {(!log || log.status !== 'late') && <button onClick={() => markStatus(s.id, 'late')} className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">Late</button>}
-                            {(!log || log.status !== 'absent') && <button onClick={() => markStatus(s.id, 'absent')} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg flex items-center gap-1"><UserX className="w-3 h-3" />Absent</button>}
-                            {(!log || log.status !== 'leave') && <button onClick={() => markStatus(s.id, 'leave')} className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 px-2 py-1 rounded-lg">Leave</button>}
-                            {log?.clock_in && !log?.clock_out && <button onClick={() => clockOut(s.id)} className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-1 rounded-lg flex items-center gap-1"><Clock className="w-3 h-3" />Clock Out</button>}
+                            {(!log || log.status !== 'present') && <button onClick={() => markStatus(s.id, 'present')} className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg flex items-center gap-1"><UserCheck className="w-3 h-3" />{t('people_present')}</button>}
+                            {(!log || log.status !== 'late') && <button onClick={() => markStatus(s.id, 'late')} className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">{t('people_late')}</button>}
+                            {(!log || log.status !== 'absent') && <button onClick={() => markStatus(s.id, 'absent')} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg flex items-center gap-1"><UserX className="w-3 h-3" />{t('people_absent')}</button>}
+                            {(!log || log.status !== 'leave') && <button onClick={() => markStatus(s.id, 'leave')} className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 px-2 py-1 rounded-lg">{t('people_on_leave')}</button>}
+                            {log?.clock_in && !log?.clock_out && <button onClick={() => clockOut(s.id)} className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-1 rounded-lg flex items-center gap-1"><Clock className="w-3 h-3" />{t('people_check_out')}</button>}
                           </>
                         )}
                       </div>
@@ -347,7 +350,7 @@ function AttendanceTab() {
           </table>
         ) : (
           <table className="w-full">
-            <thead className="bg-slate-50 border-b"><tr><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Date</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Staff</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Status</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Clock In</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Clock Out</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Hours</th></tr></thead>
+            <thead className="bg-slate-50 border-b"><tr><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('date')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_staff')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('status')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_check_in')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_check_out')}</th><th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">{t('people_hours')}</th></tr></thead>
             <tbody className="divide-y divide-slate-50">
               {logs.map(l => (
                 <tr key={l.id} className="hover:bg-slate-50/50">
@@ -369,6 +372,7 @@ function AttendanceTab() {
 
 // ─── TAB: PERFORMANCE ─────────────────────────────────────────────────────────
 function PerformanceTab() {
+  const { t } = useLanguage()
   const [records, setRecords] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -436,25 +440,25 @@ function PerformanceTab() {
   return (
     <div className="p-6 max-w-6xl space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2"><label className="text-sm text-slate-600">Period:</label><input type="month" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={period} onChange={e => setPeriod(e.target.value)} /></div>
+        <div className="flex items-center gap-2"><label className="text-sm text-slate-600">{t('people_period')}:</label><input type="month" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={period} onChange={e => setPeriod(e.target.value)} /></div>
         <div className="flex-1" />
-        <button onClick={autoCalculate} disabled={autoCalcing} className="flex items-center gap-2 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">{autoCalcing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}Auto-Calculate</button>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium"><Plus className="w-4 h-4" />Log Performance</button>
+        <button onClick={autoCalculate} disabled={autoCalcing} className="flex items-center gap-2 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">{autoCalcing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}{t('people_calc_performance')}</button>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium"><Plus className="w-4 h-4" />{t('people_log_performance')}</button>
       </div>
 
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-          <h3 className="font-semibold text-slate-800">Log Driver Performance</h3>
+          <h3 className="font-semibold text-slate-800">{t('people_log_driver_performance')}</h3>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Driver *</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.driver_id} onChange={e => setForm({ ...form, driver_id: e.target.value })}><option value="">Select driver...</option>{staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Period Date</label><input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.period_date} onChange={e => setForm({ ...form, period_date: e.target.value })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Customer Rating (1-5)</label><input type="number" min="1" max="5" step="0.1" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.customer_rating} onChange={e => setForm({ ...form, customer_rating: e.target.value })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Deliveries Completed</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.deliveries_completed} onChange={e => setForm({ ...form, deliveries_completed: Number(e.target.value) })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">Deliveries Failed</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.deliveries_failed} onChange={e => setForm({ ...form, deliveries_failed: Number(e.target.value) })} /></div>
-            <div><label className="text-xs font-medium text-slate-600 block mb-1">On-Time Rate (%)</label><input type="number" min="0" max="100" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.on_time_rate} onChange={e => setForm({ ...form, on_time_rate: Number(e.target.value) })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('dispatch_driver')} *</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.driver_id} onChange={e => setForm({ ...form, driver_id: e.target.value })}><option value="">{t('dispatch_select_driver')}</option>{staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('people_period_date')}</label><input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.period_date} onChange={e => setForm({ ...form, period_date: e.target.value })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('people_customer_rating')}</label><input type="number" min="1" max="5" step="0.1" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.customer_rating} onChange={e => setForm({ ...form, customer_rating: e.target.value })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('people_deliveries_completed')}</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.deliveries_completed} onChange={e => setForm({ ...form, deliveries_completed: Number(e.target.value) })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('people_deliveries_failed')}</label><input type="number" min="0" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.deliveries_failed} onChange={e => setForm({ ...form, deliveries_failed: Number(e.target.value) })} /></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">{t('people_on_time_rate')}</label><input type="number" min="0" max="100" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={form.on_time_rate} onChange={e => setForm({ ...form, on_time_rate: Number(e.target.value) })} /></div>
           </div>
           <div className="flex gap-2">
-            <button onClick={saveRecord} disabled={saving || !form.driver_id} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />Save Record</>}</button>
+            <button onClick={saveRecord} disabled={saving || !form.driver_id} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" />{t('people_save_record')}</>}</button>
             <button onClick={() => setShowForm(false)} className="border border-slate-200 px-4 py-2 rounded-xl text-sm hover:bg-slate-50"><X className="w-4 h-4" /></button>
           </div>
         </div>
@@ -463,7 +467,7 @@ function PerformanceTab() {
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div> : (
         <div className="space-y-4">
           {driverSummary.filter(d => d.records.length > 0).length === 0 ? (
-            <div className="text-center py-16 text-slate-400 bg-white border border-slate-100 rounded-2xl"><BarChart3 className="w-10 h-10 mx-auto mb-3 text-slate-200" /><p className="font-medium">No performance data for this period</p><p className="text-sm mt-1">Click Auto-Calculate to import from deliveries</p></div>
+            <div className="text-center py-16 text-slate-400 bg-white border border-slate-100 rounded-2xl"><BarChart3 className="w-10 h-10 mx-auto mb-3 text-slate-200" /><p className="font-medium">{t('people_no_performance')}</p><p className="text-sm mt-1">{t('people_no_performance_hint')}</p></div>
           ) : driverSummary.filter(d => d.records.length > 0).map(driver => (
             <div key={driver.id} className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-4 flex items-center gap-4 border-b border-slate-100">
@@ -473,11 +477,11 @@ function PerformanceTab() {
                 {driver.total_incidents > 0 && <span className="flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full"><AlertTriangle className="w-3 h-3" />{driver.total_incidents} incident{driver.total_incidents > 1 ? 's' : ''}</span>}
               </div>
               <div className="p-4 grid grid-cols-5 gap-3">
-                <div className="text-center p-2 bg-slate-50 rounded-xl"><p className="text-xl font-bold text-slate-800">{driver.total_deliveries}</p><p className="text-xs text-slate-400">Deliveries</p></div>
-                <div className={`text-center p-2 rounded-xl ${driver.total_failed > 0 ? 'bg-red-50' : 'bg-emerald-50'}`}><p className={`text-xl font-bold ${driver.total_failed > 0 ? 'text-red-600' : 'text-emerald-700'}`}>{driver.total_failed}</p><p className="text-xs text-slate-400">Failed</p></div>
-                <ScoreBadge value={driver.avg_on_time} threshold={90} label="On-Time %" />
-                <ScoreBadge value={driver.avg_collection} threshold={92} label="Collection %" />
-                <div className="text-center p-2 bg-slate-50 rounded-xl"><p className="text-xl font-bold text-slate-800">{driver.total_km.toFixed(0)}</p><p className="text-xs text-slate-400">KM Driven</p></div>
+                <div className="text-center p-2 bg-slate-50 rounded-xl"><p className="text-xl font-bold text-slate-800">{driver.total_deliveries}</p><p className="text-xs text-slate-400">{t('people_deliveries')}</p></div>
+                <div className={`text-center p-2 rounded-xl ${driver.total_failed > 0 ? 'bg-red-50' : 'bg-emerald-50'}`}><p className={`text-xl font-bold ${driver.total_failed > 0 ? 'text-red-600' : 'text-emerald-700'}`}>{driver.total_failed}</p><p className="text-xs text-slate-400">{t('failed')}</p></div>
+                <ScoreBadge value={driver.avg_on_time} threshold={90} label={t('people_on_time_pct')} />
+                <ScoreBadge value={driver.avg_collection} threshold={92} label={t('people_collection_pct')} />
+                <div className="text-center p-2 bg-slate-50 rounded-xl"><p className="text-xl font-bold text-slate-800">{driver.total_km.toFixed(0)}</p><p className="text-xs text-slate-400">{t('people_km_driven')}</p></div>
               </div>
             </div>
           ))}
@@ -488,23 +492,24 @@ function PerformanceTab() {
 }
 
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
-const TABS: { id: MainTab; label: string; icon: React.ElementType }[] = [
-  { id: 'team', label: 'Team & HR', icon: Users },
-  { id: 'attendance', label: 'Attendance', icon: Clock },
-  { id: 'performance', label: 'Performance', icon: BarChart3 },
+const TAB_KEYS_PEOPLE = [
+  { id: 'team' as MainTab, labelKey: 'people_team' as const, icon: Users },
+  { id: 'attendance' as MainTab, labelKey: 'people_attendance' as const, icon: Clock },
+  { id: 'performance' as MainTab, labelKey: 'people_performance' as const, icon: BarChart3 },
 ]
 
 export default function PeoplePage() {
+  const { t } = useLanguage()
   const [tab, setTab] = useState<MainTab>('team')
   return (
     <>
-      <Topbar title="People" />
+      <Topbar title="people_title" titleIsKey />
       <div className="bg-white border-b border-slate-200 px-6">
         <div className="flex gap-1">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {TAB_KEYS_PEOPLE.map(({ id, labelKey, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === id ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              <Icon className="w-4 h-4" />{label}
+              <Icon className="w-4 h-4" />{t(labelKey)}
             </button>
           ))}
         </div>

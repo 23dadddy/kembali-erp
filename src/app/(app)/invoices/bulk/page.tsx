@@ -12,6 +12,7 @@ import { generateMonthlyInvoice, getCustomers } from '@/lib/db'
 import { idr } from '@/lib/format'
 import { FileText, Loader2, CheckCircle2, XCircle, AlertCircle, Play } from 'lucide-react'
 import type { Customer } from '@/types'
+import { useLanguage } from '@/components/providers/language-provider'
 
 interface BulkResult {
   customer: Customer
@@ -22,6 +23,7 @@ interface BulkResult {
 }
 
 export default function BulkInvoicePage() {
+  const { t } = useLanguage()
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [customers, setCustomers] = useState<Customer[]>([])
   const [results, setResults] = useState<BulkResult[]>([])
@@ -83,29 +85,29 @@ export default function BulkInvoicePage() {
 
   return (
     <>
-      <Topbar title="Bulk Invoice Generation" />
+      <Topbar title={t('bulk_title')} />
       <div className="p-6 space-y-6 max-w-3xl">
 
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Generate Monthly Invoices — All Customers
+              {t('bulk_generate_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-end gap-4">
               <div className="space-y-1">
-                <Label>Billing Month</Label>
+                <Label>{t('bulk_billing_month')}</Label>
                 <Input type="month" value={month} onChange={(e) => { setMonth(e.target.value); setPreview(false); setDone(false) }} className="w-44" />
               </div>
               <Button variant="outline" onClick={handlePreview} disabled={running}>
-                Preview ({customers.filter(c => c.active).length} customers)
+                {t('bulk_preview')} ({customers.filter(c => c.active).length} {t('bulk_customers')})
               </Button>
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-2 text-slate-600">
-              <p className="font-medium text-slate-700">For each active customer, this will:</p>
+              <p className="font-medium text-slate-700">{t('bulk_will_do')}</p>
               <ul className="list-disc list-inside space-y-1 text-slate-500 ml-2">
                 <li>Total up all <strong>completed deliveries</strong> for <strong>{monthLabel}</strong></li>
                 <li>Apply current pricing per bottle size (350ml / 750ml)</li>
@@ -129,9 +131,9 @@ export default function BulkInvoicePage() {
                 disabled={running}
               >
                 {running ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Generating invoices...</>
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('bulk_generating')}</>
                 ) : (
-                  <><Play className="w-4 h-4 mr-2" /> Run — Generate {results.length} Invoices</>
+                  <><Play className="w-4 h-4 mr-2" /> {t('bulk_run')} {results.length} {t('bulk_invoices_label')}</>
                 )}
               </Button>
             )}
@@ -140,15 +142,15 @@ export default function BulkInvoicePage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold text-emerald-700">{generated}</div>
-                  <div className="text-xs text-emerald-600">Generated</div>
+                  <div className="text-xs text-emerald-600">{t('bulk_generated')}</div>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold text-slate-500">{skipped}</div>
-                  <div className="text-xs text-slate-400">Skipped (no deliveries)</div>
+                  <div className="text-xs text-slate-400">{t('bulk_skipped')}</div>
                 </div>
                 <div className="bg-cyan-50 rounded-lg p-3 text-center">
                   <div className="text-xl font-bold text-cyan-700">{idr(totalRevenue)}</div>
-                  <div className="text-xs text-cyan-600">Total billed</div>
+                  <div className="text-xs text-cyan-600">{t('bulk_total_billed')}</div>
                 </div>
               </div>
             )}
@@ -160,7 +162,7 @@ export default function BulkInvoicePage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm text-slate-500">
-                {running ? 'Processing...' : done ? 'Completed' : 'Ready to run'}
+                {running ? t('bulk_processing') : done ? t('bulk_completed') : t('bulk_ready')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -184,7 +186,7 @@ export default function BulkInvoicePage() {
                         <span className="font-medium text-slate-800">{idr(Number(r.total))}</span>
                       </div>
                     )}
-                    {r.status === 'skipped' && <span className="text-xs text-slate-400">No deliveries</span>}
+                    {r.status === 'skipped' && <span className="text-xs text-slate-400">{t('bulk_no_deliveries_skip')}</span>}
                     {r.status === 'error' && <span className="text-xs text-red-400 truncate max-w-40">{r.message}</span>}
                   </div>
                 ))}
