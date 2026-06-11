@@ -158,10 +158,10 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#1A2B1A' }}>
+    <aside className="w-52 min-h-screen flex flex-col" style={{ background: '#EDE6DC' }}>
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-[#243324]">
-        <img src="/logo.png" alt="Kembali Water" className="w-full max-w-[148px]" style={{ filter: 'brightness(0) invert(1)' }} />
+      <div className="px-4 py-5 border-b border-[#D5CEC4]">
+        <img src="/logo.png" alt="Kembali Water" className="w-full max-w-[148px]" style={{ filter: 'brightness(0)' }} />
       </div>
 
       {/* Nav */}
@@ -172,9 +172,9 @@ export function Sidebar() {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} prefetch={true}
-                className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                 style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                 {label}
               </Link>
             )
@@ -183,7 +183,7 @@ export function Sidebar() {
 
         {/* Operations */}
         <div>
-          <p className="font-semibold text-[#7A9E7A] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_operations')}</p>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_operations')}</p>
           <div className="space-y-0.5">
             {[
               { label: t('nav_orders'), href: '/orders', icon: ShoppingCart },
@@ -197,9 +197,9 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                   style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
               )
@@ -209,7 +209,7 @@ export function Sidebar() {
 
         {/* Finance */}
         <div>
-          <p className="font-semibold text-[#7A9E7A] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_finance')}</p>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_finance')}</p>
           <div className="space-y-0.5">
             {[
               { label: t('nav_billing'), href: '/billing', icon: FileText },
@@ -218,9 +218,9 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                   style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
               )
@@ -230,7 +230,7 @@ export function Sidebar() {
 
         {/* People & Fleet */}
         <div>
-          <p className="font-semibold text-[#7A9E7A] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_people_fleet')}</p>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>{t('nav_people_fleet')}</p>
           <div className="space-y-0.5">
             {[
               { label: t('nav_people'), href: '/people', icon: UserCog },
@@ -239,9 +239,9 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                   style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
               )
@@ -251,7 +251,7 @@ export function Sidebar() {
 
         {/* Communications section with live badges */}
         <div>
-          <p className="font-semibold text-[#7A9E7A] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
             {t('nav_communications')}
           </p>
           <div className="space-y-0.5">
@@ -264,9 +264,9 @@ export function Sidebar() {
               const count = badgeCounts[badgeKey] ?? 0
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                   style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   <span className="flex-1 min-w-0 truncate">{label}</span>
                   <Badge count={count} />
                 </Link>
@@ -277,7 +277,7 @@ export function Sidebar() {
 
         {/* System */}
         <div>
-          <p className="font-semibold text-[#7A9E7A] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>
             {t('nav_system')}
           </p>
           <div className="space-y-0.5">
@@ -285,9 +285,9 @@ export function Sidebar() {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (
                 <Link key={href} href={href} prefetch={true}
-                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#A8C4A8] hover:text-white hover:bg-[#2D3F2D]')}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-[#D9D0C5]')}
                   style={active ? { background: '#3D7B70', fontSize: '13px' } : { fontSize: '13px' }}>
-                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#7A9E7A]')} />
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
                   {label}
                 </Link>
               )
@@ -296,14 +296,14 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="px-2 py-4 border-t border-[#243324] space-y-0.5">
+      <div className="px-2 py-4 border-t border-[#D5CEC4] space-y-0.5">
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[#A8C4A8] hover:bg-[#2D3F2D] hover:text-white transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[#5A5248] hover:bg-[#D9D0C5] hover:text-[#1A1A1A] transition-colors"
           style={{ fontSize: '13px' }}>
-          <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-[#7A9E7A]" />
+          <LogOut className="w-3.5 h-3.5 flex-shrink-0 text-[#8C8078]" />
           {t('nav_sign_out')}
         </button>
-        <p className="text-[#6B8F6B] px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v2.0</p>
+        <p className="text-[#8C8078] px-3 pt-1" style={{ fontSize: '11px' }}>Kembali ERP v2.0</p>
       </div>
     </aside>
   )
