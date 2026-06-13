@@ -566,12 +566,12 @@ export default function ChatPage() {
       <div className="flex flex-1 overflow-hidden min-h-0">
 
         {/* ══ Sidebar ══════════════════════════════════════════════════════ */}
-        <div className="w-64 flex flex-col flex-shrink-0 overflow-y-auto select-none" style={{ background: '#1A1D21', color: '#D1D2D3' }}>
+        <div className="w-64 flex flex-col flex-shrink-0 overflow-y-auto select-none" style={{ background: '#1B2A3B', color: '#C8D1DC' }}>
 
           {/* Starred */}
           {starredChannels.length > 0 && (
             <div className="mt-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest px-4 mb-1 text-[#9B9C9D]">Starred</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest px-4 mb-1 text-[#7A8FA6]">Starred</p>
               {starredChannels.map(ch => (
                 <SidebarChannel key={ch.id} channel={ch}
                   active={!dmTarget && channel === ch.id}
@@ -600,24 +600,24 @@ export default function ChatPage() {
           {/* Channels */}
           <div className="mt-4">
             <div className="flex items-center px-3 mb-0.5">
-              <button className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#9B9C9D] hover:text-white flex-1 text-left"
+              <button className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#7A8FA6] hover:text-white flex-1 text-left"
                 onClick={() => setChannelsOpen(v => !v)}>
                 {channelsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                 Channels
               </button>
               <button onClick={() => setNewChannelOpen(true)}
-                className="text-[#9B9C9D] hover:text-white p-0.5 rounded transition-colors" title="Add channel">
+                className="text-[#7A8FA6] hover:text-white p-0.5 rounded transition-colors" title="Add channel">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* New channel input */}
             {newChannelOpen && (
-              <div className="mx-2 mb-2 bg-[#27292D] rounded-lg p-2">
-                <p className="text-[11px] text-[#9B9C9D] mb-1.5 px-1">Channel name</p>
+              <div className="mx-2 mb-2 bg-[#243447] rounded-lg p-2">
+                <p className="text-[11px] text-[#7A8FA6] mb-1.5 px-1">Channel name</p>
                 <input
                   ref={newChannelInputRef}
-                  className="w-full bg-[#1A1D21] text-white text-[13px] rounded px-2 py-1.5 outline-none border border-[#424649] focus:border-[#5BA3A0] placeholder-[#6B6F76]"
+                  className="w-full bg-[#1B2A3B] text-white text-[13px] rounded px-2 py-1.5 outline-none border border-[#3A4F63] focus:border-[#5BA3A0] placeholder-[#4E6478]"
                   placeholder="e.g. marketing"
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value.toLowerCase().replace(/\s/g, '-'))}
@@ -666,56 +666,56 @@ export default function ChatPage() {
           {/* Direct Messages */}
           <div className="mt-4 flex-1">
             <div className="flex items-center px-3 mb-0.5">
-              <button className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#9B9C9D] hover:text-white flex-1 text-left"
+              <button className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#7A8FA6] hover:text-white flex-1 text-left"
                 onClick={() => setDmsOpen(v => !v)}>
                 {dmsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                 Direct Messages
               </button>
               <button onClick={() => { setNewDmOpen(true); setDmSearch('') }}
-                className="text-[#9B9C9D] hover:text-white p-0.5 rounded transition-colors" title="New message">
+                className="text-[#7A8FA6] hover:text-white p-0.5 rounded transition-colors" title="New message">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {dmsOpen && dmList.map(s => (
               <button key={s.id} onClick={() => { setDmTarget(s); activeDmIds.current.add(s.id) }}
-                className={`w-full flex items-center gap-2.5 px-3 py-1 text-[13px] transition-colors text-left rounded-sm mx-1 ${
-                  dmTarget?.id === s.id ? 'bg-[#1164A3] text-white' : 'text-[#C9CACC] hover:bg-white/10'
-                }`} style={{ width: 'calc(100% - 8px)' }}>
+                className={`w-full flex items-center gap-2.5 px-3 py-1 text-[13px] transition-colors text-left rounded mx-1 ${
+                  dmTarget?.id === s.id ? 'text-white' : 'text-[#A8BDCF] hover:bg-white/8 hover:text-white'
+                }`} style={{ width: 'calc(100% - 8px)', background: dmTarget?.id === s.id ? 'rgba(91,163,160,0.25)' : undefined }}>
                 <div className="relative flex-shrink-0">
                   <Avatar name={s.name} avatarUrl={s.avatar_url} size={6} />
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#1A1D21] ${onlineIds.has(s.id) ? 'bg-emerald-400' : 'bg-[#6B6F76]'}`} />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#1B2A3B] ${onlineIds.has(s.id) ? 'bg-emerald-400' : 'bg-[#4E6478]'}`} />
                 </div>
                 <span className="truncate flex-1">{s.name}</span>
-                {hasUnread(`dm-${s.id}`) && <span className="w-2 h-2 rounded-full bg-white flex-shrink-0" />}
+                {hasUnread(`dm-${s.id}`) && <span className="w-2 h-2 rounded-full bg-[#5BA3A0] flex-shrink-0" />}
               </button>
             ))}
 
             {dmsOpen && dmList.length === 0 && (
-              <p className="text-[12px] text-[#6B6F76] px-4 py-1.5 italic">No conversations yet</p>
+              <p className="text-[12px] text-[#4E6478] px-4 py-1.5 italic">No conversations yet</p>
             )}
           </div>
 
           {/* My profile */}
           {myStaff && (
-            <div className="px-3 py-3 border-t border-white/10 flex items-center gap-2.5">
+            <div className="px-3 py-3 flex items-center gap-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
               <div className="relative flex-shrink-0">
                 <Avatar name={myStaff.name} avatarUrl={myStaff.avatar_url} size={8} />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#1A1D21]" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#1B2A3B]" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-white truncate">{myStaff.name}</p>
-                <p className="text-[11px] text-emerald-400">Active</p>
+                <p className="text-[11px] text-emerald-400 font-medium">● Active</p>
               </div>
             </div>
           )}
         </div>
 
         {/* ══ Main chat area ═══════════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col bg-white min-w-0">
+        <div className="flex-1 flex flex-col min-w-0" style={{ background: '#F4F6F8' }}>
 
           {/* Header */}
-          <div className="border-b border-slate-200 px-5 h-12 flex items-center gap-3 flex-shrink-0">
+          <div className="px-5 h-14 flex items-center gap-3 flex-shrink-0 bg-white" style={{ borderBottom: '1px solid #E2E8EF' }}>
             {dmTarget ? (
               <>
                 <div className="relative flex-shrink-0">
@@ -781,7 +781,7 @@ export default function ChatPage() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex-1 overflow-y-auto pb-2" style={{ scrollbarWidth: 'thin', background: '#F4F6F8' }}>
             {loading ? (
               <div className="flex justify-center pt-12"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
             ) : messages.length === 0 ? (
@@ -806,7 +806,7 @@ export default function ChatPage() {
                   <div key={date}>
                     <div className="flex items-center px-5 py-2">
                       <div className="flex-1 h-px bg-slate-200" />
-                      <span className="text-xs font-semibold text-slate-400 border border-slate-200 rounded-full px-3 py-0.5 mx-3 bg-white">
+                      <span className="text-[11px] font-semibold text-slate-400 border border-slate-200 rounded-full px-3 py-0.5 mx-3 bg-white shadow-sm">
                         {formatDateDivider(date)}
                       </span>
                       <div className="flex-1 h-px bg-slate-200" />
@@ -833,7 +833,8 @@ export default function ChatPage() {
 
                       return (
                         <div key={msg.id}
-                          className={`relative px-5 flex gap-3 ${compact ? 'py-0.5' : 'pt-3 pb-0.5'} ${showBar ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
+                          className={`relative px-5 flex gap-3 ${compact ? 'py-0.5' : 'pt-3 pb-0.5'}`}
+                          style={{ background: showBar ? 'rgba(0,0,0,0.04)' : 'transparent' }}
                           onMouseEnter={() => setHoveredMsgId(msg.id)}
                           onMouseLeave={() => { if (!hasPopup) setHoveredMsgId(null) }}>
 
@@ -896,7 +897,7 @@ export default function ChatPage() {
                           {showBar && (
                             <div
                               ref={el => { if (el) popupRefs.current.set(`bar-${msg.id}`, el); else popupRefs.current.delete(`bar-${msg.id}`) }}
-                              className="absolute right-4 top-2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-md px-1 py-0.5 z-10">
+                              className="absolute right-4 top-2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-lg px-1 py-0.5 z-10">
 
                               {/* Emoji picker */}
                               <div className="relative">
@@ -958,11 +959,11 @@ export default function ChatPage() {
           )}
 
           {/* Input */}
-          <div className="px-5 pb-4 pt-2 flex-shrink-0">
+          <div className="px-5 pb-4 pt-3 flex-shrink-0 bg-white" style={{ borderTop: '1px solid #E2E8EF' }}>
             {sendError && <p className="text-xs text-red-500 mb-2">Failed to send: {sendError}</p>}
-            <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm">
+            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
               {replyTo && (
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
                   <Reply className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                   <p className="text-[12px] text-slate-500 flex-1 min-w-0 truncate">
                     Replying to <span className="font-semibold text-slate-700">{resolveSenderName(replyTo)}</span>:{' '}
@@ -1160,8 +1161,10 @@ function SidebarChannel({ channel, active, unread, starred, renaming, renameValu
   onDelete?: () => void; onManageMembers?: () => void
 }) {
   return (
-    <div className={`flex items-center mx-1 rounded-sm group ${active ? 'bg-[#1164A3]' : 'hover:bg-white/10'}`}
-      style={{ width: 'calc(100% - 8px)' }}>
+    <div className={`flex items-center mx-1 rounded group`}
+      style={{ width: 'calc(100% - 8px)', background: active ? 'rgba(91,163,160,0.22)' : undefined }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)' }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '' }}>
       {renaming ? (
         <div className="flex items-center gap-1 flex-1 px-2 py-1">
           <Hash className="w-3.5 h-3.5 text-[#9B9C9D] flex-shrink-0" />
@@ -1181,30 +1184,30 @@ function SidebarChannel({ channel, active, unread, starred, renaming, renameValu
         </div>
       ) : (
         <>
-          <button onClick={onClick} className={`flex-1 flex items-center gap-2 px-3 py-1 text-[13px] text-left ${
-            active ? 'text-white font-medium' : unread ? 'text-white font-semibold' : 'text-[#C9CACC]'
+          <button onClick={onClick} className={`flex-1 flex items-center gap-2 px-3 py-1.5 text-[13px] text-left ${
+            active ? 'text-white font-semibold' : unread ? 'text-white font-semibold' : 'text-[#A8BDCF]'
           }`}>
-            <Hash className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
+            <Hash className={`w-3.5 h-3.5 flex-shrink-0 ${active ? 'opacity-90' : 'opacity-50'}`} />
             <span className="flex-1 truncate">{channel.name}</span>
             {(memberCount ?? 0) > 0 && !active && (
-              <span className="text-[10px] text-[#6B6F76] flex-shrink-0 mr-0.5"><Users className="w-2.5 h-2.5 inline opacity-60" />{memberCount}</span>
+              <span className="text-[10px] text-[#4E6478] flex-shrink-0 mr-0.5"><Users className="w-2.5 h-2.5 inline opacity-60" />{memberCount}</span>
             )}
-            {unread && !active && <span className="w-2 h-2 rounded-full bg-white flex-shrink-0" />}
+            {unread && !active && <span className="w-2 h-2 rounded-full bg-[#5BA3A0] flex-shrink-0" />}
           </button>
           <div className="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={e => { e.stopPropagation(); onRename() }} className="p-0.5 text-[#9B9C9D] hover:text-white rounded" title="Rename">
+            <button onClick={e => { e.stopPropagation(); onRename() }} className="p-0.5 text-[#7A8FA6] hover:text-white rounded" title="Rename">
               <Pencil className="w-2.5 h-2.5" />
             </button>
             {canManageMembers && onManageMembers && (
-              <button onClick={e => { e.stopPropagation(); onManageMembers() }} className="p-0.5 text-[#9B9C9D] hover:text-white rounded" title="Manage members">
+              <button onClick={e => { e.stopPropagation(); onManageMembers() }} className="p-0.5 text-[#7A8FA6] hover:text-white rounded" title="Manage members">
                 <Users className="w-2.5 h-2.5" />
               </button>
             )}
             <button onClick={e => { e.stopPropagation(); onToggleStar() }} className="p-0.5 rounded" title="Star">
-              <Star className={`w-2.5 h-2.5 ${starred ? 'fill-amber-400 text-amber-400' : 'text-[#9B9C9D] hover:text-amber-400'}`} />
+              <Star className={`w-2.5 h-2.5 ${starred ? 'fill-amber-400 text-amber-400' : 'text-[#7A8FA6] hover:text-amber-400'}`} />
             </button>
             {isAdmin && onDelete && (
-              <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 text-[#9B9C9D] hover:text-red-400 rounded" title="Delete channel">
+              <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 text-[#7A8FA6] hover:text-red-400 rounded" title="Delete channel">
                 <Trash2 className="w-2.5 h-2.5" />
               </button>
             )}
