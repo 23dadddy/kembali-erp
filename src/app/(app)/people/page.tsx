@@ -17,7 +17,7 @@ import {
   Users, Plus, Edit2, Check, X, Phone, Mail, Loader2,
   Truck, UserCog, ChevronRight, Calendar, Clock, DollarSign,
   Shield, AlertTriangle, Star, Download, Zap, BarChart3, User,
-  UserCheck, UserX
+  UserCheck, UserX, Send
 } from 'lucide-react'
 
 type MainTab = 'team' | 'attendance' | 'performance'
@@ -48,6 +48,12 @@ function TeamTab() {
   const [ptoForm, setPtoForm] = useState<Partial<PtoRequest>>({ type: 'annual', status: 'pending' })
   const [filterRole, setFilterRole] = useState('all')
 
+  // ── Invite modal ──
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'staff', phone: '' })
+  const [inviting, setInviting] = useState(false)
+  const [inviteResult, setInviteResult] = useState<{ success: boolean; message: string } | null>(null)
+
   useEffect(() => {
     const load = async () => {
       setLoading(true)
@@ -66,6 +72,32 @@ function TeamTab() {
       else { const c = await createStaff(form); setStaff([...staff, c]) }
       setShowForm(false); setEditingId(null); setForm(EMPTY_STAFF)
     } finally { setSaving(false) }
+  }
+
+  const handleInvite = async () => {
+    if (!inviteForm.name.trim() || !inviteForm.email.trim()) return
+    setInviting(true)
+    setInviteResult(null)
+    try {
+      const res = await fetch('/api/invite-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setInviteResult({ success: false, message: data.error ?? 'Something went wrong.' })
+      } else {
+        setInviteResult({ success: true, message: `Account created! A welcome email with login credentials has been sent to ${inviteForm.email}.` })
+        // Add to staff list
+        if (data.staff) setStaff(prev => [...prev, data.staff])
+        setInviteForm({ name: '', email: '', role: 'staff', phone: '' })
+      }
+    } catch {
+      setInviteResult({ success: false, message: 'Network error. Please try again.' })
+    } finally {
+      setInviting(false)
+    }
   }
 
   const handlePtoSubmit = async () => {
@@ -114,8 +146,99 @@ function TeamTab() {
                 </button>
               ))}
             </div>
-            <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}><Plus className="w-4 h-4 mr-1.5" /> {t('people_add_staff')}</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { setShowInvite(true); setInviteResult(null) }}>
+                <Send className="w-4 h-4 mr-1.5" /> Invite User
+              </Button>
+              <Button onClick={() => { setForm(EMPTY_STAFF); setEditingId(null); setShowForm(true) }}>
+                <Plus className="w-4 h-4 mr-1.5" /> {t('people_add_staff')}
+              </Button>
+            </div>
           </div>
+
+          {/* ── Invite Modal ── */}
+          {showInvite && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-[17px] font-bold text-slate-900">Invite New User</h2>
+                    <p className="text-[13px] text-slate-500 mt-0.5">They'll receive an email with their login credentials.</p>
+                  </div>
+                  <button onClick={() => setShowInvite(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                  <div>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Full Name *</label>
+                    <input
+                      autoFocus
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-slate-400 transition-colors"
+                      placeholder="e.g. John Smith"
+                      value={inviteForm.name}
+                      onChange={e => setInviteForm(f => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Email Address *</label>
+                    <input
+                      type="email"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-slate-400 transition-colors"
+                      placeholder="e.g. john@kembaliwater.com"
+                      value={inviteForm.email}
+                      onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Role</label>
+                      <select
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-slate-400 bg-white transition-colors"
+                        value={inviteForm.role}
+                        onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
+                      >
+                        {['admin', 'manager', 'driver', 'cleaner', 'sales', 'staff'].map(r => (
+                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Phone</label>
+                      <input
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-slate-400 transition-colors"
+                        placeholder="Optional"
+                        value={inviteForm.phone}
+                        onChange={e => setInviteForm(f => ({ ...f, phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {inviteResult && (
+                    <div className={`rounded-lg px-4 py-3 text-[13px] leading-relaxed ${inviteResult.success ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                      {inviteResult.success && <span className="font-semibold">✓ </span>}
+                      {inviteResult.message}
+                    </div>
+                  )}
+                </div>
+                <div className="px-6 pb-6 flex gap-3">
+                  <button onClick={() => setShowInvite(false)}
+                    className="flex-1 border border-slate-200 text-slate-700 text-[13px] font-medium rounded-xl py-2.5 hover:bg-slate-50 transition-colors">
+                    {inviteResult?.success ? 'Close' : 'Cancel'}
+                  </button>
+                  {!inviteResult?.success && (
+                    <button
+                      onClick={handleInvite}
+                      disabled={inviting || !inviteForm.name.trim() || !inviteForm.email.trim()}
+                      className="flex-1 bg-slate-900 hover:bg-slate-700 text-white text-[13px] font-medium rounded-xl py-2.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {inviting ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : <><Send className="w-4 h-4" /> Send Invite</>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {showForm && (
             <Card>
