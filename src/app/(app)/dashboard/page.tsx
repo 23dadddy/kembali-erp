@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import { Topbar } from '@/components/layout/topbar'
+import { FloatingAI } from '@/components/layout/floating-ai'
 import { createClient } from '@/lib/supabase/server'
 import type { BottleInventory } from '@/types'
 import { DashboardClient } from './dashboard-client'
@@ -102,6 +103,7 @@ export default async function DashboardPage() {
         completionRate={completionRate}
         overdueInvoices={overdueRes.data ?? []}
       />
+      <FloatingAI />
     </>
   )
 }
