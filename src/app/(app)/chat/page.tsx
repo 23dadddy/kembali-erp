@@ -692,7 +692,7 @@ export default function ChatPage() {
             </div>
 
             {dmsOpen && dmList.map(s => (
-              <button key={s.id} onClick={() => { setDmTarget(s); activeDmIds.current.add(s.id) }}
+              <button key={s.id} onClick={() => setDmTarget(s)}
                 className={`w-full flex items-center gap-2.5 px-3 py-1 text-[13px] transition-colors text-left rounded mx-1 ${
                   dmTarget?.id === s.id ? 'text-white' : 'text-[#A8BDCF] hover:bg-white/8 hover:text-white'
                 }`} style={{ width: 'calc(100% - 8px)', background: dmTarget?.id === s.id ? 'rgba(91,163,160,0.25)' : undefined }}>
@@ -1043,7 +1043,7 @@ export default function ChatPage() {
                 </div>
               ) : filteredStaff.map(s => (
                 <button key={s.id}
-                  onClick={() => { setDmTarget(s); activeDmIds.current.add(s.id); setNewDmOpen(false); setDmSearch('') }}
+                  onClick={() => { setDmTarget(s); setNewDmOpen(false); setDmSearch('') }}
                   className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0">
                   <div className="relative flex-shrink-0">
                     <Avatar name={s.name} avatarUrl={s.avatar_url} size={10} />
