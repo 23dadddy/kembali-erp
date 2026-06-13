@@ -192,14 +192,23 @@ export default function ChatPage() {
   }
 
   // ── rename channel ──
-  const commitRename = (id: string) => {
+  const commitRename = async (id: string) => {
     const trimmed = renameValue.trim()
     if (!trimmed) { setRenamingChannel(null); return }
+    const oldName = channels.find(c => c.id === id)?.name ?? id
     setChannels(prev => prev.map(c => c.id === id ? { ...c, name: trimmed } : c))
     const next = { ...channelNames, [id]: trimmed }
     setChannelNames(next)
     localStorage.setItem('chat_channel_names', JSON.stringify(next))
     setRenamingChannel(null)
+    // Post system message into the channel
+    const actor = myStaff?.name ?? 'Someone'
+    await sb.from('chat_messages').insert({
+      channel: id,
+      sender_id: null,
+      recipient_id: null,
+      content: `__system__ ${actor} renamed this channel from "${oldName}" to "${trimmed}"`,
+    })
   }
 
   // ── create new channel ──
@@ -659,6 +668,18 @@ export default function ChatPage() {
                       <div className="flex-1 h-px bg-slate-200" />
                     </div>
                     {msgs.map((msg, i) => {
+                      // ── System message ──
+                      if (msg.content.startsWith('__system__')) {
+                        const text = msg.content.replace('__system__ ', '')
+                        return (
+                          <div key={msg.id} className="flex items-center gap-3 px-5 py-1.5">
+                            <div className="flex-1 h-px bg-slate-100" />
+                            <span className="text-[12px] text-slate-400 whitespace-nowrap">{text}</span>
+                            <div className="flex-1 h-px bg-slate-100" />
+                          </div>
+                        )
+                      }
+
                       const compact = isCompact(msgs, i)
                       const senderName = resolveSenderName(msg)
                       const avatarUrl = resolveSenderAvatar(msg)
