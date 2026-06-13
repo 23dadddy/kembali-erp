@@ -713,9 +713,8 @@ export default function ChatPage() {
           {/* My profile */}
           {myStaff && (
             <div className="px-3 py-3 flex items-center gap-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
-              <div className="relative flex-shrink-0">
+              <div className="flex-shrink-0">
                 <Avatar name={myStaff.name} avatarUrl={myStaff.avatar_url} size={8} />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#1B2A3B]" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-white truncate">{myStaff.name}</p>
