@@ -123,6 +123,8 @@ export default function ChatPage() {
   const newDmRef = useRef<HTMLDivElement>(null)
   const newChannelInputRef = useRef<HTMLInputElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  // mirror messages in a ref so realtime callback can read latest state
+  const messagesRef = useRef<Message[]>([])
 
   // ── load persisted state ──
   useEffect(() => {
@@ -292,7 +294,7 @@ export default function ChatPage() {
   const loadMessages = useCallback(async () => {
     setLoading(true)
     let q = sb.from('chat_messages')
-      .select('id, channel, sender_id, recipient_id, content, created_at, reply_to_id, sender:staff!sender_id(name, avatar_url), reply_to:chat_messages!reply_to_id(content, sender:staff!sender_id(name))')
+      .select('id, channel, sender_id, recipient_id, content, created_at, reply_to_id, sender:staff!sender_id(name, avatar_url)')
       .order('created_at', { ascending: true }).limit(200)
     if (dmTarget && myStaff) {
       q = q.or(`and(sender_id.eq.${myStaff.id},recipient_id.eq.${dmTarget.id}),and(sender_id.eq.${dmTarget.id},recipient_id.eq.${myStaff.id})`)
@@ -302,7 +304,28 @@ export default function ChatPage() {
       q = q.eq('channel', channel).is('recipient_id', null)
     }
     const { data } = await q
-    setMessages((data ?? []) as unknown as Message[])
+    let msgs = (data ?? []) as unknown as Message[]
+
+    // Fetch reply_to data separately (self-referential join returns array in PostgREST)
+    const replyIds = [...new Set(msgs.filter(m => m.reply_to_id).map(m => m.reply_to_id!))]
+    if (replyIds.length > 0) {
+      const { data: parents } = await sb.from('chat_messages')
+        .select('id, content, sender_id, sender:staff!sender_id(name)')
+        .in('id', replyIds)
+      if (parents) {
+        const parentMap = new Map(parents.map((p: any) => [p.id, p]))
+        msgs = msgs.map(m => {
+          if (!m.reply_to_id) return m
+          const parent = parentMap.get(m.reply_to_id) as any
+          if (!parent) return m
+          const senderName = parent.sender?.name ?? staffMap.current.get(parent.sender_id ?? '')?.name ?? null
+          return { ...m, reply_to: { content: parent.content, sender: senderName ? { name: senderName } : null } }
+        })
+      }
+    }
+
+    messagesRef.current = msgs
+    setMessages(msgs)
     setLoading(false)
   }, [channel, dmTarget, myStaff])
 
@@ -312,7 +335,7 @@ export default function ChatPage() {
   // ── realtime ──
   useEffect(() => {
     const sub = sb.channel(`chat-${viewKey}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, async (payload) => {
         const msg = payload.new as Message
         const isChannelMsg = !msg.recipient_id && msg.channel === channel && !dmTarget
         const isDM = dmTarget && myStaff && (
@@ -321,7 +344,30 @@ export default function ChatPage() {
         )
         if (isChannelMsg || isDM) {
           const senderData = staffMap.current.get(msg.sender_id ?? '')
-          const enriched: Message = { ...msg, sender: senderData ? { name: senderData.name, avatar_url: senderData.avatar_url } : null }
+
+          // resolve reply_to from local cache first, fallback to DB fetch
+          let replyTo: Message['reply_to'] = null
+          if (msg.reply_to_id) {
+            const local = messagesRef.current.find(m => m.id === msg.reply_to_id)
+            if (local) {
+              const replySender = staffMap.current.get(local.sender_id ?? '')
+              replyTo = { content: local.content, sender: replySender ? { name: replySender.name } : (local.sender ?? null) }
+            } else {
+              // fetch from DB
+              const { data: rd } = await sb.from('chat_messages')
+                .select('content, sender:staff!sender_id(name)')
+                .eq('id', msg.reply_to_id)
+                .single()
+              if (rd) replyTo = rd as any
+            }
+          }
+
+          const enriched: Message = {
+            ...msg,
+            sender: senderData ? { name: senderData.name, avatar_url: senderData.avatar_url } : null,
+            reply_to: replyTo,
+          }
+          messagesRef.current = [...messagesRef.current.filter(m => m.id !== enriched.id), enriched]
           setMessages(prev => prev.some(m => m.id === enriched.id) ? prev : [...prev, enriched])
           markRead(viewKey)
         }
@@ -338,7 +384,10 @@ export default function ChatPage() {
     setContextMenuMsgId(null)
     setHoveredMsgId(null)
     const { error } = await sb.from('chat_messages').delete().eq('id', id)
-    if (!error) setMessages(prev => prev.filter(m => m.id !== id))
+    if (!error) {
+      messagesRef.current = messagesRef.current.filter(m => m.id !== id)
+      setMessages(prev => prev.filter(m => m.id !== id))
+    }
   }
 
   const copyText = (content: string) => {
@@ -712,9 +761,9 @@ export default function ChatPage() {
                         const text = msg.content.replace('__system__ ', '')
                         return (
                           <div key={msg.id} className="flex items-center gap-3 px-5 py-1.5">
-                            <div className="flex-1 h-px bg-slate-100" />
+                            <div className="flex-1 h-px bg-slate-200" />
                             <span className="text-[12px] text-slate-400 whitespace-nowrap">{text}</span>
-                            <div className="flex-1 h-px bg-slate-100" />
+                            <div className="flex-1 h-px bg-slate-200" />
                           </div>
                         )
                       }
@@ -755,12 +804,14 @@ export default function ChatPage() {
                             )}
 
                             {msg.reply_to && (
-                              <div className="flex items-start gap-2 mb-1 pl-2 border-l-2 border-slate-300">
+                              <div className="flex items-start gap-2 mb-1 pl-2 border-l-2 border-slate-400 cursor-pointer hover:border-slate-500">
                                 <div className="min-w-0">
-                                  <span className="text-[11px] font-bold text-slate-600 mr-1.5">
-                                    {(msg.reply_to.sender as any)?.name ?? 'Unknown'}
-                                  </span>
-                                  <span className="text-[12px] text-slate-400 truncate">{msg.reply_to.content}</span>
+                                  {(msg.reply_to.sender as any)?.name && (
+                                    <span className="text-[11px] font-bold text-slate-700 mr-1.5">
+                                      {(msg.reply_to.sender as any).name}
+                                    </span>
+                                  )}
+                                  <span className="text-[12px] text-slate-500 truncate">{msg.reply_to.content}</span>
                                 </div>
                               </div>
                             )}
