@@ -88,6 +88,9 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState<string | null>(null)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null)
+  const [emojiPickerMsgId, setEmojiPickerMsgId] = useState<string | null>(null)
+  const [contextMenuMsgId, setContextMenuMsgId] = useState<string | null>(null)
+  const [copyToast, setCopyToast] = useState(false)
 
   // ── people ──
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -319,6 +322,26 @@ export default function ChatPage() {
   }, [channel, dmTarget, myStaff, sb, viewKey, markRead])
 
   // ── send ──
+  const deleteMessage = async (id: string) => {
+    await sb.from('chat_messages').delete().eq('id', id)
+    setMessages(prev => prev.filter(m => m.id !== id))
+    setContextMenuMsgId(null)
+  }
+
+  const copyText = (content: string) => {
+    navigator.clipboard.writeText(content)
+    setCopyToast(true)
+    setTimeout(() => setCopyToast(false), 2000)
+    setContextMenuMsgId(null)
+  }
+
+  // close popups on outside click
+  useEffect(() => {
+    const handler = () => { setEmojiPickerMsgId(null); setContextMenuMsgId(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   const sendMessage = async () => {
     const text = input.trim()
     if (!text) return
@@ -684,10 +707,46 @@ export default function ChatPage() {
                           </div>
 
                           {isHovered && (
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-md px-1 py-0.5 z-10">
-                              <ActionBtn icon={<Smile className="w-3.5 h-3.5" />} title="React" onClick={() => {}} />
-                              <ActionBtn icon={<Reply className="w-3.5 h-3.5" />} title="Reply" onClick={() => { setReplyTo(msg); inputRef.current?.focus() }} />
-                              <ActionBtn icon={<MoreHorizontal className="w-3.5 h-3.5" />} title="More" onClick={() => {}} />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-md px-1 py-0.5 z-10"
+                              onMouseDown={e => e.stopPropagation()}>
+                              {/* Emoji picker */}
+                              <div className="relative">
+                                <ActionBtn icon={<Smile className="w-3.5 h-3.5" />} title="React"
+                                  onClick={() => setEmojiPickerMsgId(p => p === msg.id ? null : msg.id)} />
+                                {emojiPickerMsgId === msg.id && (
+                                  <div className="absolute bottom-8 right-0 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-1 z-20"
+                                    onMouseDown={e => e.stopPropagation()}>
+                                    {['👍','❤️','😂','😮','😢','🎉','🔥','✅'].map(emoji => (
+                                      <button key={emoji}
+                                        className="text-lg hover:bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
+                                        onClick={() => setEmojiPickerMsgId(null)}
+                                        title={emoji}>
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Reply */}
+                              <ActionBtn icon={<Reply className="w-3.5 h-3.5" />} title="Reply"
+                                onClick={() => { setReplyTo(msg); inputRef.current?.focus() }} />
+
+                              {/* More menu */}
+                              <div className="relative">
+                                <ActionBtn icon={<MoreHorizontal className="w-3.5 h-3.5" />} title="More"
+                                  onClick={() => setContextMenuMsgId(p => p === msg.id ? null : msg.id)} />
+                                {contextMenuMsgId === msg.id && (
+                                  <div className="absolute bottom-8 right-0 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[160px] z-20"
+                                    onMouseDown={e => e.stopPropagation()}>
+                                    <MenuBtn label="Reply" onClick={() => { setReplyTo(msg); inputRef.current?.focus(); setContextMenuMsgId(null) }} />
+                                    <MenuBtn label="Copy text" onClick={() => copyText(msg.content)} />
+                                    {msg.sender_id === myStaff?.id && (
+                                      <MenuBtn label="Delete message" danger onClick={() => deleteMessage(msg.id)} />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -699,6 +758,13 @@ export default function ChatPage() {
               </div>
             )}
           </div>
+
+          {/* Copy toast */}
+          {copyToast && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg z-50 pointer-events-none">
+              Copied to clipboard
+            </div>
+          )}
 
           {/* Input */}
           <div className="px-5 pb-4 pt-2 flex-shrink-0">
@@ -803,6 +869,15 @@ function ActionBtn({ icon, title, onClick }: { icon: React.ReactNode; title: str
     <button onClick={onClick} title={title}
       className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors">
       {icon}
+    </button>
+  )
+}
+
+function MenuBtn({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button onClick={onClick}
+      className={`w-full text-left px-4 py-2 text-[13px] hover:bg-slate-50 transition-colors ${danger ? 'text-red-500 hover:bg-red-50' : 'text-slate-700'}`}>
+      {label}
     </button>
   )
 }
