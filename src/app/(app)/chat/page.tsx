@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Send, Hash, Loader2, Star, Reply, X, Smile,
   MoreHorizontal, ChevronDown, ChevronRight, Plus, Pencil, Check,
+  Trash2, Users,
 } from 'lucide-react'
 
 // ─── Default channels ────────────────────────────────────────────────────────
@@ -117,10 +118,18 @@ export default function ChatPage() {
   const [dmSearch, setDmSearch] = useState('')
   const [renamingChannel, setRenamingChannel] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [deletingChannel, setDeletingChannel] = useState<Channel | null>(null)
+  const [manageMembersChannel, setManageMembersChannel] = useState<Channel | null>(null)
+  const [manageMembersSearch, setManageMembersSearch] = useState('')
+  const [pendingMembers, setPendingMembers] = useState<Set<string>>(new Set())
+  const [savingMembers, setSavingMembers] = useState(false)
+
+  // ── channel access control ──
+  const [channelMembers, setChannelMembers] = useState<Record<string, string[]>>({})
+  const [deletedChannels, setDeletedChannels] = useState<Set<string>>(new Set())
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const newDmRef = useRef<HTMLDivElement>(null)
   const newChannelInputRef = useRef<HTMLInputElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   // mirror messages in a ref so realtime callback can read latest state
@@ -147,17 +156,11 @@ export default function ChatPage() {
           return [...prev, ...custom.filter(c => !existingIds.has(c.id))]
         })
       }
+      const dc = localStorage.getItem('chat_deleted_channels')
+      if (dc) setDeletedChannels(new Set(JSON.parse(dc)))
     } catch {}
   }, [])
 
-  // ── close DM picker on outside click ──
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (newDmRef.current && !newDmRef.current.contains(e.target as Node)) setNewDmOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   // focus rename input when editing starts
   useEffect(() => {
@@ -235,6 +238,37 @@ export default function ChatPage() {
     setDmTarget(null)
   }
 
+  // ── delete channel (admin only) ──
+  const deleteChannel = (id: string) => {
+    setDeletedChannels(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      localStorage.setItem('chat_deleted_channels', JSON.stringify([...next]))
+      return next
+    })
+    if (channel === id) {
+      const fallback = channels.find(c => c.id !== id && !deletedChannels.has(c.id))
+      if (fallback) setChannel(fallback.id)
+    }
+    setDeletingChannel(null)
+  }
+
+  // ── save channel membership ──
+  const saveMembership = async () => {
+    if (!manageMembersChannel) return
+    setSavingMembers(true)
+    const channelId = manageMembersChannel.id
+    await sb.from('channel_members').delete().eq('channel_id', channelId)
+    if (pendingMembers.size > 0) {
+      await sb.from('channel_members').insert(
+        [...pendingMembers].map(staffId => ({ channel_id: channelId, staff_id: staffId, added_by: myStaff?.id ?? null }))
+      )
+    }
+    setChannelMembers(prev => ({ ...prev, [channelId]: [...pendingMembers] }))
+    setSavingMembers(false)
+    setManageMembersChannel(null)
+  }
+
   // ── init staff + presence ──
   useEffect(() => {
     let presenceChannel: ReturnType<typeof sb.channel> | null = null
@@ -247,6 +281,17 @@ export default function ChatPage() {
       const staffList = (staffRes.data ?? []) as StaffMember[]
       setStaff(staffList)
       staffList.forEach(s => staffMap.current.set(s.id, s))
+
+      // Load channel membership map
+      const { data: memberRows } = await sb.from('channel_members').select('channel_id, staff_id')
+      if (memberRows) {
+        const map: Record<string, string[]> = {}
+        for (const row of memberRows as { channel_id: string; staff_id: string }[]) {
+          if (!map[row.channel_id]) map[row.channel_id] = []
+          map[row.channel_id].push(row.staff_id)
+        }
+        setChannelMembers(map)
+      }
 
       let myStaffData = (myRes as any).data as StaffMember | null
       if (!myStaffData && user) {
@@ -491,9 +536,20 @@ export default function ChatPage() {
     else grouped.push({ date, msgs: [msg] })
   }
 
-  const currentChannelName = channels.find(c => c.id === channel)?.name ?? channel
+  const isAdmin = myStaff?.role?.toLowerCase() === 'admin'
+  const canManageMembers = isAdmin || myStaff?.role?.toLowerCase() === 'manager'
+
+  const visibleChannels = channels.filter(ch => {
+    if (deletedChannels.has(ch.id)) return false
+    if (canManageMembers) return true
+    const members = channelMembers[ch.id]
+    if (!members || members.length === 0) return true
+    return members.includes(myStaff?.id ?? '')
+  })
+
+  const currentChannelName = visibleChannels.find(c => c.id === channel)?.name ?? channel
   const currentTitle = dmTarget ? dmTarget.name : currentChannelName
-  const starredChannels = channels.filter(c => starred.has(c.id))
+  const starredChannels = visibleChannels.filter(c => starred.has(c.id))
   const dmSearchLower = dmSearch.toLowerCase()
   const filteredStaff = staff.filter(s => s.id !== myStaff?.id && s.name.toLowerCase().includes(dmSearchLower))
 
@@ -527,7 +583,16 @@ export default function ChatPage() {
                   renameInputRef={renamingChannel === ch.id ? renameInputRef : undefined}
                   onClick={() => { setChannel(ch.id); setDmTarget(null) }}
                   onToggleStar={() => toggleStar(ch.id)}
-                  onRename={() => { setRenamingChannel(ch.id); setRenameValue(ch.name) }} />
+                  onRename={() => { setRenamingChannel(ch.id); setRenameValue(ch.name) }}
+                  isAdmin={isAdmin}
+                  canManageMembers={canManageMembers}
+                  memberCount={channelMembers[ch.id]?.length ?? 0}
+                  onDelete={() => setDeletingChannel(ch)}
+                  onManageMembers={() => {
+                    setManageMembersChannel(ch)
+                    setPendingMembers(new Set(channelMembers[ch.id] ?? []))
+                    setManageMembersSearch('')
+                  }} />
               ))}
             </div>
           )}
@@ -574,7 +639,7 @@ export default function ChatPage() {
               </div>
             )}
 
-            {channelsOpen && channels.map(ch => (
+            {channelsOpen && visibleChannels.map(ch => (
               <SidebarChannel key={ch.id} channel={ch}
                 active={!dmTarget && channel === ch.id}
                 unread={hasUnread(`ch-${ch.id}`)} starred={starred.has(ch.id)}
@@ -585,7 +650,16 @@ export default function ChatPage() {
                 renameInputRef={renamingChannel === ch.id ? renameInputRef : undefined}
                 onClick={() => { setChannel(ch.id); setDmTarget(null) }}
                 onToggleStar={() => toggleStar(ch.id)}
-                onRename={() => { setRenamingChannel(ch.id); setRenameValue(ch.name) }} />
+                onRename={() => { setRenamingChannel(ch.id); setRenameValue(ch.name) }}
+                isAdmin={isAdmin}
+                canManageMembers={canManageMembers}
+                memberCount={channelMembers[ch.id]?.length ?? 0}
+                onDelete={() => setDeletingChannel(ch)}
+                onManageMembers={() => {
+                  setManageMembersChannel(ch)
+                  setPendingMembers(new Set(channelMembers[ch.id] ?? []))
+                  setManageMembersSearch('')
+                }} />
             ))}
           </div>
 
@@ -597,48 +671,10 @@ export default function ChatPage() {
                 {dmsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                 Direct Messages
               </button>
-              <div className="relative" ref={newDmRef}>
-                <button onClick={() => { setNewDmOpen(v => !v); setDmSearch('') }}
-                  className="text-[#9B9C9D] hover:text-white p-0.5 rounded transition-colors" title="New message">
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-
-                {/* DM picker dropdown */}
-                {newDmOpen && (
-                  <div className="absolute left-0 top-6 w-60 bg-[#27292D] rounded-xl shadow-xl border border-[#424649] z-50 overflow-hidden">
-                    <div className="p-2 border-b border-[#424649]">
-                      <p className="text-[12px] font-semibold text-white mb-1.5 px-1">New direct message</p>
-                      <input
-                        autoFocus
-                        className="w-full bg-[#1A1D21] text-white text-[13px] rounded px-2.5 py-1.5 outline-none border border-[#424649] focus:border-[#5BA3A0] placeholder-[#6B6F76]"
-                        placeholder="Search people..."
-                        value={dmSearch}
-                        onChange={e => setDmSearch(e.target.value)}
-                        onKeyDown={e => e.key === 'Escape' && setNewDmOpen(false)}
-                      />
-                    </div>
-                    <div className="max-h-52 overflow-y-auto py-1">
-                      {filteredStaff.length === 0 ? (
-                        <p className="text-[12px] text-[#9B9C9D] px-3 py-2">No people found</p>
-                      ) : filteredStaff.map(s => (
-                        <button key={s.id}
-                          onClick={() => { setDmTarget(s); activeDmIds.current.add(s.id); setNewDmOpen(false); setDmSearch('') }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/10 transition-colors text-left">
-                          <div className="relative flex-shrink-0">
-                            <Avatar name={s.name} avatarUrl={s.avatar_url} size={7} />
-                            <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#27292D] ${onlineIds.has(s.id) ? 'bg-emerald-400' : 'bg-[#6B6F76]'}`} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] text-white font-medium truncate">{s.name}</p>
-                            <p className="text-[11px] text-[#9B9C9D] truncate">{s.role}</p>
-                          </div>
-                          {onlineIds.has(s.id) && <span className="ml-auto text-[10px] text-emerald-400 flex-shrink-0">Active</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button onClick={() => { setNewDmOpen(true); setDmSearch('') }}
+                className="text-[#9B9C9D] hover:text-white p-0.5 rounded transition-colors" title="New message">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             {dmsOpen && dmList.map(s => (
@@ -718,6 +754,26 @@ export default function ChatPage() {
                     <button onClick={() => toggleStar(channel)} className="text-slate-300 hover:text-amber-400 transition-colors">
                       <Star className={`w-3.5 h-3.5 ${starred.has(channel) ? 'fill-amber-400 text-amber-400' : ''}`} />
                     </button>
+                    {canManageMembers && (
+                      <button
+                        onClick={() => {
+                          const ch = visibleChannels.find(c => c.id === channel)
+                          if (ch) { setManageMembersChannel(ch); setPendingMembers(new Set(channelMembers[channel] ?? [])); setManageMembersSearch('') }
+                        }}
+                        className="ml-1 text-slate-300 hover:text-slate-600 transition-colors flex items-center gap-1 text-[12px]" title="Manage members">
+                        <Users className="w-3.5 h-3.5" />
+                        {(channelMembers[channel]?.length ?? 0) > 0 && (
+                          <span className="text-slate-400">{channelMembers[channel].length}</span>
+                        )}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => { const ch = visibleChannels.find(c => c.id === channel); if (ch) setDeletingChannel(ch) }}
+                        className="ml-1 text-slate-300 hover:text-red-500 transition-colors" title="Delete channel">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </>
                 )}
               </>
@@ -944,17 +1000,164 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* ══ New DM Modal ════════════════════════════════════════════════════ */}
+      {newDmOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setNewDmOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-[17px] font-bold text-slate-900">New Direct Message</h2>
+              <button onClick={() => setNewDmOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4 border-b border-slate-100">
+              <input
+                autoFocus
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#5BA3A0] placeholder-slate-400 transition-colors"
+                placeholder="Search for people..."
+                value={dmSearch}
+                onChange={e => setDmSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Escape' && setNewDmOpen(false)}
+              />
+            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
+              {filteredStaff.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <Users className="w-8 h-8 mb-3 opacity-40" />
+                  <p className="text-[14px]">{dmSearch ? 'No people match your search' : 'No other team members found'}</p>
+                </div>
+              ) : filteredStaff.map(s => (
+                <button key={s.id}
+                  onClick={() => { setDmTarget(s); activeDmIds.current.add(s.id); setNewDmOpen(false); setDmSearch('') }}
+                  className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0">
+                  <div className="relative flex-shrink-0">
+                    <Avatar name={s.name} avatarUrl={s.avatar_url} size={10} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${onlineIds.has(s.id) ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-900 text-[14px]">{s.name}</p>
+                    <p className="text-[12px] text-slate-500 mt-0.5">{s.role || 'Staff'}</p>
+                  </div>
+                  {onlineIds.has(s.id) && (
+                    <span className="text-[12px] text-emerald-500 font-medium flex-shrink-0">Active now</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Delete Channel Confirmation ══════════════════════════════════════ */}
+      {deletingChannel && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeletingChannel(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <Trash2 className="w-5 h-5 text-red-500" />
+            </div>
+            <h2 className="text-[17px] font-bold text-slate-900 mb-2">Delete #{deletingChannel.name}?</h2>
+            <p className="text-[13px] text-slate-500 mb-6 leading-relaxed">
+              This removes the channel from the sidebar for everyone. Message history is preserved in the database but the channel won't be accessible.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingChannel(null)}
+                className="flex-1 border border-slate-200 text-slate-700 text-[13px] font-medium rounded-xl py-2.5 hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => deleteChannel(deletingChannel.id)}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-[13px] font-medium rounded-xl py-2.5 transition-colors">
+                Delete Channel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Manage Members Modal ════════════════════════════════════════════ */}
+      {manageMembersChannel && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setManageMembersChannel(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-[17px] font-bold text-slate-900">Manage Members</h2>
+                <p className="text-[12px] text-slate-500 mt-0.5">#{manageMembersChannel.name}</p>
+              </div>
+              <button onClick={() => setManageMembersChannel(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-4 py-3 border-b border-slate-100">
+              <input
+                autoFocus
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[#5BA3A0] transition-colors"
+                placeholder="Search staff..."
+                value={manageMembersSearch}
+                onChange={e => setManageMembersSearch(e.target.value)}
+              />
+            </div>
+            <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-100">
+              <p className="text-[11px] text-slate-500">
+                {pendingMembers.size === 0
+                  ? 'No restrictions — all staff can see this channel'
+                  : `${pendingMembers.size} member${pendingMembers.size !== 1 ? 's' : ''} — only selected staff can see this channel`}
+              </p>
+            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+              {staff
+                .filter(s => s.name.toLowerCase().includes(manageMembersSearch.toLowerCase()))
+                .map(s => {
+                  const checked = pendingMembers.has(s.id)
+                  const isMe = s.id === myStaff?.id
+                  return (
+                    <button key={s.id}
+                      onClick={() => {
+                        if (isMe) return
+                        setPendingMembers(prev => {
+                          const next = new Set(prev)
+                          checked ? next.delete(s.id) : next.add(s.id)
+                          return next
+                        })
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0 ${isMe ? 'opacity-50 cursor-default' : ''}`}>
+                      <Avatar name={s.name} avatarUrl={s.avatar_url} size={9} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-slate-900">{s.name}{isMe ? ' (you)' : ''}</p>
+                        <p className="text-[11px] text-slate-500">{s.role || 'Staff'}</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-[#007A5A] border-[#007A5A]' : 'border-slate-300'}`}>
+                        {checked && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </button>
+                  )
+                })}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
+              <button onClick={() => setManageMembersChannel(null)}
+                className="flex-1 border border-slate-200 text-slate-700 text-[13px] font-medium rounded-xl py-2.5 hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveMembership} disabled={savingMembers}
+                className="flex-1 bg-[#007A5A] hover:bg-[#006849] text-white text-[13px] font-medium rounded-xl py-2.5 transition-colors disabled:opacity-60">
+                {savingMembers ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── Sidebar channel row ──────────────────────────────────────────────────────
-function SidebarChannel({ channel, active, unread, starred, renaming, renameValue, onRenameChange, onRenameCommit, onRenameCancel, renameInputRef, onClick, onToggleStar, onRename }: {
+function SidebarChannel({ channel, active, unread, starred, renaming, renameValue, onRenameChange, onRenameCommit, onRenameCancel, renameInputRef, onClick, onToggleStar, onRename, isAdmin, canManageMembers, memberCount, onDelete, onManageMembers }: {
   channel: Channel; active: boolean; unread: boolean; starred: boolean
   renaming: boolean; renameValue: string
   onRenameChange: (v: string) => void; onRenameCommit: () => void; onRenameCancel: () => void
   renameInputRef?: React.RefObject<HTMLInputElement | null>
   onClick: () => void; onToggleStar: () => void; onRename: () => void
+  isAdmin?: boolean; canManageMembers?: boolean; memberCount?: number
+  onDelete?: () => void; onManageMembers?: () => void
 }) {
   return (
     <div className={`flex items-center mx-1 rounded-sm group ${active ? 'bg-[#1164A3]' : 'hover:bg-white/10'}`}
@@ -983,15 +1186,28 @@ function SidebarChannel({ channel, active, unread, starred, renaming, renameValu
           }`}>
             <Hash className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
             <span className="flex-1 truncate">{channel.name}</span>
+            {(memberCount ?? 0) > 0 && !active && (
+              <span className="text-[10px] text-[#6B6F76] flex-shrink-0 mr-0.5"><Users className="w-2.5 h-2.5 inline opacity-60" />{memberCount}</span>
+            )}
             {unread && !active && <span className="w-2 h-2 rounded-full bg-white flex-shrink-0" />}
           </button>
           <div className="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={e => { e.stopPropagation(); onRename() }} className="p-0.5 text-[#9B9C9D] hover:text-white rounded">
+            <button onClick={e => { e.stopPropagation(); onRename() }} className="p-0.5 text-[#9B9C9D] hover:text-white rounded" title="Rename">
               <Pencil className="w-2.5 h-2.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); onToggleStar() }} className="p-0.5 rounded">
+            {canManageMembers && onManageMembers && (
+              <button onClick={e => { e.stopPropagation(); onManageMembers() }} className="p-0.5 text-[#9B9C9D] hover:text-white rounded" title="Manage members">
+                <Users className="w-2.5 h-2.5" />
+              </button>
+            )}
+            <button onClick={e => { e.stopPropagation(); onToggleStar() }} className="p-0.5 rounded" title="Star">
               <Star className={`w-2.5 h-2.5 ${starred ? 'fill-amber-400 text-amber-400' : 'text-[#9B9C9D] hover:text-amber-400'}`} />
             </button>
+            {isAdmin && onDelete && (
+              <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-0.5 text-[#9B9C9D] hover:text-red-400 rounded" title="Delete channel">
+                <Trash2 className="w-2.5 h-2.5" />
+              </button>
+            )}
           </div>
         </>
       )}
