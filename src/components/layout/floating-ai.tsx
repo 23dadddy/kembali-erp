@@ -50,7 +50,7 @@ export function FloatingAI() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-32 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
         style={{ background: 'linear-gradient(135deg, #0EA5A4 0%, #6366F1 100%)' }}
         title="AI Command Center"
       >
