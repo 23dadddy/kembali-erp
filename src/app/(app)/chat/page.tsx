@@ -227,7 +227,7 @@ export default function ChatPage() {
     const init = async () => {
       const { data: { user } } = await sb.auth.getUser()
       const [staffRes, myRes] = await Promise.all([
-        sb.from('staff').select('id, name, role, avatar_url').eq('active', true).order('name'),
+        sb.from('staff').select('id, name, role, avatar_url').order('name'),
         user ? sb.from('staff').select('id, name, role, avatar_url').eq('auth_user_id', user.id).single() : Promise.resolve({ data: null }),
       ])
       const staffList = (staffRes.data ?? []) as StaffMember[]
