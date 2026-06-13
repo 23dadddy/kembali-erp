@@ -50,7 +50,7 @@ export function FloatingAI() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
         style={{ background: 'linear-gradient(135deg, #0EA5A4 0%, #6366F1 100%)' }}
         title="AI Command Center"
       >
@@ -59,7 +59,7 @@ export function FloatingAI() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-24 left-6 z-50 w-96 rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+        <div className="fixed bottom-36 right-6 z-50 w-96 rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
           style={{ height: '520px', background: '#0F172A' }}>
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-3"
