@@ -8,7 +8,8 @@ import {
   ChevronLeft, ChevronRight, Send, LogIn, Check, Printer,
   MailOpen, Tag, Clock, Settings, Menu, MessageCircle, Mail,
   Phone, CheckCheck, Image, Paperclip, Smile, Mic, Plus, User,
-  Hash, MessageSquare, Circle,
+  Hash, MessageSquare, Circle, Inbox, FileText, AlertTriangle,
+  MailCheck, BellOff, AtSign, Eye, EyeOff,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/components/providers/language-provider'
@@ -493,6 +494,9 @@ function WhatsAppTab() {
   )
 }
 
+// ─── Signature ───────────────────────────────────────────────────────────────
+const SIGNATURE = `\n\n—\nBest regards,\nKembali Water\ncontact@kembaliwater.com | kembaliwater.com`
+
 // ─── Gmail Tab ────────────────────────────────────────────────────────────────
 
 function GmailTab() {
@@ -509,30 +513,27 @@ function GmailTab() {
   const [folderLabel, setFolderLabel] = useState('Inbox')
   const [searchInput, setSearchInput] = useState('')
   const [checkedThreads, setCheckedThreads] = useState<Set<string>>(new Set())
+  const [hoveredThread, setHoveredThread] = useState<string | null>(null)
+
+  // Reply state
   const [replyOpen, setReplyOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<GmailMessage | null>(null)
   const [replyBody, setReplyBody] = useState('')
+  const [replyCc, setReplyCc] = useState('')
+  const [showReplyCc, setShowReplyCc] = useState(false)
   const [replyAttachments, setReplyAttachments] = useState<{ name: string; type: string; data: string; size: number }[]>([])
   const replyAttachInputRef = useRef<HTMLInputElement>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
-  const handleReplyAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = ev => {
-        const result = ev.target?.result as string
-        const base64 = result.split(',')[1]
-        setReplyAttachments(prev => [...prev, { name: file.name, type: file.type || 'application/octet-stream', data: base64, size: file.size }])
-      }
-      reader.readAsDataURL(file)
-    })
-    e.target.value = ''
-  }
+  // Compose state
   const [composing, setComposing] = useState(false)
   const [composeMin, setComposeMin] = useState(false)
   const [composeTo, setComposeTo] = useState('')
+  const [composeCc, setComposeCc] = useState('')
+  const [composeBcc, setComposeBcc] = useState('')
+  const [showCc, setShowCc] = useState(false)
+  const [showBcc, setShowBcc] = useState(false)
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
   const [composeSending, setComposeSending] = useState(false)
@@ -541,22 +542,52 @@ function GmailTab() {
   const attachInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    files.forEach(file => {
+  const openCompose = (opts?: { to?: string; subject?: string; body?: string }) => {
+    setComposeTo(opts?.to ?? '')
+    setComposeSubject(opts?.subject ?? '')
+    setComposeBody((opts?.body ?? '') + SIGNATURE)
+    setComposeCc(''); setComposeBcc('')
+    setShowCc(false); setShowBcc(false)
+    setComposeAttachments([]); setComposeError(null)
+    setComposing(true); setComposeMin(false)
+  }
+
+  const openReply = (msg: GmailMessage, replyAll = false) => {
+    setReplyTo(msg)
+    setReplyBody(SIGNATURE)
+    setReplyCc(replyAll ? msg.to : '')
+    setShowReplyCc(replyAll)
+    setReplyOpen(true)
+    setReplyAttachments([])
+    setSendError(null)
+  }
+
+  const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<{ name: string; type: string; data: string; size: number }[]>>) => {
+    Array.from(e.target.files ?? []).forEach(file => {
       const reader = new FileReader()
       reader.onload = ev => {
-        const result = ev.target?.result as string
-        // result is "data:mime/type;base64,XXXX"
-        const base64 = result.split(',')[1]
-        setComposeAttachments(prev => [...prev, { name: file.name, type: file.type || 'application/octet-stream', data: base64, size: file.size }])
+        const base64 = (ev.target?.result as string).split(',')[1]
+        setter(prev => [...prev, { name: file.name, type: file.type || 'application/octet-stream', data: base64, size: file.size }])
       }
       reader.readAsDataURL(file)
     })
     e.target.value = ''
   }
 
-  const removeAttachment = (idx: number) => setComposeAttachments(prev => prev.filter((_, i) => i !== idx))
+  const AttachChips = ({ items, onRemove }: { items: { name: string; size: number }[]; onRemove: (i: number) => void }) => (
+    <div style={{ padding: '6px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {items.map((att, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', borderRadius: 16, padding: '4px 10px', fontSize: 12, color: '#3c4043' }}>
+          <Paperclip style={{ width: 12, height: 12 }} />
+          <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+          <span style={{ color: '#80868b' }}>({(att.size / 1024).toFixed(0)}KB)</span>
+          <button onClick={() => onRemove(i)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1, marginLeft: 2 }}>
+            <X style={{ width: 12, height: 12, color: '#5f6368' }} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/gmail/threads?maxResults=1')
@@ -585,7 +616,7 @@ function GmailTab() {
     const data = await res.json()
     const msgs: GmailMessage[] = data.messages ?? []
     setMessages(msgs)
-    setExpandedMsgs(new Set([msgs[msgs.length - 1]?.id].filter(Boolean)))
+    setExpandedMsgs(new Set([msgs[msgs.length - 1]?.id].filter(Boolean) as string[]))
     setThreads(prev => prev.map(t => t.id === id ? { ...t, unread: false } : t))
     setLoadingMsgs(false)
   }, [])
@@ -600,6 +631,50 @@ function GmailTab() {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
   })
 
+  // ── Actions ──
+  const toggleStar = async (e: React.MouseEvent, id: string, starred: boolean) => {
+    e.stopPropagation()
+    setThreads(prev => prev.map(t => t.id === id ? { ...t, starred: !starred } : t))
+    await fetch(`/api/gmail/thread?id=${id}&action=${starred ? 'unstar' : 'star'}`, { method: 'PATCH' })
+  }
+
+  const archiveThread = async (id: string) => {
+    await fetch(`/api/gmail/thread?id=${id}&action=archive`, { method: 'DELETE' })
+    setThreads(prev => prev.filter(t => t.id !== id))
+    if (selected?.id === id) setSelected(null)
+  }
+
+  const trashThread = async (id: string) => {
+    await fetch(`/api/gmail/thread?id=${id}&action=trash`, { method: 'DELETE' })
+    setThreads(prev => prev.filter(t => t.id !== id))
+    if (selected?.id === id) setSelected(null)
+  }
+
+  const markThread = async (id: string, unread: boolean) => {
+    await fetch(`/api/gmail/thread?id=${id}&action=${unread ? 'mark_unread' : 'mark_read'}`, { method: 'PATCH' })
+    setThreads(prev => prev.map(t => t.id === id ? { ...t, unread } : t))
+  }
+
+  const bulkAction = async (action: string) => {
+    const ids = [...checkedThreads]
+    if (!ids.length) return
+    await Promise.all(ids.map(id => {
+      if (action === 'archive') return fetch(`/api/gmail/thread?id=${id}&action=archive`, { method: 'DELETE' })
+      if (action === 'trash') return fetch(`/api/gmail/thread?id=${id}&action=trash`, { method: 'DELETE' })
+      if (action === 'read') return fetch(`/api/gmail/thread?id=${id}&action=mark_read`, { method: 'PATCH' })
+      if (action === 'unread') return fetch(`/api/gmail/thread?id=${id}&action=mark_unread`, { method: 'PATCH' })
+      if (action === 'star') return fetch(`/api/gmail/thread?id=${id}&action=star`, { method: 'PATCH' })
+      return Promise.resolve()
+    }))
+    if (action === 'archive' || action === 'trash') {
+      setThreads(prev => prev.filter(t => !ids.includes(t.id)))
+      if (selected && ids.includes(selected.id)) setSelected(null)
+    } else if (action === 'read') setThreads(prev => prev.map(t => ids.includes(t.id) ? { ...t, unread: false } : t))
+    else if (action === 'unread') setThreads(prev => prev.map(t => ids.includes(t.id) ? { ...t, unread: true } : t))
+    else if (action === 'star') setThreads(prev => prev.map(t => ids.includes(t.id) ? { ...t, starred: true } : t))
+    setCheckedThreads(new Set())
+  }
+
   const sendReply = async () => {
     if (!replyBody.trim() || !selected || !replyTo) return
     setSending(true); setSendError(null)
@@ -607,6 +682,7 @@ function GmailTab() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: parseFrom(replyTo.from).email,
+        cc: replyCc || undefined,
         subject: selected.subject.match(/^Re:/i) ? selected.subject : `Re: ${selected.subject}`,
         body: replyBody,
         threadId: selected.id,
@@ -628,35 +704,36 @@ function GmailTab() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: composeTo,
+        cc: composeCc || undefined,
+        bcc: composeBcc || undefined,
         subject: composeSubject || '(no subject)',
         body: composeBody,
         attachments: composeAttachments.length > 0 ? composeAttachments : undefined,
       }),
     })
     const data = await res.json()
-    if (!data.ok) setComposeError(data.error ?? 'Send failed')
-    else {
-      setComposing(false)
-      setComposeTo(''); setComposeSubject(''); setComposeBody('')
-      setComposeAttachments([])
-      loadThreads(folder)
-    }
+    if (!data.ok) { setComposeError(data.error ?? 'Send failed') }
+    else { setComposing(false); setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeAttachments([]); loadThreads(folder) }
     setComposeSending(false)
-  }
-
-  const archiveThread = async (id: string) => {
-    await fetch(`/api/gmail/thread?id=${id}&action=archive`, { method: 'DELETE' })
-    setThreads(prev => prev.filter(t => t.id !== id))
-    if (selected?.id === id) setSelected(null)
   }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchInput.trim()) { setFolder(searchInput); setFolderLabel(`Search: ${searchInput}`) }
+    if (searchInput.trim()) { setFolder(searchInput); setFolderLabel(`Search: ${searchInput}`); setSearchInput('') }
   }
 
-  const navFolder = (q: string, label: string) => { setFolder(q); setFolderLabel(label); setSelected(null) }
+  const navFolder = (q: string, label: string) => { setFolder(q); setFolderLabel(label); setSelected(null); setCheckedThreads(new Set()) }
   const unreadCount = threads.filter(t => t.unread).length
+
+  const FOLDERS = [
+    { label: 'Inbox',    q: 'in:inbox',   icon: Inbox,         count: unreadCount },
+    { label: 'Starred',  q: 'is:starred', icon: Star },
+    { label: 'Sent',     q: 'in:sent',    icon: Send },
+    { label: 'Drafts',   q: 'in:drafts',  icon: FileText },
+    { label: 'All Mail', q: 'in:all',     icon: Mail },
+    { label: 'Spam',     q: 'in:spam',    icon: AlertTriangle },
+    { label: 'Trash',    q: 'in:trash',   icon: Trash2 },
+  ]
 
   if (authenticated === false) {
     return (
@@ -684,62 +761,121 @@ function GmailTab() {
     )
   }
 
-  const SIDEBAR_W = 256
+  const allChecked = checkedThreads.size === threads.length && threads.length > 0
+  const someChecked = checkedThreads.size > 0
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f6f8fc', fontFamily: 'Google Sans, Roboto, Arial, sans-serif', minHeight: 0 }}>
+
       {/* ── LEFT SIDEBAR ── */}
-      <div style={{ width: SIDEBAR_W, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '8px 0', overflowY: 'auto' }}>
+      <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '8px 0 8px', overflowY: 'auto' }}>
+        {/* Compose */}
         <div style={{ padding: '4px 16px 16px' }}>
-          <button onClick={() => { setComposing(true); setComposeMin(false) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#c2e7ff', border: 'none', borderRadius: 16, padding: '16px 24px 16px 18px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', fontFamily: 'inherit', fontSize: 14, fontWeight: 500, color: '#001d35' }}>
-            <Pencil style={{ width: 22, height: 22 }} />{t('comms_compose')}
+          <button onClick={() => openCompose()}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#c2e7ff', border: 'none', borderRadius: 16, padding: '14px 22px 14px 16px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#001d35', width: '100%' }}>
+            <Pencil style={{ width: 20, height: 20 }} /> Compose
           </button>
         </div>
-        {[
-          { label: t('gmail_inbox'), q: 'in:inbox', count: unreadCount },
-          { label: t('gmail_starred'), q: 'is:starred' },
-          { label: t('gmail_sent'), q: 'in:sent' },
-          { label: t('gmail_drafts'), q: 'in:drafts' },
-          { label: t('gmail_all_mail'), q: 'in:all' },
-          { label: t('gmail_spam'), q: 'in:spam' },
-          { label: t('gmail_trash'), q: 'in:trash' },
-        ].map(item => (
-          <button key={item.q} onClick={() => navFolder(item.q, item.label)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 4px 26px', height: 36, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: folder === item.q ? 700 : 400, color: '#202124', background: folder === item.q ? '#d3e3fd' : 'transparent', borderRadius: '0 16px 16px 0', marginRight: 16 }}>
-            <span>{item.label}</span>
-            {item.count ? <span style={{ fontSize: 12, fontWeight: 700, color: '#444746' }}>{item.count}</span> : null}
-          </button>
-        ))}
+
+        {/* Folder nav */}
+        {FOLDERS.map(({ label, q, icon: Icon, count }) => {
+          const active = folder === q
+          return (
+            <button key={q} onClick={() => navFolder(q, label)}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '4px 16px 4px 20px', height: 38, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: active ? 700 : 400, color: active ? '#0b57d0' : '#202124', background: active ? '#d3e3fd' : 'transparent', borderRadius: '0 20px 20px 0', marginRight: 12, transition: 'background 0.1s' }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#f1f3f4' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+              <Icon style={{ width: 18, height: 18, color: active ? '#0b57d0' : '#444746', flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
+              {count ? <span style={{ fontSize: 12, fontWeight: 700, color: active ? '#0b57d0' : '#444746' }}>{count}</span> : null}
+            </button>
+          )
+        })}
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* ── MAIN PANEL ── */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 16, margin: '0 8px 8px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+
+        {/* Search bar */}
+        {!selected && (
+          <form onSubmit={handleSearch} style={{ padding: '10px 16px 8px', borderBottom: '1px solid #e8eaed', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: 24, padding: '8px 16px', gap: 10, maxWidth: 700 }}>
+              <Search style={{ width: 18, height: 18, color: '#5f6368', flexShrink: 0 }} />
+              <input
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                placeholder="Search mail…"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 16, color: '#202124', fontFamily: 'inherit' }}
+              />
+              {searchInput && (
+                <button type="button" onClick={() => { setSearchInput(''); navFolder('in:inbox', 'Inbox') }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, borderRadius: '50%', display: 'flex' }}>
+                  <X style={{ width: 16, height: 16, color: '#5f6368' }} />
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+
         {!selected ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderBottom: '1px solid #e0e0e0', flexShrink: 0 }}>
-              <input type="checkbox" style={{ width: 16, height: 16, cursor: 'pointer' }}
-                onChange={e => setCheckedThreads(e.target.checked ? new Set(threads.map(t => t.id)) : new Set())}
-                checked={checkedThreads.size === threads.length && threads.length > 0} />
-              <button style={{ padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#444746' }}>
-                <ChevronDown style={{ width: 14, height: 14 }} />
-              </button>
-              <div style={{ width: 1, height: 20, background: '#e0e0e0', margin: '0 4px' }} />
-              <button onClick={() => loadThreads(folder)} style={{ padding: 6, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                <RefreshCw style={{ width: 18, height: 18, color: '#444746' }} />
-              </button>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#5f6368' }}>
+            {/* Toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 16px', borderBottom: '1px solid #e8eaed', flexShrink: 0, minHeight: 44 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <input type="checkbox"
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0b57d0' }}
+                  onChange={e => setCheckedThreads(e.target.checked ? new Set(threads.map(t => t.id)) : new Set())}
+                  checked={allChecked}
+                  ref={el => { if (el) el.indeterminate = someChecked && !allChecked }}
+                />
+                <button style={{ padding: '4px 2px', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#444746', display: 'flex', alignItems: 'center' }} onClick={() => setCheckedThreads(new Set())}>
+                  <ChevronDown style={{ width: 14, height: 14 }} />
+                </button>
+              </div>
+
+              {someChecked ? (
+                // Bulk action bar
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 8 }}>
+                  <span style={{ fontSize: 13, color: '#444746', marginRight: 8 }}>{checkedThreads.size} selected</span>
+                  {[
+                    { label: 'Archive', icon: Archive, action: 'archive' },
+                    { label: 'Delete', icon: Trash2, action: 'trash' },
+                    { label: 'Mark read', icon: MailCheck, action: 'read' },
+                    { label: 'Mark unread', icon: MailOpen, action: 'unread' },
+                    { label: 'Star', icon: Star, action: 'star' },
+                  ].map(({ label, icon: Icon, action }) => (
+                    <button key={action} title={label} onClick={() => bulkAction(action)}
+                      style={{ padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#444746' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <Icon style={{ width: 16, height: 16 }} />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div style={{ width: 1, height: 20, background: '#e0e0e0', margin: '0 4px' }} />
+                  <button onClick={() => loadThreads(folder)} title="Refresh"
+                    style={{ padding: 6, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                    <RefreshCw style={{ width: 18, height: 18, color: '#444746' }} />
+                  </button>
+                  <span style={{ fontSize: 14, color: '#5f6368', marginLeft: 8, fontWeight: 500 }}>{folderLabel}</span>
+                </>
+              )}
+
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2, fontSize: 13, color: '#5f6368' }}>
                 <span>1–{threads.length}</span>
-                <button style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => loadThreads(folder, undefined)}>
+                <button title="Previous page" style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => loadThreads(folder)}>
                   <ChevronLeft style={{ width: 18, height: 18, color: '#5f6368' }} />
                 </button>
                 {nextPageToken && (
-                  <button style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => loadThreads(folder, nextPageToken)}>
+                  <button title="Next page" style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => loadThreads(folder, nextPageToken)}>
                     <ChevronRight style={{ width: 18, height: 18, color: '#5f6368' }} />
                   </button>
                 )}
               </div>
             </div>
+
+            {/* Thread list */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
@@ -747,34 +883,74 @@ function GmailTab() {
                 </div>
               ) : threads.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#5f6368' }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-                  <p style={{ fontSize: 16, fontWeight: 400 }}>{t('gmail_no_messages')} {folderLabel}</p>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
+                  <p style={{ fontSize: 16, fontWeight: 400 }}>No messages in {folderLabel}</p>
                 </div>
-              ) : threads.map((thread) => {
+              ) : threads.map(thread => {
                 const { name } = parseFrom(thread.from)
                 const isChecked = checkedThreads.has(thread.id)
+                const isHovered = hoveredThread === thread.id
                 return (
-                  <div key={thread.id} onClick={() => setSelected(thread)}
-                    style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 52, cursor: 'pointer', background: thread.unread ? '#fff' : '#f2f6fc', borderBottom: '1px solid #e0e0e0', fontWeight: thread.unread ? 700 : 400 }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.12)')}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+                  <div key={thread.id}
+                    onClick={() => setSelected(thread)}
+                    onMouseEnter={() => setHoveredThread(thread.id)}
+                    onMouseLeave={() => setHoveredThread(null)}
+                    style={{ display: 'flex', alignItems: 'center', padding: '0 8px 0 4px', height: 52, cursor: 'pointer', background: isChecked ? '#e8f0fe' : thread.unread ? '#fff' : '#f2f6fc', borderBottom: '1px solid #e8eaed', fontWeight: thread.unread ? 700 : 400, transition: 'box-shadow 0.1s', boxShadow: isHovered ? '0 1px 6px rgba(0,0,0,0.1)' : 'none' }}>
+
+                    {/* Checkbox */}
                     <div onClick={e => { e.stopPropagation(); setCheckedThreads(prev => { const n = new Set(prev); n.has(thread.id) ? n.delete(thread.id) : n.add(thread.id); return n }) }}
-                      style={{ width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ width: 16, height: 16 }} />
+                      style={{ width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: isChecked || isHovered ? 1 : 0, transition: 'opacity 0.1s' }}>
+                      <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ width: 16, height: 16, accentColor: '#0b57d0', cursor: 'pointer' }} />
                     </div>
-                    <div style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Star style={{ width: 16, height: 16, color: thread.starred ? '#f6bf26' : '#c4c7c5', fill: thread.starred ? '#f6bf26' : 'none' }} />
+
+                    {/* Star */}
+                    <div onClick={e => toggleStar(e, thread.id, thread.starred)}
+                      style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Star style={{ width: 16, height: 16, color: thread.starred ? '#f6bf26' : '#c4c7c5', fill: thread.starred ? '#f6bf26' : 'none', cursor: 'pointer', transition: 'color 0.1s' }} />
                     </div>
-                    <div style={{ width: 180, flexShrink: 0, overflow: 'hidden', paddingRight: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: thread.unread ? 700 : 400, color: '#202124', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+
+                    {/* Avatar */}
+                    <div style={{ marginRight: 10, flexShrink: 0 }}>
+                      <Avatar name={name || thread.from} size={28} />
+                    </div>
+
+                    {/* Sender */}
+                    <div style={{ width: 160, flexShrink: 0, overflow: 'hidden', paddingRight: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: thread.unread ? 700 : 400, color: '#202124', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                         {name || thread.from}{thread.messageCount > 1 && <span style={{ color: '#5f6368', fontWeight: 400 }}> ({thread.messageCount})</span>}
                       </span>
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 4, paddingRight: 8 }}>
-                      <span style={{ fontSize: 14, color: '#202124', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '40%' }}>{thread.subject || '(no subject)'}</span>
-                      <span style={{ fontSize: 14, color: '#5f6368', fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{' — '}{thread.snippet}</span>
-                    </div>
-                    <div style={{ flexShrink: 0, fontSize: 12, color: thread.unread ? '#202124' : '#5f6368', fontWeight: thread.unread ? 700 : 400, minWidth: 60, textAlign: 'right' }}>
+
+                    {/* Subject + snippet — hide on hover to show actions */}
+                    {isHovered ? (
+                      <div style={{ flex: 1 }} />
+                    ) : (
+                      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 4, paddingRight: 8 }}>
+                        <span style={{ fontSize: 13, color: '#202124', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '45%' }}>{thread.subject || '(no subject)'}</span>
+                        <span style={{ fontSize: 13, color: '#5f6368', fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{' — '}{thread.snippet}</span>
+                      </div>
+                    )}
+
+                    {/* Hover quick actions */}
+                    {isHovered && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 8 }} onClick={e => e.stopPropagation()}>
+                        {[
+                          { icon: Archive, title: 'Archive', action: () => archiveThread(thread.id) },
+                          { icon: Trash2, title: 'Delete', action: () => trashThread(thread.id) },
+                          { icon: thread.unread ? MailCheck : MailOpen, title: thread.unread ? 'Mark read' : 'Mark unread', action: () => markThread(thread.id, !thread.unread) },
+                        ].map(({ icon: Icon, title, action }) => (
+                          <button key={title} onClick={action} title={title}
+                            style={{ padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#e8eaed'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <Icon style={{ width: 16, height: 16, color: '#5f6368' }} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    <div style={{ flexShrink: 0, fontSize: 12, color: thread.unread ? '#202124' : '#5f6368', fontWeight: thread.unread ? 700 : 400, minWidth: 56, textAlign: 'right', paddingRight: 4 }}>
                       {formatDate(thread.internalDate)}
                     </div>
                   </div>
@@ -783,27 +959,39 @@ function GmailTab() {
             </div>
           </>
         ) : (
+          /* ── THREAD VIEW ── */
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid #e0e0e0', flexShrink: 0 }}>
-              <button onClick={() => setSelected(null)} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            {/* Thread header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid #e8eaed', flexShrink: 0 }}>
+              <button onClick={() => setSelected(null)} title="Back to inbox"
+                style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <ChevronLeft style={{ width: 20, height: 20, color: '#5f6368' }} />
               </button>
-              <h1 style={{ fontSize: 22, fontWeight: 400, color: '#202124', flex: 1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <h1 style={{ fontSize: 20, fontWeight: 400, color: '#202124', flex: 1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selected.subject || '(no subject)'}
               </h1>
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                {[{ icon: Archive, title: t('gmail_archive'), action: () => archiveThread(selected.id) }, { icon: MailOpen, title: t('gmail_mark_unread'), action: () => {} }, { icon: Clock, title: t('gmail_snooze'), action: () => {} }, { icon: MoreHorizontal, title: t('gmail_more'), action: () => {} }].map(({ icon: Icon, title, action }) => (
-                  <button key={title} onClick={action} title={title} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+              {/* Thread actions */}
+              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                {[
+                  { icon: Archive, title: 'Archive', action: () => archiveThread(selected.id) },
+                  { icon: Trash2, title: 'Delete', action: () => trashThread(selected.id) },
+                  { icon: selected.unread ? MailCheck : MailOpen, title: selected.unread ? 'Mark read' : 'Mark unread', action: () => markThread(selected.id, !selected.unread) },
+                  { icon: Printer, title: 'Print', action: () => window.print() },
+                ].map(({ icon: Icon, title, action }) => (
+                  <button key={title} onClick={action} title={title}
+                    style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <Icon style={{ width: 20, height: 20, color: '#5f6368' }} />
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, borderLeft: '1px solid #e0e0e0', paddingLeft: 8 }}>
-                <button style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}><ChevronLeft style={{ width: 18, height: 18, color: '#5f6368' }} /></button>
-                <button style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}><ChevronRight style={{ width: 18, height: 18, color: '#5f6368' }} /></button>
-              </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 16px' }}>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 24px 24px' }}>
               {loadingMsgs ? (
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 48 }}>
                   <Loader2 style={{ width: 24, height: 24, color: '#9aa0a6' }} className="animate-spin" />
@@ -815,41 +1003,65 @@ function GmailTab() {
                 const isOutbound = email === 'contact@kembaliwater.com'
                 const displayName = isOutbound ? 'Kembali Water' : name
                 return (
-                  <div key={msg.id} style={{ marginBottom: 8, border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: isExpanded ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-                    <div onClick={() => toggleExpand(msg.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isExpanded ? '12px 16px 8px' : '12px 16px', cursor: 'pointer' }}>
+                  <div key={msg.id} style={{ marginBottom: 8, border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: isExpanded ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
+                    <div onClick={() => toggleExpand(msg.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isExpanded ? '14px 16px 10px' : '12px 16px', cursor: 'pointer' }}>
                       <Avatar name={displayName} size={40} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: '#202124' }}>{displayName}</span>
-                          {!isExpanded && <span style={{ fontSize: 13, color: '#5f6368', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{msg.body?.slice(0, 100)}</span>}
+                          {isExpanded && (
+                            <span style={{ fontSize: 12, color: '#5f6368' }}>
+                              {'<'}{email}{'>'} → {isOutbound ? parseFrom(msg.to).email : 'contact@kembaliwater.com'}
+                            </span>
+                          )}
+                          {!isExpanded && <span style={{ fontSize: 13, color: '#5f6368', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{msg.body?.slice(0, 120)}</span>}
                         </div>
-                        {isExpanded && <div style={{ fontSize: 12, color: '#5f6368', marginTop: 2 }}>to {isOutbound ? parseFrom(selected.from).email : 'contact@kembaliwater.com'}</div>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 12, color: '#5f6368' }}>{isExpanded ? fullDate(msg.internalDate) : formatDate(msg.internalDate)}</span>
                         {isExpanded ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button title="Reply" onClick={e => { e.stopPropagation(); setReplyTo(msg); setReplyOpen(true) }} style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
-                              <Reply style={{ width: 18, height: 18, color: '#5f6368' }} />
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            <button title="Reply" onClick={e => { e.stopPropagation(); openReply(msg) }}
+                              style={{ padding: 6, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                              <Reply style={{ width: 16, height: 16, color: '#5f6368' }} />
                             </button>
-                            <button title="More" style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
-                              <MoreHorizontal style={{ width: 18, height: 18, color: '#5f6368' }} />
+                            <button title="Forward" onClick={e => {
+                              e.stopPropagation()
+                              openCompose({
+                                subject: `Fwd: ${selected.subject}`,
+                                body: `\n\n---------- Forwarded message ----------\nFrom: ${msg.from}\nDate: ${fullDate(msg.internalDate)}\nSubject: ${msg.subject}\n\n${msg.body}`,
+                              })
+                            }}
+                              style={{ padding: 6, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                              <Forward style={{ width: 16, height: 16, color: '#5f6368' }} />
                             </button>
                           </div>
                         ) : <ChevronDown style={{ width: 16, height: 16, color: '#9aa0a6' }} />}
                       </div>
                     </div>
+
                     {isExpanded && (
-                      <div style={{ padding: '0 16px 16px 68px', borderTop: '1px solid #e0e0e0', paddingTop: 16 }}>
+                      <div style={{ padding: '0 16px 16px 68px', borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
                         {msg.htmlBody ? (
                           <div dangerouslySetInnerHTML={{ __html: msg.htmlBody }} style={{ fontSize: 14, color: '#202124', lineHeight: 1.6, maxWidth: '100%', overflow: 'hidden' }} />
                         ) : (
                           <pre style={{ fontSize: 14, color: '#202124', whiteSpace: 'pre-wrap', fontFamily: 'Roboto, Arial, sans-serif', margin: 0, lineHeight: 1.6 }}>{msg.body}</pre>
                         )}
                         {isLast && (
-                          <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-                            {[{ label: t('comms_reply'), icon: Reply, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: t('gmail_reply_all'), icon: ReplyAll, action: () => { setReplyTo(msg); setReplyOpen(true) } }, { label: t('gmail_forward'), icon: Forward, action: () => {} }].map(({ label, icon: Icon, action }) => (
-                              <button key={label} onClick={action} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1px solid #dadce0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#444746', fontFamily: 'inherit' }}>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 24, flexWrap: 'wrap' }}>
+                            {[
+                              { label: 'Reply', icon: Reply, action: () => openReply(msg) },
+                              { label: 'Reply All', icon: ReplyAll, action: () => openReply(msg, true) },
+                              { label: 'Forward', icon: Forward, action: () => openCompose({ subject: `Fwd: ${selected.subject}`, body: `\n\n---------- Forwarded message ----------\nFrom: ${msg.from}\nDate: ${fullDate(msg.internalDate)}\nSubject: ${msg.subject}\n\n${msg.body}` }) },
+                            ].map(({ label, icon: Icon, action }) => (
+                              <button key={label} onClick={action}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', border: '1px solid #dadce0', borderRadius: 20, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#444746', fontFamily: 'inherit', fontWeight: 500 }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f6fafe'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
                                 <Icon style={{ width: 16, height: 16 }} /> {label}
                               </button>
                             ))}
@@ -860,44 +1072,47 @@ function GmailTab() {
                   </div>
                 )
               })}
+
+              {/* Reply box */}
               {replyOpen && replyTo && (
-                <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.15)', marginTop: 8 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0', fontSize: 14, color: '#5f6368', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{t('gmail_reply_to')} <strong style={{ color: '#202124' }}>{parseFrom(replyTo.from).email}</strong></span>
+                <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', marginTop: 12 }}>
+                  {/* Reply header */}
+                  <div style={{ padding: '10px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, color: '#5f6368' }}>
+                      <span>To: </span><strong style={{ color: '#202124' }}>{parseFrom(replyTo.from).email}</strong>
+                      <button onClick={() => setShowReplyCc(v => !v)} style={{ marginLeft: 12, fontSize: 12, border: 'none', background: 'transparent', cursor: 'pointer', color: '#0b57d0', padding: '2px 6px', borderRadius: 4 }}>Cc</button>
+                    </div>
                     <button onClick={() => { setReplyOpen(false); setReplyBody('') }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
                       <X style={{ width: 16, height: 16, color: '#5f6368' }} />
                     </button>
                   </div>
-                  <textarea autoFocus value={replyBody} onChange={e => setReplyBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply() } }} placeholder={t('gmail_write_reply')}
-                    style={{ width: '100%', minHeight: 140, border: 'none', outline: 'none', padding: 16, fontSize: 14, fontFamily: 'Roboto, Arial, sans-serif', resize: 'vertical', boxSizing: 'border-box', color: '#202124', lineHeight: 1.6 }} />
-                  {/* Reply attachment chips */}
-                  {replyAttachments.length > 0 && (
-                    <div style={{ padding: '6px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {replyAttachments.map((att, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', borderRadius: 16, padding: '4px 10px', fontSize: 12, color: '#3c4043' }}>
-                          <Paperclip style={{ width: 12, height: 12 }} />
-                          <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-                          <span style={{ color: '#80868b' }}>({(att.size / 1024).toFixed(0)}KB)</span>
-                          <button onClick={() => setReplyAttachments(prev => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1, marginLeft: 2 }}>
-                            <X style={{ width: 12, height: 12, color: '#5f6368' }} />
-                          </button>
-                        </div>
-                      ))}
+                  {showReplyCc && (
+                    <div style={{ padding: '0 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, color: '#5f6368', flexShrink: 0 }}>Cc:</span>
+                      <input value={replyCc} onChange={e => setReplyCc(e.target.value)} placeholder="Add Cc recipients…"
+                        style={{ flex: 1, padding: '8px 0', border: 'none', outline: 'none', fontSize: 13, fontFamily: 'inherit', color: '#202124' }} />
                     </div>
                   )}
-                  {sendError && <p style={{ margin: '0 16px 8px', fontSize: 12, color: '#d93025' }}>{sendError}</p>}
-                  <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f3f4', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <textarea autoFocus value={replyBody} onChange={e => setReplyBody(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply() } }}
+                    placeholder="Write your reply…"
+                    style={{ width: '100%', minHeight: 160, border: 'none', outline: 'none', padding: '14px 16px', fontSize: 14, fontFamily: 'Roboto, Arial, sans-serif', resize: 'vertical', boxSizing: 'border-box', color: '#202124', lineHeight: 1.6 }} />
+                  {replyAttachments.length > 0 && (
+                    <AttachChips items={replyAttachments} onRemove={i => setReplyAttachments(prev => prev.filter((_, j) => j !== i))} />
+                  )}
+                  {sendError && <p style={{ margin: '0 16px 6px', fontSize: 12, color: '#d93025' }}>{sendError}</p>}
+                  <div style={{ padding: '10px 16px', borderTop: '1px solid #f1f3f4', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={sendReply} disabled={sending || !replyBody.trim()}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, background: sending || !replyBody.trim() ? '#f1f3f4' : '#0b57d0', color: sending || !replyBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} {t('comms_send')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, background: sending || !replyBody.trim() ? '#f1f3f4' : '#0b57d0', color: sending || !replyBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: sending || !replyBody.trim() ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.1s' }}>
+                      {sending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} Send
                     </button>
-                    {/* Reply attach button */}
                     <button type="button" onClick={() => replyAttachInputRef.current?.click()} title="Attach files"
-                      style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}>
                       <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
                     </button>
-                    <input ref={replyAttachInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleReplyAttachFiles} />
-                    <button onClick={() => { setReplyOpen(false); setReplyBody(''); setReplyAttachments([]) }} style={{ padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                    <input ref={replyAttachInputRef} type="file" multiple style={{ display: 'none' }} onChange={e => handleAttachFiles(e, setReplyAttachments)} />
+                    <button onClick={() => { setReplyOpen(false); setReplyBody(''); setReplyAttachments([]) }}
+                      style={{ marginLeft: 'auto', padding: 8, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex' }}>
                       <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
                     </button>
                   </div>
@@ -911,11 +1126,12 @@ function GmailTab() {
 
       {/* ── FLOATING COMPOSE ── */}
       {composing && (
-        <div style={{ position: 'fixed', bottom: 0, right: 32, zIndex: 50, width: 520, background: '#fff', borderRadius: '8px 8px 0 0', boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', height: composeMin ? 48 : 520, transition: 'height 0.15s ease' }}>
-          <div onClick={() => setComposeMin(!composeMin)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#404040', borderRadius: '8px 8px 0 0', cursor: 'pointer', flexShrink: 0 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#fff', fontFamily: 'inherit' }}>{t('gmail_new_message')}</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={e => { e.stopPropagation(); setComposeMin(!composeMin) }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px' }}>
+        <div style={{ position: 'fixed', bottom: 0, right: 32, zIndex: 50, width: 540, background: '#fff', borderRadius: '10px 10px 0 0', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', height: composeMin ? 48 : 560, transition: 'height 0.15s ease' }}>
+          {/* Compose header */}
+          <div onClick={() => setComposeMin(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#404040', borderRadius: '10px 10px 0 0', cursor: 'pointer', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontFamily: 'inherit' }}>New Message</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={e => { e.stopPropagation(); setComposeMin(v => !v) }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px' }}>
                 {composeMin ? <ChevronUp style={{ width: 18, height: 18, color: '#fff' }} /> : <ChevronDown style={{ width: 18, height: 18, color: '#fff' }} />}
               </button>
               <button onClick={e => { e.stopPropagation(); setComposing(false) }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px' }}>
@@ -923,49 +1139,74 @@ function GmailTab() {
               </button>
             </div>
           </div>
+
           {!composeMin && (
             <>
-              <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 12px' }}>
-                <input autoFocus value={composeTo} onChange={e => setComposeTo(e.target.value)} placeholder={t('gmail_to')} style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
+              {/* To */}
+              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e0e0e0', padding: '0 14px' }}>
+                <span style={{ fontSize: 13, color: '#5f6368', marginRight: 8, flexShrink: 0 }}>To</span>
+                <input autoFocus value={composeTo} onChange={e => setComposeTo(e.target.value)} placeholder=""
+                  style={{ flex: 1, padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setShowCc(v => !v)} style={{ fontSize: 12, border: 'none', background: 'transparent', cursor: 'pointer', color: showCc ? '#0b57d0' : '#5f6368', padding: '2px 4px', borderRadius: 4 }}>Cc</button>
+                  <button onClick={() => setShowBcc(v => !v)} style={{ fontSize: 12, border: 'none', background: 'transparent', cursor: 'pointer', color: showBcc ? '#0b57d0' : '#5f6368', padding: '2px 4px', borderRadius: 4 }}>Bcc</button>
+                </div>
               </div>
-              <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 12px' }}>
-                <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} placeholder={t('gmail_subject')} style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124', fontWeight: 500 }} />
-              </div>
-              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }} placeholder={t('gmail_write_message')}
-                style={{ flex: 1, minHeight: 200, border: 'none', outline: 'none', padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
-              {/* Attachment chips */}
-              {composeAttachments.length > 0 && (
-                <div style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {composeAttachments.map((att, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', borderRadius: 16, padding: '4px 10px', fontSize: 12, color: '#3c4043' }}>
-                      <Paperclip style={{ width: 12, height: 12 }} />
-                      <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-                      <span style={{ color: '#80868b' }}>({(att.size / 1024).toFixed(0)}KB)</span>
-                      <button onClick={() => removeAttachment(i)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1, marginLeft: 2 }}>
-                        <X style={{ width: 12, height: 12, color: '#5f6368' }} />
-                      </button>
-                    </div>
-                  ))}
+
+              {/* Cc */}
+              {showCc && (
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e0e0e0', padding: '0 14px' }}>
+                  <span style={{ fontSize: 13, color: '#5f6368', marginRight: 8, flexShrink: 0 }}>Cc</span>
+                  <input value={composeCc} onChange={e => setComposeCc(e.target.value)} placeholder=""
+                    style={{ flex: 1, padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
                 </div>
               )}
-              {composeError && <p style={{ margin: '0 12px 4px', fontSize: 12, color: '#d93025' }}>{composeError}</p>}
-              <div style={{ padding: '8px 12px', borderTop: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 8 }}>
+
+              {/* Bcc */}
+              {showBcc && (
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e0e0e0', padding: '0 14px' }}>
+                  <span style={{ fontSize: 13, color: '#5f6368', marginRight: 8, flexShrink: 0 }}>Bcc</span>
+                  <input value={composeBcc} onChange={e => setComposeBcc(e.target.value)} placeholder=""
+                    style={{ flex: 1, padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124' }} />
+                </div>
+              )}
+
+              {/* Subject */}
+              <div style={{ borderBottom: '1px solid #e0e0e0', padding: '0 14px' }}>
+                <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} placeholder="Subject"
+                  style={{ width: '100%', padding: '8px 0', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', color: '#202124', fontWeight: 500 }} />
+              </div>
+
+              {/* Body */}
+              <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose() } }}
+                placeholder="Write your message…"
+                style={{ flex: 1, border: 'none', outline: 'none', padding: '12px 14px', fontSize: 14, fontFamily: 'Roboto, Arial, sans-serif', resize: 'none', color: '#202124', lineHeight: 1.6 }} />
+
+              {/* Attachment chips */}
+              {composeAttachments.length > 0 && (
+                <AttachChips items={composeAttachments} onRemove={i => setComposeAttachments(prev => prev.filter((_, j) => j !== i))} />
+              )}
+
+              {composeError && <p style={{ margin: '0 14px 4px', fontSize: 12, color: '#d93025' }}>{composeError}</p>}
+
+              {/* Footer */}
+              <div style={{ padding: '10px 14px', borderTop: '1px solid #e8eaed', display: 'flex', alignItems: 'center', gap: 8, background: '#fff', flexShrink: 0 }}>
                 <button onClick={sendCompose} disabled={composeSending || !composeTo.trim() || !composeBody.trim()}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: composeSending || !composeTo.trim() || !composeBody.trim() ? '#f1f3f4' : '#0b57d0', color: composeSending || !composeTo.trim() || !composeBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : null} {t('comms_send')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: composeSending || !composeTo.trim() || !composeBody.trim() ? '#f1f3f4' : '#0b57d0', color: composeSending || !composeTo.trim() || !composeBody.trim() ? '#9aa0a6' : '#fff', border: 'none', borderRadius: 20, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: composeSending || !composeTo.trim() || !composeBody.trim() ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.1s' }}>
+                  {composeSending ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <Send style={{ width: 16, height: 16 }} />} Send
                 </button>
-                {/* Attach file button */}
-                <button type="button" onClick={() => attachInputRef.current?.click()}
-                  title="Attach files"
-                  style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button type="button" onClick={() => attachInputRef.current?.click()} title="Attach files"
+                  style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%', display: 'flex' }}>
                   <Paperclip style={{ width: 18, height: 18, color: '#5f6368' }} />
                 </button>
-                <input ref={attachInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleAttachFiles} />
-                <div style={{ marginLeft: 'auto' }}>
-                  <button onClick={() => { setComposing(false); setComposeAttachments([]) }} style={{ padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%' }}>
-                    <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
-                  </button>
-                </div>
+                <input ref={attachInputRef} type="file" multiple style={{ display: 'none' }} onChange={e => handleAttachFiles(e, setComposeAttachments)} />
+                <span style={{ fontSize: 11, color: '#9aa0a6', marginLeft: 4 }}>⌘↵ to send</span>
+                <button onClick={() => { setComposing(false); setComposeAttachments([]) }}
+                  style={{ marginLeft: 'auto', padding: 8, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '50%', display: 'flex' }}
+                  title="Discard draft">
+                  <Trash2 style={{ width: 18, height: 18, color: '#5f6368' }} />
+                </button>
               </div>
             </>
           )}

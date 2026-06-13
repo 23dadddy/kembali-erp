@@ -45,6 +45,27 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get('id')
+  const action = req.nextUrl.searchParams.get('action')
+  if (!id || !action) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
+
+  try {
+    const labelMap: Record<string, { addLabelIds?: string[]; removeLabelIds?: string[] }> = {
+      star:         { addLabelIds: ['STARRED'] },
+      unstar:       { removeLabelIds: ['STARRED'] },
+      mark_read:    { removeLabelIds: ['UNREAD'] },
+      mark_unread:  { addLabelIds: ['UNREAD'] },
+    }
+    const body = labelMap[action]
+    if (!body) return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    await gmailFetch(`/threads/${id}/modify`, { method: 'POST', body: JSON.stringify(body) })
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   const action = req.nextUrl.searchParams.get('action') ?? 'archive'
