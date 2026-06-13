@@ -17,7 +17,7 @@ import {
   Users, Plus, Edit2, Check, X, Phone, Mail, Loader2,
   Truck, UserCog, ChevronRight, Calendar, Clock, DollarSign,
   Shield, AlertTriangle, Star, Download, Zap, BarChart3, User,
-  UserCheck, UserX, Send
+  UserCheck, UserX, Send, Trash2
 } from 'lucide-react'
 
 type MainTab = 'team' | 'attendance' | 'performance'
@@ -98,6 +98,13 @@ function TeamTab() {
     } finally {
       setInviting(false)
     }
+  }
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return
+    const sb = createClient()
+    await sb.from('staff').delete().eq('id', id)
+    setStaff(prev => prev.filter(s => s.id !== id))
   }
 
   const handlePtoSubmit = async () => {
@@ -305,6 +312,7 @@ function TeamTab() {
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => { setForm(s); setEditingId(s.id); setShowForm(true) }}><Edit2 className="w-3.5 h-3.5" /></Button>
                       <Button variant="outline" size="sm" onClick={() => router.push(`/hr/${s.id}`)}><ChevronRight className="w-3.5 h-3.5" /></Button>
+                      <Button variant="outline" size="sm" className="text-red-500 hover:text-red-700 hover:border-red-300" onClick={() => handleDelete(s.id, s.name)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </div>
                 </CardContent>
