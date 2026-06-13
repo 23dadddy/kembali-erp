@@ -1,7 +1,6 @@
 'use client'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { GlobalSearch } from './global-search'
 import { NotificationsBell } from './notifications'
 import { useLanguage } from '@/components/providers/language-provider'
 import type { TranslationKey } from '@/lib/i18n'
@@ -19,9 +18,6 @@ export function Topbar({ title, titleIsKey }: TopbarProps) {
     <header className="h-14 border-b bg-white flex items-center justify-between px-6">
       <h1 className="text-lg font-semibold text-slate-800">{displayTitle}</h1>
       <div className="flex items-center gap-3">
-        <div className="hidden md:block">
-          <GlobalSearch />
-        </div>
         <NotificationsBell />
         <Avatar className="h-8 w-8">
           <AvatarFallback className="text-white text-xs" style={{ background: '#5BA3A0' }}>KW</AvatarFallback>

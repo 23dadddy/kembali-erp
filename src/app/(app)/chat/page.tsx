@@ -502,7 +502,47 @@ export default function ChatPage() {
     if (error) { setSendError(error.message); setInput(text) }
   }
 
+  // ── @mention ──
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const mentionMatches = mentionQuery !== null
+    ? staff.filter(s => s.name.toLowerCase().startsWith(mentionQuery.toLowerCase())).slice(0, 6)
+    : []
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setInput(val)
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+    // Detect @mention trigger
+    const cur = e.target.selectionStart ?? val.length
+    const slice = val.slice(0, cur)
+    const match = slice.match(/@(\w*)$/)
+    if (match) { setMentionQuery(match[1]); setMentionIndex(0) }
+    else setMentionQuery(null)
+  }
+
+  const insertMention = (name: string) => {
+    const cur = inputRef.current?.selectionStart ?? input.length
+    const before = input.slice(0, cur).replace(/@\w*$/, `@${name} `)
+    const after = input.slice(cur)
+    setInput(before + after)
+    setMentionQuery(null)
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus()
+        inputRef.current.selectionStart = inputRef.current.selectionEnd = before.length
+      }
+    }, 0)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (mentionQuery !== null && mentionMatches.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionMatches.length); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(mentionMatches[mentionIndex].name); return }
+      if (e.key === 'Escape') { setMentionQuery(null); return }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
     if (e.key === 'Escape') setReplyTo(null)
   }
@@ -886,7 +926,13 @@ export default function ChatPage() {
                               </div>
                             )}
 
-                            <p className="text-[14px] text-slate-800 leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
+                            <p className="text-[14px] text-slate-800 leading-relaxed break-words whitespace-pre-wrap">
+                              {msg.content.split(/(@\w[\w\s]*)/g).map((part, pi) =>
+                                part.startsWith('@') ? (
+                                  <span key={pi} className="font-semibold text-[#5BA3A0] bg-[#5BA3A0]/10 rounded px-0.5">{part}</span>
+                                ) : part
+                              )}
+                            </p>
 
                             {/* Emoji reactions row */}
                             {Object.keys(msgReactions).length > 0 && (
@@ -972,7 +1018,23 @@ export default function ChatPage() {
           )}
 
           {/* Input */}
-          <div className="px-5 pb-4 pt-3 flex-shrink-0 bg-white" style={{ borderTop: '1px solid #E2E8EF' }}>
+          <div className="px-5 pb-4 pt-3 flex-shrink-0 bg-white relative" style={{ borderTop: '1px solid #E2E8EF' }}>
+            {/* @mention popup */}
+            {mentionQuery !== null && mentionMatches.length > 0 && (
+              <div className="absolute bottom-full left-5 right-5 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-20">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-2 pb-1">Mention a person</p>
+                {mentionMatches.map((s, i) => (
+                  <button key={s.id} onMouseDown={e => { e.preventDefault(); insertMention(s.name) }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${i === mentionIndex ? 'bg-slate-100' : 'hover:bg-slate-50'}`}>
+                    <Avatar name={s.name} avatarUrl={s.avatar_url} size={7} />
+                    <div>
+                      <p className="text-[13px] font-medium text-slate-800">{s.name}</p>
+                      <p className="text-[11px] text-slate-400">{s.role}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             {sendError && <p className="text-xs text-red-500 mb-2">Failed to send: {sendError}</p>}
             <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
               {replyTo && (
@@ -994,11 +1056,7 @@ export default function ChatPage() {
                   className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder-slate-400 resize-none leading-relaxed"
                   placeholder={`Message ${dmTarget ? dmTarget.name : '#' + currentChannelName}`}
                   value={input}
-                  onChange={e => {
-                    setInput(e.target.value)
-                    e.target.style.height = 'auto'
-                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-                  }}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   style={{ maxHeight: 120 }}
                 />
