@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { createClient } from '@/lib/supabase/client'
 import {
   Settings, DollarSign, Database, CheckCircle2, Loader2, Building2,
-  MapPin, Plus, Trash2, X, Check, Sparkles, Globe, Bell, FileText, MessageSquare
+  MapPin, Plus, Trash2, X, Check, Sparkles, Globe, Bell, FileText, MessageSquare,
+  User, Camera, Lock, Eye, EyeOff
 } from 'lucide-react'
 import { getPricing, setPricing } from '@/lib/db'
 import { useLanguage } from '@/components/providers/language-provider'
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<'pricing' | 'company' | 'locations' | 'invoice' | 'system' | 'kpi'>('pricing')
+  const [tab, setTab] = useState<'profile' | 'pricing' | 'company' | 'locations' | 'invoice' | 'system' | 'kpi'>('profile')
   const { language, setLanguage, t } = useLanguage()
 
   // Pricing
@@ -155,6 +156,7 @@ export default function SettingsPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap">
           {([
+            { key: 'profile', label: 'Profile' },
             { key: 'pricing', label: t('settings_pricing') },
             { key: 'invoice', label: t('settings_invoice') },
             { key: 'locations', label: t('settings_locations') },
@@ -168,6 +170,8 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        {tab === 'profile' && <ProfileTab />}
 
         {tab === 'pricing' && (
           <Section title="Bottle Pricing & Thresholds" icon={DollarSign}>
@@ -580,6 +584,287 @@ export default function SettingsPage() {
         )}
       </div>
     </>
+  )
+}
+
+function ProfileTab() {
+  const sb = createClient()
+  const { language, setLanguage } = useLanguage()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const [myStaff, setMyStaff] = useState<any>(null)
+  const [form, setForm] = useState({ name: '', phone: '', email: '' })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  const [showPw, setShowPw] = useState(false)
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+  const [showPwCurrent, setShowPwCurrent] = useState(false)
+  const [showPwNext, setShowPwNext] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const [prefs, setPrefs] = useState({
+    emailNotifications: true,
+    desktopNotifications: false,
+    dailySummary: false,
+    compactMode: false,
+    dateFormat: 'DD/MM/YYYY',
+    timezone: 'Asia/Makassar',
+  })
+  const [prefSaved, setPrefSaved] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data: staff } = await sb.from('staff').select('*').eq('auth_user_id', user.id).single()
+      if (staff) { setMyStaff(staff); setForm({ name: staff.name ?? '', phone: staff.phone ?? '', email: staff.email ?? '' }) }
+      const saved = localStorage.getItem('user_prefs')
+      if (saved) setPrefs(p => ({ ...p, ...JSON.parse(saved) }))
+    }
+    load()
+  }, [])
+
+  const saveProfile = async () => {
+    if (!myStaff) return
+    setSaving(true)
+    await sb.from('staff').update({ name: form.name, phone: form.phone }).eq('id', myStaff.id)
+    setMyStaff((s: any) => ({ ...s, name: form.name, phone: form.phone }))
+    setSaved(true); setTimeout(() => setSaved(false), 3000)
+    setSaving(false)
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !myStaff) return
+    setUploadingAvatar(true)
+    const ext = file.name.split('.').pop()
+    const path = `avatars/${myStaff.id}.${ext}`
+    const { error } = await sb.storage.from('kembali-docs').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data: { publicUrl } } = sb.storage.from('kembali-docs').getPublicUrl(path)
+      await sb.from('staff').update({ avatar_url: publicUrl }).eq('id', myStaff.id)
+      setMyStaff((s: any) => ({ ...s, avatar_url: publicUrl }))
+    }
+    setUploadingAvatar(false)
+  }
+
+  const changePassword = async () => {
+    if (pwForm.next !== pwForm.confirm) { setPwMsg({ ok: false, text: 'Passwords do not match.' }); return }
+    if (pwForm.next.length < 8) { setPwMsg({ ok: false, text: 'Password must be at least 8 characters.' }); return }
+    setPwSaving(true); setPwMsg(null)
+    const { error } = await sb.auth.updateUser({ password: pwForm.next })
+    if (error) setPwMsg({ ok: false, text: error.message })
+    else { setPwMsg({ ok: true, text: 'Password updated successfully.' }); setPwForm({ current: '', next: '', confirm: '' }); setShowPw(false) }
+    setPwSaving(false)
+  }
+
+  const savePrefs = () => {
+    localStorage.setItem('user_prefs', JSON.stringify(prefs))
+    setPrefSaved(true); setTimeout(() => setPrefSaved(false), 2500)
+  }
+
+  const initials = form.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+
+  return (
+    <div className="space-y-5">
+      {/* Avatar + name */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <User className="w-4 h-4 text-slate-500" />
+          <h3 className="font-semibold text-slate-800 text-sm">Personal Information</h3>
+        </div>
+        <div className="p-5 space-y-5">
+          {/* Avatar */}
+          <div className="flex items-center gap-5">
+            <div className="relative">
+              {myStaff?.avatar_url
+                ? <img src={myStaff.avatar_url} alt="avatar" className="w-20 h-20 rounded-2xl object-cover border border-slate-200" />
+                : <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center text-white text-2xl font-bold">{initials || <User className="w-8 h-8" />}</div>
+              }
+              <button onClick={() => fileRef.current?.click()}
+                className="absolute -bottom-1.5 -right-1.5 bg-white border border-slate-200 rounded-full p-1.5 shadow-sm hover:bg-slate-50 transition-colors">
+                {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" /> : <Camera className="w-3.5 h-3.5 text-slate-600" />}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">{form.name || '—'}</p>
+              <p className="text-sm text-slate-400 capitalize">{myStaff?.role ?? 'Staff'}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{form.email}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Full Name</label>
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Phone</label>
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-slate-600 block mb-1">Email</label>
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-400 cursor-not-allowed"
+                value={form.email} disabled />
+              <p className="text-xs text-slate-400 mt-1">Contact an admin to change your email.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button onClick={saveProfile} disabled={saving || !myStaff}
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Save Changes
+            </button>
+            {saved && <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Saved!</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Password */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-slate-500" />
+            <h3 className="font-semibold text-slate-800 text-sm">Password</h3>
+          </div>
+          <button onClick={() => { setShowPw(v => !v); setPwMsg(null) }}
+            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium">
+            {showPw ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+        {showPw && (
+          <div className="p-5 space-y-4">
+            {[
+              { label: 'New Password', key: 'next' as const, show: showPwNext, toggle: () => setShowPwNext(v => !v) },
+              { label: 'Confirm New Password', key: 'confirm' as const, show: showPwNext, toggle: () => setShowPwNext(v => !v) },
+            ].map(({ label, key, show, toggle }) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-slate-600 block mb-1">{label}</label>
+                <div className="relative">
+                  <input type={show ? 'text' : 'password'}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm pr-10"
+                    value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} />
+                  <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pwMsg && (
+              <div className={`text-sm px-3 py-2 rounded-lg ${pwMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                {pwMsg.text}
+              </div>
+            )}
+            <button onClick={changePassword} disabled={pwSaving || !pwForm.next || !pwForm.confirm}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              Update Password
+            </button>
+          </div>
+        )}
+        {!showPw && <div className="px-5 py-3"><p className="text-sm text-slate-400">••••••••••••</p></div>}
+      </div>
+
+      {/* Language */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <Globe className="w-4 h-4 text-slate-500" />
+          <h3 className="font-semibold text-slate-800 text-sm">Language</h3>
+        </div>
+        <div className="p-5">
+          <div className="flex gap-3">
+            {[{ code: 'en' as const, label: 'English', flag: '🇬🇧' }, { code: 'id' as const, label: 'Bahasa Indonesia', flag: '🇮🇩' }].map(lang => (
+              <button key={lang.code} onClick={() => setLanguage(lang.code)}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-medium text-sm transition-all ${language === lang.code ? 'border-cyan-500 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                <span className="text-xl">{lang.flag}</span>{lang.label}
+                {language === lang.code && <Check className="w-4 h-4 ml-1 text-cyan-600" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Preferences */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <Bell className="w-4 h-4 text-slate-500" />
+          <h3 className="font-semibold text-slate-800 text-sm">Preferences</h3>
+        </div>
+        <div className="p-5 space-y-5">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Notifications</p>
+            {[
+              { key: 'emailNotifications' as const, label: 'Email notifications', desc: 'Receive updates and alerts via email' },
+              { key: 'desktopNotifications' as const, label: 'Browser notifications', desc: 'Show desktop alerts when the app is open' },
+              { key: 'dailySummary' as const, label: 'Daily summary email', desc: 'Get a morning digest of key metrics' },
+            ].map(({ key, label, desc }) => (
+              <label key={key} className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{label}</p>
+                  <p className="text-xs text-slate-400">{desc}</p>
+                </div>
+                <div onClick={() => setPrefs(p => ({ ...p, [key]: !p[key] }))}
+                  className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${prefs[key] ? 'bg-cyan-500' : 'bg-slate-200'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${prefs[key] ? 'translate-x-5' : 'translate-x-1'}`} />
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Display</p>
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Compact mode</p>
+                <p className="text-xs text-slate-400">Reduce spacing for denser information display</p>
+              </div>
+              <div onClick={() => setPrefs(p => ({ ...p, compactMode: !p.compactMode }))}
+                className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${prefs.compactMode ? 'bg-cyan-500' : 'bg-slate-200'}`}>
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${prefs.compactMode ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Date Format</label>
+                <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={prefs.dateFormat} onChange={e => setPrefs(p => ({ ...p, dateFormat: e.target.value }))}>
+                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Timezone</label>
+                <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={prefs.timezone} onChange={e => setPrefs(p => ({ ...p, timezone: e.target.value }))}>
+                  <option value="Asia/Makassar">Bali (WITA)</option>
+                  <option value="Asia/Jakarta">Jakarta (WIB)</option>
+                  <option value="Asia/Singapore">Singapore (SGT)</option>
+                  <option value="Australia/Sydney">Sydney (AEDT)</option>
+                  <option value="America/New_York">New York (EST)</option>
+                  <option value="Europe/London">London (GMT)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <button onClick={savePrefs}
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              <Check className="w-4 h-4" /> Save Preferences
+            </button>
+            {prefSaved && <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Saved!</span>}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
