@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Service role key required — this file runs server-side only (API routes)
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 const GMAIL_ACCOUNT = 'contact@kembaliwater.com'
