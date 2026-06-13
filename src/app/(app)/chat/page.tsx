@@ -91,6 +91,9 @@ export default function ChatPage() {
   const [emojiPickerMsgId, setEmojiPickerMsgId] = useState<string | null>(null)
   const [contextMenuMsgId, setContextMenuMsgId] = useState<string | null>(null)
   const [copyToast, setCopyToast] = useState(false)
+  // reactions: msgId -> emoji -> count
+  const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({})
+  const [myReactions, setMyReactions] = useState<Record<string, Set<string>>>({})
 
   // ── people ──
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -332,21 +335,57 @@ export default function ChatPage() {
 
   // ── send ──
   const deleteMessage = async (id: string) => {
-    await sb.from('chat_messages').delete().eq('id', id)
-    setMessages(prev => prev.filter(m => m.id !== id))
     setContextMenuMsgId(null)
+    setHoveredMsgId(null)
+    const { error } = await sb.from('chat_messages').delete().eq('id', id)
+    if (!error) setMessages(prev => prev.filter(m => m.id !== id))
   }
 
   const copyText = (content: string) => {
-    navigator.clipboard.writeText(content)
+    navigator.clipboard.writeText(content).catch(() => {
+      // fallback for browsers that block clipboard
+      const el = document.createElement('textarea')
+      el.value = content
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    })
     setCopyToast(true)
     setTimeout(() => setCopyToast(false), 2000)
     setContextMenuMsgId(null)
+    setHoveredMsgId(null)
   }
 
-  // close popups on outside click
+  const addReaction = (msgId: string, emoji: string) => {
+    setReactions(prev => {
+      const msgR = { ...(prev[msgId] ?? {}) }
+      const alreadyMine = myReactions[msgId]?.has(emoji)
+      msgR[emoji] = Math.max(0, (msgR[emoji] ?? 0) + (alreadyMine ? -1 : 1))
+      if (msgR[emoji] === 0) delete msgR[emoji]
+      return { ...prev, [msgId]: msgR }
+    })
+    setMyReactions(prev => {
+      const s = new Set(prev[msgId] ?? [])
+      s.has(emoji) ? s.delete(emoji) : s.add(emoji)
+      return { ...prev, [msgId]: s }
+    })
+    setEmojiPickerMsgId(null)
+    setHoveredMsgId(null)
+  }
+
+  // close popups when clicking outside — but NOT when clicking inside them
+  const popupRefs = useRef<Map<string, HTMLElement>>(new Map())
   useEffect(() => {
-    const handler = () => { setEmojiPickerMsgId(null); setContextMenuMsgId(null) }
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      let inside = false
+      popupRefs.current.forEach(el => { if (el?.contains(target)) inside = true })
+      if (!inside) {
+        setEmojiPickerMsgId(null)
+        setContextMenuMsgId(null)
+      }
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
@@ -683,17 +722,19 @@ export default function ChatPage() {
                       const compact = isCompact(msgs, i)
                       const senderName = resolveSenderName(msg)
                       const avatarUrl = resolveSenderAvatar(msg)
-                      const isHovered = hoveredMsgId === msg.id
+                      const hasPopup = emojiPickerMsgId === msg.id || contextMenuMsgId === msg.id
+                      const showBar = hoveredMsgId === msg.id || hasPopup
+                      const msgReactions = reactions[msg.id] ?? {}
 
                       return (
                         <div key={msg.id}
-                          className={`relative group px-5 flex gap-3 ${compact ? 'py-0.5' : 'pt-3 pb-0.5'} ${isHovered ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
+                          className={`relative px-5 flex gap-3 ${compact ? 'py-0.5' : 'pt-3 pb-0.5'} ${showBar ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
                           onMouseEnter={() => setHoveredMsgId(msg.id)}
-                          onMouseLeave={() => setHoveredMsgId(null)}>
+                          onMouseLeave={() => { if (!hasPopup) setHoveredMsgId(null) }}>
 
                           {compact ? (
                             <div className="w-9 flex-shrink-0 flex items-center justify-end">
-                              {isHovered && (
+                              {showBar && (
                                 <span className="text-[10px] text-slate-400 leading-none">
                                   {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                 </span>
@@ -725,23 +766,43 @@ export default function ChatPage() {
                             )}
 
                             <p className="text-[14px] text-slate-800 leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
+
+                            {/* Emoji reactions row */}
+                            {Object.keys(msgReactions).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {Object.entries(msgReactions).map(([emoji, count]) => count > 0 && (
+                                  <button key={emoji}
+                                    onClick={() => addReaction(msg.id, emoji)}
+                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] border transition-colors ${
+                                      myReactions[msg.id]?.has(emoji)
+                                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                                        : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                                    }`}>
+                                    {emoji} <span className="font-medium">{count}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          {isHovered && (
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-md px-1 py-0.5 z-10"
-                              onMouseDown={e => e.stopPropagation()}>
+                          {/* Hover action bar — stays visible while popup is open */}
+                          {showBar && (
+                            <div
+                              ref={el => { if (el) popupRefs.current.set(`bar-${msg.id}`, el); else popupRefs.current.delete(`bar-${msg.id}`) }}
+                              className="absolute right-4 top-2 flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg shadow-md px-1 py-0.5 z-10">
+
                               {/* Emoji picker */}
                               <div className="relative">
-                                <ActionBtn icon={<Smile className="w-3.5 h-3.5" />} title="React"
+                                <ActionBtn icon={<Smile className="w-3.5 h-3.5" />} title="Add reaction"
                                   onClick={() => setEmojiPickerMsgId(p => p === msg.id ? null : msg.id)} />
                                 {emojiPickerMsgId === msg.id && (
-                                  <div className="absolute bottom-8 right-0 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-1 z-20"
-                                    onMouseDown={e => e.stopPropagation()}>
+                                  <div
+                                    ref={el => { if (el) popupRefs.current.set(`emoji-${msg.id}`, el); else popupRefs.current.delete(`emoji-${msg.id}`) }}
+                                    className="absolute bottom-9 right-0 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-1 z-30">
                                     {['👍','❤️','😂','😮','😢','🎉','🔥','✅'].map(emoji => (
                                       <button key={emoji}
-                                        className="text-lg hover:bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
-                                        onClick={() => setEmojiPickerMsgId(null)}
-                                        title={emoji}>
+                                        className="text-xl hover:bg-slate-100 rounded-lg w-9 h-9 flex items-center justify-center transition-colors"
+                                        onClick={() => addReaction(msg.id, emoji)}>
                                         {emoji}
                                       </button>
                                     ))}
@@ -751,20 +812,22 @@ export default function ChatPage() {
 
                               {/* Reply */}
                               <ActionBtn icon={<Reply className="w-3.5 h-3.5" />} title="Reply"
-                                onClick={() => { setReplyTo(msg); inputRef.current?.focus() }} />
+                                onClick={() => { setReplyTo(msg); setHoveredMsgId(null); inputRef.current?.focus() }} />
 
                               {/* More menu */}
                               <div className="relative">
-                                <ActionBtn icon={<MoreHorizontal className="w-3.5 h-3.5" />} title="More"
+                                <ActionBtn icon={<MoreHorizontal className="w-3.5 h-3.5" />} title="More actions"
                                   onClick={() => setContextMenuMsgId(p => p === msg.id ? null : msg.id)} />
                                 {contextMenuMsgId === msg.id && (
-                                  <div className="absolute bottom-8 right-0 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[160px] z-20"
-                                    onMouseDown={e => e.stopPropagation()}>
-                                    <MenuBtn label="Reply" onClick={() => { setReplyTo(msg); inputRef.current?.focus(); setContextMenuMsgId(null) }} />
+                                  <div
+                                    ref={el => { if (el) popupRefs.current.set(`ctx-${msg.id}`, el); else popupRefs.current.delete(`ctx-${msg.id}`) }}
+                                    className="absolute bottom-9 right-0 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 min-w-[170px] z-30">
+                                    <MenuBtn label="Reply" onClick={() => { setReplyTo(msg); setContextMenuMsgId(null); setHoveredMsgId(null); inputRef.current?.focus() }} />
                                     <MenuBtn label="Copy text" onClick={() => copyText(msg.content)} />
-                                    {msg.sender_id === myStaff?.id && (
+                                    {msg.sender_id === myStaff?.id && <>
+                                      <div className="my-1 border-t border-slate-100" />
                                       <MenuBtn label="Delete message" danger onClick={() => deleteMessage(msg.id)} />
-                                    )}
+                                    </>}
                                   </div>
                                 )}
                               </div>
