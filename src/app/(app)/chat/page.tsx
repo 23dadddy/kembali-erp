@@ -554,11 +554,24 @@ export default function ChatPage() {
   const filteredStaff = staff.filter(s => s.id !== myStaff?.id && s.name.toLowerCase().includes(dmSearchLower))
 
   // ── active DM list (people we've DM'd or started conversation with) ──
-  const activeDmIds = useRef<Set<string>>(new Set())
+  const [activeDmIds, setActiveDmIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('chat_active_dms')
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    } catch { return new Set() }
+  })
   useEffect(() => {
-    if (dmTarget) activeDmIds.current.add(dmTarget.id)
+    if (dmTarget) {
+      setActiveDmIds(prev => {
+        if (prev.has(dmTarget.id)) return prev
+        const next = new Set(prev)
+        next.add(dmTarget.id)
+        localStorage.setItem('chat_active_dms', JSON.stringify([...next]))
+        return next
+      })
+    }
   }, [dmTarget])
-  const dmList = staff.filter(s => s.id !== myStaff?.id && (activeDmIds.current.has(s.id) || dmTarget?.id === s.id || hasUnread(`dm-${s.id}`)))
+  const dmList = staff.filter(s => s.id !== myStaff?.id && (activeDmIds.has(s.id) || dmTarget?.id === s.id || hasUnread(`dm-${s.id}`)))
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
