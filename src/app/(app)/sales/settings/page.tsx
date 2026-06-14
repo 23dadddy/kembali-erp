@@ -37,9 +37,12 @@ type RouteSettings = {
   require_manager_confirm: boolean
 }
 
+type StaffMember = { id: string; name: string; phone: string | null; role: string }
+
 export default function SalesSettingsPage() {
   const router = useRouter()
   const [reps, setReps] = useState<Rep[]>([])
+  const [staffList, setStaffList] = useState<StaffMember[]>([])
   const [settings, setSettings] = useState<RouteSettings>({
     stops_per_rep: 20,
     auto_generate: true,
@@ -57,9 +60,10 @@ export default function SalesSettingsPage() {
 
   async function load() {
     setLoading(true)
-    const [repsRes, settingsRes] = await Promise.all([
+    const [repsRes, settingsRes, staffRes] = await Promise.all([
       sb.from('sales_reps').select('*').order('created_at'),
       sb.from('sales_route_settings').select('*').order('updated_at', { ascending: false }).limit(1).single(),
+      sb.from('staff').select('id, name, phone, role').eq('active', true).order('name'),
     ])
 
     if (repsRes.error?.message?.includes('does not exist') || settingsRes.error?.message?.includes('does not exist')) {
@@ -70,6 +74,7 @@ export default function SalesSettingsPage() {
 
     setReps(repsRes.data ?? [])
     if (settingsRes.data) setSettings(settingsRes.data)
+    setStaffList(staffRes.data ?? [])
     setLoading(false)
   }
 
@@ -114,12 +119,16 @@ export default function SalesSettingsPage() {
   }
 
   function addRep() {
+    // Find staff members not already added as reps
+    const existingNames = reps.map(r => r.name)
+    const available = staffList.filter(s => !existingNames.includes(s.name))
+    const first = available[0]
     setReps(r => [...r, {
-      name: '',
+      name: first?.name ?? '',
       area_cluster: ZONES[r.length % ZONES.length].value,
       active: true,
       active_days: ['monday','tuesday','wednesday','thursday','friday'],
-      phone: '',
+      phone: first?.phone ?? '',
       isNew: true,
     }])
   }
@@ -286,19 +295,22 @@ CREATE POLICY "sales_route_settings_all" ON sales_route_settings FOR ALL TO auth
                       <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all ${rep.active ? 'left-4' : 'left-0.5'}`} />
                     </div>
 
-                    <input
+                    <select
                       value={rep.name}
-                      onChange={e => updateRep(idx, 'name', e.target.value)}
-                      placeholder="Rep name"
+                      onChange={e => {
+                        const staff = staffList.find(s => s.name === e.target.value)
+                        setReps(r => r.map((x, i) => i === idx ? { ...x, name: e.target.value, phone: staff?.phone ?? x.phone } : x))
+                      }}
                       className="flex-1 text-sm font-medium border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-
-                    <input
-                      value={rep.phone}
-                      onChange={e => updateRep(idx, 'phone', e.target.value)}
-                      placeholder="Phone (optional)"
-                      className="w-40 text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="">— Select staff member —</option>
+                      {staffList.map(s => (
+                        <option key={s.id} value={s.name}
+                          disabled={reps.some((r, i) => i !== idx && r.name === s.name)}>
+                          {s.name}{s.role ? ` (${s.role})` : ''}
+                        </option>
+                      ))}
+                    </select>
 
                     <button onClick={() => deleteRep(rep)} className="p-2 text-gray-400 hover:text-red-500 flex-shrink-0">
                       <X className="w-4 h-4" />
