@@ -6,7 +6,7 @@ import { GoogleMap, useJsApiLoader, Marker, Polyline, Circle } from '@react-goog
 import {
   MapPin, Play, CheckCircle, RefreshCw, Plus, X, ChevronDown, ChevronUp,
   MessageCircle, Phone, User, Zap, AlertCircle, Building2, Coffee,
-  Dumbbell, Hotel, Utensils, Star, ArrowLeft, Navigation2, List,
+  Dumbbell, Hotel, Utensils, Star, ArrowLeft, Navigation2, List, Settings,
 } from 'lucide-react'
 
 const sb = createClient(
@@ -539,6 +539,10 @@ export default function RoutesPage() {
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             className="text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <button onClick={loadRoutes} className="p-2 text-gray-500 border rounded-lg hover:bg-gray-50"><RefreshCw className="w-4 h-4" /></button>
+          <a href="/sales/settings"
+            className="p-2 text-gray-500 border rounded-lg hover:bg-gray-50" title="Route Settings">
+            <Settings className="w-4 h-4" />
+          </a>
           <button onClick={() => setShowGenModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             <Zap className="w-4 h-4" /> Generate Routes

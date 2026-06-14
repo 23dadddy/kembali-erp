@@ -234,17 +234,15 @@ CREATE POLICY "sales_route_settings_all" ON sales_route_settings FOR ALL TO auth
 
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">Auto-generate options</label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div onClick={() => setSettings(s => ({ ...s, auto_generate: !s.auto_generate }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${settings.auto_generate ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${settings.auto_generate ? 'left-6' : 'left-1'}`} />
+              <label className="flex items-center gap-3 cursor-pointer" onClick={() => setSettings(s => ({ ...s, auto_generate: !s.auto_generate }))}>
+                <div className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${settings.auto_generate ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-[left] duration-200 ${settings.auto_generate ? 'left-6' : 'left-1'}`} />
                 </div>
                 <span className="text-sm text-gray-700">Auto-generate daily at 5 AM Bali time</span>
               </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div onClick={() => setSettings(s => ({ ...s, require_manager_confirm: !s.require_manager_confirm }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${settings.require_manager_confirm ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${settings.require_manager_confirm ? 'left-6' : 'left-1'}`} />
+              <label className="flex items-center gap-3 cursor-pointer" onClick={() => setSettings(s => ({ ...s, require_manager_confirm: !s.require_manager_confirm }))}>
+                <div className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${settings.require_manager_confirm ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-[left] duration-200 ${settings.require_manager_confirm ? 'left-6' : 'left-1'}`} />
                 </div>
                 <span className="text-sm text-gray-700">Require manager to confirm routes before reps see them</span>
               </label>

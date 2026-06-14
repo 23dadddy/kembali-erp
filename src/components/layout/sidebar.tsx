@@ -259,7 +259,6 @@ export function Sidebar() {
               { label: 'Leads Pipeline', href: '/sales/leads', icon: Users },
               { label: 'Routes', href: '/sales/routes', icon: MapPin },
               { label: 'Visit Reports', href: '/sales/reports', icon: ClipboardList },
-              { label: 'Route Settings', href: '/sales/settings', icon: Settings },
             ].map(({ label, href, icon: Icon }) => {
               const active = pathname === href || (href !== '/sales' && pathname.startsWith(href)) || (href === '/sales' && pathname === '/sales')
               return (
