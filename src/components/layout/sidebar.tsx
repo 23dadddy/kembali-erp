@@ -11,6 +11,7 @@ import {
   ScrollText, LogOut,
   ShoppingCart, Receipt, BookOpen, Headphones,
   Mail, MessageCircle, MessagesSquare,
+  TrendingUp, MapPin, ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -237,6 +238,29 @@ export function Sidebar() {
               { label: t('nav_fleet'), href: '/fleet', icon: Truck },
             ].map(({ label, href, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link key={href} href={href} prefetch={true}
+                  className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
+                  style={active ? { background: '#5BA3A0', fontSize: '13px' } : { fontSize: '13px' }}>
+                  <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', active ? 'text-white' : 'text-[#8C8078]')} />
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Marketing / Sales CRM */}
+        <div>
+          <p className="font-semibold text-[#8C8078] uppercase tracking-wider px-3 mb-1" style={{ fontSize: '10px', letterSpacing: '0.08em' }}>Marketing</p>
+          <div className="space-y-0.5">
+            {[
+              { label: 'Sales Overview', href: '/sales', icon: TrendingUp },
+              { label: 'Leads Pipeline', href: '/sales/leads', icon: Users },
+              { label: 'Routes', href: '/sales/routes', icon: MapPin },
+              { label: 'Visit Reports', href: '/sales/reports', icon: ClipboardList },
+            ].map(({ label, href, icon: Icon }) => {
+              const active = pathname === href || (href !== '/sales' && pathname.startsWith(href)) || (href === '/sales' && pathname === '/sales')
               return (
                 <Link key={href} href={href} prefetch={true}
                   className={cn('flex items-center gap-2.5 px-3 py-1.5 rounded-md font-medium transition-colors', active ? 'text-white' : 'text-[#5A5248] hover:text-[#1A1A1A] hover:bg-slate-100')}
