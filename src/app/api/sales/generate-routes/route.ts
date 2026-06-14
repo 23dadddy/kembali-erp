@@ -220,7 +220,7 @@ export async function GET(req: NextRequest) {
   const routeIds = routes.map(r => r.id)
   const { data: stops } = await sb
     .from('sales_route_stops')
-    .select('*, lead:sales_leads(id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, last_contacted_at, next_follow_up, estimated_value)')
+    .select('id, route_id, lead_id, order_index, status, arrived_at, departed_at, lead:sales_leads(id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, last_contacted_at, next_follow_up, estimated_value)')
     .in('route_id', routeIds)
     .order('order_index')
 

@@ -126,7 +126,7 @@ export default function RoutesPage() {
   async function markStop(stop: Stop, status: 'arrived' | 'completed') {
     const updates: any = { status }
     if (status === 'arrived') updates.arrived_at = new Date().toISOString()
-    if (status === 'completed') updates.completed_at = new Date().toISOString()
+    if (status === 'completed') updates.departed_at = new Date().toISOString()
     await sb.from('sales_route_stops').update(updates).eq('id', stop.id)
     if (status === 'completed') {
       await sb.from('sales_leads').update({ last_contacted_at: new Date().toISOString() }).eq('id', stop.lead_id)
@@ -143,7 +143,6 @@ export default function RoutesPage() {
       channel: 'visit',
       outcome: visitOutcome,
       notes: visitNote,
-      activity_date: new Date().toISOString(),
     })
 
     const stageMap: Record<string, string> = {
@@ -158,7 +157,7 @@ export default function RoutesPage() {
 
     await sb.from('sales_route_stops').update({
       status: 'completed',
-      completed_at: new Date().toISOString(),
+      departed_at: new Date().toISOString(),
     }).eq('id', stop.id)
 
     setVisitNote('')

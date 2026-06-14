@@ -97,6 +97,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'No leads provided' }, { status: 400 })
   }
 
+  // Strip fields that don't exist in DB yet
   const toInsert = leads.map(({ google_place_id, ...l }: any) => l)
   const { error, data } = await sb.from('sales_leads').insert(toInsert).select('id')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
