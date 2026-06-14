@@ -137,6 +137,25 @@ export default function LeadsPage() {
 
   const [view, setView] = useState<'table' | 'kanban'>('table')
 
+  // CSV import
+  const [showImport, setShowImport] = useState(false)
+  const [csvRows, setCsvRows] = useState<any[]>([])
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [colMap, setColMap] = useState<Record<string, string>>({})
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Discover via Google Places
+  const [showDiscover, setShowDiscover] = useState(false)
+  const [discoverAreas, setDiscoverAreas] = useState<string[]>(['Seminyak', 'Canggu', 'Ubud', 'Kuta', 'Sanur'])
+  const [discoverTypes, setDiscoverTypes] = useState<string[]>(['lodging', 'restaurant', 'spa'])
+  const [discovering, setDiscovering] = useState(false)
+  const [discovered, setDiscovered] = useState<any[]>([])
+  const [selectedDiscovered, setSelectedDiscovered] = useState<Set<number>>(new Set())
+  const [addingDiscovered, setAddingDiscovered] = useState(false)
+  const [discoverError, setDiscoverError] = useState<string | null>(null)
+
   const sb = createClient()
 
   // ─── Data loading ──────────────────────────────────────────────────────────
@@ -343,6 +362,141 @@ export default function LeadsPage() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kembali_leads.csv'; a.click()
   }
 
+  // ─── CSV Import ────────────────────────────────────────────────────────────
+
+  const downloadTemplate = () => {
+    const cols = ['company_name*','business_type','area','contact_name','contact_phone','whatsapp_number','contact_email','website','instagram','address','stage','priority','estimated_value','assigned_rep','notes']
+    const example = ['Potato Head Beach Club','Restaurant','Seminyak','John Doe','+62 812 0000 0001','+62 812 0000 0001','john@potato.com','potatohead.co','@potatoheadbali','Jl. Petitenget No.51B','prospect','high','500','Kyle','VIP beachclub']
+    const csv = [cols.join(','), example.join(',')].join('\n')
+    const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = 'leads_import_template.csv'; a.click()
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      const lines = text.split(/\r?\n/).filter(l => l.trim())
+      if (lines.length < 2) return
+      const headers = lines[0].split(',').map(h => h.replace(/[*"]/g, '').trim())
+      setCsvHeaders(headers)
+      const rows = lines.slice(1).map(line => {
+        const vals = line.match(/("(?:[^"]|"")*"|[^,]*)/g)?.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) ?? []
+        return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? '']))
+      })
+      setCsvRows(rows.filter(r => r[headers[0]]))
+      // auto-map known columns
+      const autoMap: Record<string, string> = {}
+      const FIELD_ALIASES: Record<string, string[]> = {
+        company_name: ['company_name','business name','name','company','business'],
+        business_type: ['business_type','type','category'],
+        area: ['area','location','district','zone'],
+        contact_name: ['contact_name','contact','person','pic','owner'],
+        contact_phone: ['contact_phone','phone','telephone','tel'],
+        whatsapp_number: ['whatsapp_number','whatsapp','wa'],
+        contact_email: ['contact_email','email','e-mail'],
+        website: ['website','web','url','website_url'],
+        instagram: ['instagram','ig','instagram_handle'],
+        address: ['address','street','alamat'],
+        stage: ['stage','status','pipeline_stage'],
+        priority: ['priority','tier'],
+        estimated_value: ['estimated_value','value','monthly_value','est_value'],
+        assigned_rep: ['assigned_rep','rep','salesperson','assigned_to'],
+        notes: ['notes','note','remarks','comment'],
+      }
+      headers.forEach(h => {
+        const lh = h.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+          if (aliases.some(a => lh.includes(a.replace(/[^a-z0-9]/g, '_')))) {
+            autoMap[h] = field; break
+          }
+        }
+      })
+      setColMap(autoMap)
+      setImportResult(null)
+    }
+    reader.readAsText(file)
+  }
+
+  const runImport = async () => {
+    if (!csvRows.length) return
+    setImporting(true)
+    const { data: existing } = await sb.from('sales_leads').select('company_name')
+    const existingNames = new Set((existing ?? []).map((l: any) => l.company_name.toLowerCase().trim()))
+
+    const toInsert: any[] = []
+    let skipped = 0
+    for (const row of csvRows) {
+      const name = row[Object.keys(colMap).find(k => colMap[k] === 'company_name') ?? '']?.trim()
+      if (!name) { skipped++; continue }
+      if (existingNames.has(name.toLowerCase())) { skipped++; continue }
+      const record: any = { company_name: name, stage: 'prospect', priority: 'medium' }
+      for (const [csvCol, field] of Object.entries(colMap)) {
+        if (field === 'company_name') continue
+        const val = row[csvCol]?.trim()
+        if (!val) continue
+        if (field === 'estimated_value') record[field] = Number(val) || 0
+        else record[field] = val
+      }
+      toInsert.push(record)
+      existingNames.add(name.toLowerCase())
+    }
+    if (toInsert.length) {
+      // Insert in batches of 100
+      for (let i = 0; i < toInsert.length; i += 100) {
+        await sb.from('sales_leads').insert(toInsert.slice(i, i + 100))
+      }
+    }
+    setImportResult({ inserted: toInsert.length, skipped })
+    setImporting(false)
+    if (toInsert.length) await load()
+  }
+
+  // ─── Google Places Discovery ───────────────────────────────────────────────
+
+  const runDiscover = async () => {
+    setDiscovering(true)
+    setDiscovered([])
+    setDiscoverError(null)
+    setSelectedDiscovered(new Set())
+    try {
+      const res = await fetch('/api/sales/discover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ areas: discoverAreas, types: discoverTypes }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.setup_required) setDiscoverError('setup_required')
+        else setDiscoverError(data.error ?? 'Failed to discover businesses')
+      } else {
+        setDiscovered(data.discovered ?? [])
+        setSelectedDiscovered(new Set(data.discovered.map((_: any, i: number) => i)))
+      }
+    } catch (e: any) {
+      setDiscoverError(e.message)
+    }
+    setDiscovering(false)
+  }
+
+  const addDiscovered = async () => {
+    const toAdd = discovered.filter((_, i) => selectedDiscovered.has(i))
+    if (!toAdd.length) return
+    setAddingDiscovered(true)
+    const res = await fetch('/api/sales/discover', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leads: toAdd }),
+    })
+    const data = await res.json()
+    setAddingDiscovered(false)
+    setShowDiscover(false)
+    setDiscovered([])
+    await load()
+    alert(`Added ${data.inserted} new businesses to your pipeline!`)
+  }
+
   // ─── Kanban view ──────────────────────────────────────────────────────────
 
   const KanbanView = () => {
@@ -420,6 +574,15 @@ export default function LeadsPage() {
           <div className="ml-auto flex items-center gap-2">
             <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
               <Download className="w-3.5 h-3.5" /> Export
+            </button>
+            <button onClick={() => { setShowImport(true); setImportResult(null); setCsvRows([]); setCsvHeaders([]) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
+              <Upload className="w-3.5 h-3.5" /> Import CSV
+            </button>
+            <button onClick={() => { setShowDiscover(true); setDiscovered([]); setDiscoverError(null) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-white"
+              style={{ background: '#6366F1' }}>
+              <Zap className="w-3.5 h-3.5" /> Discover
             </button>
             <button onClick={openNew}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-white text-sm font-medium"
@@ -940,6 +1103,236 @@ export default function LeadsPage() {
                   style={{ background: '#5BA3A0' }}>
                   {savingLead ? 'Saving...' : editLead ? 'Save Changes' : 'Add Lead'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CSV Import Modal ── */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div>
+                <h2 className="font-bold text-gray-900">Import Leads from CSV</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Duplicates (same business name) are automatically skipped</p>
+              </div>
+              <button onClick={() => setShowImport(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Step 1: Download template */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Step 1 — Download the template</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Fill in the CSV with your list of businesses then upload it below</p>
+                </div>
+                <button onClick={downloadTemplate}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white flex-shrink-0"
+                  style={{ background: '#3B82F6' }}>
+                  <Download className="w-3.5 h-3.5" /> Template
+                </button>
+              </div>
+
+              {/* Step 2: Upload file */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Step 2 — Upload your CSV</p>
+                <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                <button onClick={() => fileRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-8 flex flex-col items-center gap-2 hover:border-[#5BA3A0] hover:bg-gray-50 transition-colors">
+                  <Upload className="w-8 h-8 text-gray-300" />
+                  <p className="text-sm text-gray-500">Click to select CSV file</p>
+                  <p className="text-xs text-gray-400">{csvRows.length > 0 ? `${csvRows.length} rows loaded` : 'Supports any CSV with a header row'}</p>
+                </button>
+              </div>
+
+              {/* Step 3: Map columns */}
+              {csvHeaders.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Step 3 — Map columns <span className="text-xs font-normal text-gray-400">(auto-detected where possible)</span></p>
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {csvHeaders.map(h => (
+                      <div key={h} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                        <span className="text-xs text-gray-600 font-mono truncate flex-1 min-w-0" title={h}>{h}</span>
+                        <span className="text-gray-300 text-xs">→</span>
+                        <select value={colMap[h] ?? ''} onChange={e => setColMap(m => ({ ...m, [h]: e.target.value }))}
+                          className="text-xs border border-gray-200 rounded-lg px-1.5 py-1 bg-white focus:outline-none focus:border-[#5BA3A0] flex-shrink-0">
+                          <option value="">Skip</option>
+                          {['company_name','business_type','area','contact_name','contact_phone','whatsapp_number','contact_email','website','instagram','address','stage','priority','estimated_value','assigned_rep','notes'].map(f => (
+                            <option key={f} value={f}>{f}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Result */}
+              {importResult && (
+                <div className={cn('rounded-xl p-4 flex items-center gap-3', importResult.inserted > 0 ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100')}>
+                  <CheckCircle2 className={cn('w-5 h-5 flex-shrink-0', importResult.inserted > 0 ? 'text-green-500' : 'text-gray-400')} />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{importResult.inserted > 0 ? `Successfully imported ${importResult.inserted} leads!` : 'No new leads to import'}</p>
+                    {importResult.skipped > 0 && <p className="text-xs text-gray-500 mt-0.5">{importResult.skipped} rows skipped (duplicates or missing name)</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="px-6 pb-6 flex justify-end gap-2">
+              <button onClick={() => setShowImport(false)} className="px-4 py-2 rounded-xl text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">Close</button>
+              <button onClick={runImport} disabled={importing || csvRows.length === 0 || !Object.values(colMap).includes('company_name')}
+                className="px-5 py-2 rounded-xl text-sm text-white font-medium disabled:opacity-40"
+                style={{ background: '#5BA3A0' }}>
+                {importing ? 'Importing...' : `Import ${csvRows.length} rows`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Discover Modal ── */}
+      {showDiscover && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#6366F1' }}>
+                    <Zap className="w-4 h-4 text-white" />
+                  </div>
+                  <h2 className="font-bold text-gray-900">Discover New Businesses</h2>
+                </div>
+                <p className="text-xs text-gray-400 mt-1 ml-9">Searches Google Maps for businesses in Bali not yet in your pipeline</p>
+              </div>
+              <button onClick={() => setShowDiscover(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-6 space-y-5">
+              {discoverError === 'setup_required' ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 text-center">
+                  <AlertCircle className="w-8 h-8 text-orange-400 mx-auto mb-2" />
+                  <p className="font-semibold text-orange-800 text-sm">Google Maps API Key Required</p>
+                  <p className="text-xs text-orange-600 mt-1.5 max-w-sm mx-auto">
+                    To auto-discover new businesses, add your Google Maps API key to Vercel environment variables as <code className="bg-orange-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
+                    Enable the <strong>Places API</strong> in Google Cloud Console.
+                  </p>
+                  <a href="https://console.cloud.google.com/apis/library/places-backend.googleapis.com" target="_blank"
+                    className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-orange-700 hover:underline">
+                    <ExternalLink className="w-3 h-3" /> Enable Places API
+                  </a>
+                </div>
+              ) : (
+                <>
+                  {/* Area selection */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Areas to search</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Seminyak','Canggu','Ubud','Kuta','Sanur','Nusa Dua','Jimbaran','Uluwatu','Berawa','Legian','Denpasar'].map(a => (
+                        <button key={a} onClick={() => setDiscoverAreas(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a])}
+                          className={cn('px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors', discoverAreas.includes(a) ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300')}
+                          style={discoverAreas.includes(a) ? { background: '#6366F1' } : {}}>
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Business type selection */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Business types</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { key: 'lodging', label: '🏨 Hotels & Villas' },
+                        { key: 'restaurant', label: '🍽 Restaurants' },
+                        { key: 'spa', label: '💆 Spas' },
+                        { key: 'gym', label: '🏋️ Gyms' },
+                        { key: 'cafe', label: '☕ Cafés' },
+                      ].map(t => (
+                        <button key={t.key} onClick={() => setDiscoverTypes(prev => prev.includes(t.key) ? prev.filter(x => x !== t.key) : [...prev, t.key])}
+                          className={cn('px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors', discoverTypes.includes(t.key) ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300')}
+                          style={discoverTypes.includes(t.key) ? { background: '#6366F1' } : {}}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {!discovered.length && !discovering && !discoverError && (
+                    <div className="bg-gray-50 rounded-xl p-5 text-center border-2 border-dashed border-gray-200">
+                      <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Select areas and types, then click Discover</p>
+                      <p className="text-xs text-gray-400 mt-1">Only businesses not already in your pipeline will appear</p>
+                    </div>
+                  )}
+
+                  {discovering && (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">Searching Google Maps across {discoverAreas.length} areas...</p>
+                    </div>
+                  )}
+
+                  {discoverError && discoverError !== 'setup_required' && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">{discoverError}</div>
+                  )}
+
+                  {discovered.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{discovered.length} new businesses found</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setSelectedDiscovered(new Set(discovered.map((_, i) => i)))}
+                            className="text-xs text-indigo-600 hover:underline">Select all</button>
+                          <span className="text-gray-300">·</span>
+                          <button onClick={() => setSelectedDiscovered(new Set())}
+                            className="text-xs text-gray-400 hover:underline">None</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                        {discovered.map((biz, i) => (
+                          <label key={i} className={cn('flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors', selectedDiscovered.has(i) ? 'border-indigo-200 bg-indigo-50' : 'border-gray-100 hover:border-gray-200')}>
+                            <input type="checkbox" checked={selectedDiscovered.has(i)}
+                              onChange={() => setSelectedDiscovered(prev => {
+                                const next = new Set(prev)
+                                next.has(i) ? next.delete(i) : next.add(i)
+                                return next
+                              })}
+                              className="rounded accent-indigo-600 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{biz.company_name}</p>
+                              <p className="text-xs text-gray-400 truncate">{biz.business_type} · {biz.area}{biz.address ? ` · ${biz.address}` : ''}</p>
+                            </div>
+                            <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0',
+                              biz.priority === 'high' ? 'bg-red-100 text-red-600' : biz.priority === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500')}>
+                              {biz.priority}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="px-6 pb-6 flex justify-between items-center">
+              <span className="text-xs text-gray-400">{selectedDiscovered.size} selected to add</span>
+              <div className="flex gap-2">
+                <button onClick={() => setShowDiscover(false)} className="px-4 py-2 rounded-xl text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
+                {discovered.length === 0 ? (
+                  <button onClick={runDiscover} disabled={discovering || discoverAreas.length === 0 || discoverTypes.length === 0}
+                    className="px-5 py-2 rounded-xl text-sm text-white font-medium disabled:opacity-40 flex items-center gap-1.5"
+                    style={{ background: '#6366F1' }}>
+                    <Zap className="w-3.5 h-3.5" />
+                    {discovering ? 'Searching...' : 'Discover'}
+                  </button>
+                ) : (
+                  <button onClick={addDiscovered} disabled={addingDiscovered || selectedDiscovered.size === 0}
+                    className="px-5 py-2 rounded-xl text-sm text-white font-medium disabled:opacity-40 flex items-center gap-1.5"
+                    style={{ background: '#6366F1' }}>
+                    <Plus className="w-3.5 h-3.5" />
+                    {addingDiscovered ? 'Adding...' : `Add ${selectedDiscovered.size} to Pipeline`}
+                  </button>
+                )}
               </div>
             </div>
           </div>
