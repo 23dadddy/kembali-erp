@@ -258,7 +258,6 @@ export function Sidebar() {
               { label: 'Sales Overview', href: '/sales', icon: TrendingUp },
               { label: 'Leads Pipeline', href: '/sales/leads', icon: Users },
               { label: 'Routes', href: '/sales/routes', icon: MapPin },
-              { label: 'Visit Reports', href: '/sales/reports', icon: ClipboardList },
             ].map(({ label, href, icon: Icon }) => {
               const active = pathname === href || (href !== '/sales' && pathname.startsWith(href)) || (href === '/sales' && pathname === '/sales')
               return (
