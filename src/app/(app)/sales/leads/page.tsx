@@ -8,9 +8,10 @@ import {
   MessageCircle, ChevronDown, ChevronUp, Edit2, Trash2,
   Clock, CheckCircle2, AlertCircle, Upload, Download, LayoutGrid,
   List, SlidersHorizontal, MoreHorizontal, ArrowUpDown, Calendar,
-  Building2, Users, Tag, Zap, Eye, ExternalLink
+  Building2, Users, Tag, Zap, Eye, ExternalLink, FileText, RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProposalModal } from '@/components/sales/ProposalModal'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,9 @@ export default function LeadsPage() {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [activityForm, setActivityForm] = useState({ ...EMPTY_ACTIVITY })
   const [savingActivity, setSavingActivity] = useState(false)
+
+  const [showProposalModal, setShowProposalModal] = useState(false)
+  const [activatingPartner, setActivatingPartner] = useState(false)
 
   const [view, setView] = useState<'table' | 'kanban'>('table')
 
@@ -763,6 +767,46 @@ export default function LeadsPage() {
                   </div>
                 </div>
 
+                {/* Action buttons — proposal & confirm */}
+                {detailLead.stage !== 'closed_won' && detailLead.stage !== 'closed_lost' && (
+                  <div className="px-4 py-3 border-b border-gray-50 space-y-2">
+                    {detailLead.stage === 'proposal' || detailLead.stage === 'negotiation' ? (
+                      <>
+                        <button onClick={() => setShowProposalModal(true)}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200">
+                          <FileText className="w-4 h-4" /> Resend Proposal
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Confirm ${detailLead.company_name} as an active partner? This will create their customer account and send a welcome message.`)) return
+                            setActivatingPartner(true)
+                            const res = await fetch('/api/sales/activate-partner', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ leadId: detailLead.id }),
+                            })
+                            setActivatingPartner(false)
+                            if (res.ok) {
+                              await load()
+                              setDetailLead(l => l ? { ...l, stage: 'closed_won' } : l)
+                            }
+                          }}
+                          disabled={activatingPartner}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
+                          {activatingPartner ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          {activatingPartner ? 'Activating…' : 'Confirm as Partner ✓'}
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => setShowProposalModal(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-white"
+                        style={{ background: '#F59E0B' }}>
+                        <FileText className="w-4 h-4" /> Generate & Send Proposal
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Contact info */}
                 <div className="px-4 py-3 border-b border-gray-50 space-y-2">
                   {detailLead.contact_name && (
@@ -1337,6 +1381,19 @@ export default function LeadsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Proposal modal */}
+      {showProposalModal && detailLead && (
+        <ProposalModal
+          lead={detailLead}
+          onClose={() => setShowProposalModal(false)}
+          onSent={async () => {
+            setShowProposalModal(false)
+            await load()
+            setDetailLead(l => l ? { ...l, stage: 'proposal' } : l)
+          }}
+        />
       )}
     </>
   )
