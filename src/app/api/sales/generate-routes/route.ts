@@ -1,71 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-type Rep = { name: string; id?: string; area_cluster?: string; area?: string }
-
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Area clusters — reps should stay within 1-2 areas per day
-const AREA_CLUSTERS: Record<string, string[]> = {
-  'North Canggu':  ['Canggu', 'Berawa', 'Pererenan'],
-  'South Seminyak': ['Seminyak', 'Legian', 'Kuta'],
-  'Ubud & Central': ['Ubud', 'Tabanan', 'Denpasar'],
-  'South Bali':    ['Nusa Dua', 'Jimbaran', 'Uluwatu'],
-  'East Bali':     ['Sanur', 'Denpasar'],
+type Rep = { name: string; id?: string; area_cluster?: string; area?: string }
+
+// Haversine distance in km between two lat/lng points
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function scoreLeadForVisit(lead: any, todayStr: string): number {
-  let score = 0
+// Nearest-neighbor sort: starting from the first point, always go to the closest unvisited stop
+function sortByProximity(leads: any[]): any[] {
+  const withCoords = leads.filter(l => l.lat != null && l.lng != null)
+  const noCoords = leads.filter(l => l.lat == null || l.lng == null)
 
-  // Overdue follow-up — highest priority
-  if (lead.next_follow_up && lead.next_follow_up < todayStr) score += 30
-  else if (lead.next_follow_up === todayStr) score += 20
+  if (withCoords.length <= 1) return [...withCoords, ...noCoords]
 
-  // Never contacted at all — fresh prospect
-  if (!lead.last_contacted_at) score += 15
+  const sorted: any[] = []
+  const remaining = [...withCoords]
 
-  // Priority field
-  if (lead.priority === 'high') score += 12
-  else if (lead.priority === 'medium') score += 6
+  // Start from the northernmost point (top of the zone) so reps drive south
+  remaining.sort((a, b) => b.lat - a.lat)
+  sorted.push(remaining.shift()!)
 
-  // Stage — further along = more valuable to close
-  const stageScores: Record<string, number> = {
-    negotiation: 18, proposal: 14, meeting: 10,
-    contacted: 6, prospect: 3,
+  while (remaining.length > 0) {
+    const last = sorted[sorted.length - 1]
+    let closestIdx = 0
+    let closestDist = Infinity
+    for (let i = 0; i < remaining.length; i++) {
+      const d = haversine(last.lat, last.lng, remaining[i].lat, remaining[i].lng)
+      if (d < closestDist) { closestDist = d; closestIdx = i }
+    }
+    sorted.push(remaining.splice(closestIdx, 1)[0])
   }
-  score += stageScores[lead.stage] ?? 0
 
-  // Estimated value
-  const val = Number(lead.estimated_value || 0)
-  if (val >= 1000) score += 8
-  else if (val >= 500) score += 5
-  else if (val >= 200) score += 2
-
-  return score
+  // Append leads with no coords at the end
+  return [...sorted, ...noCoords]
 }
 
-function scoreLeadForWhatsApp(lead: any, todayStr: string): number {
-  let score = 0
-  if (lead.next_follow_up && lead.next_follow_up <= todayStr) score += 25
-  if (!lead.last_contacted_at) score += 10
-  if (lead.stage === 'contacted' || lead.stage === 'meeting') score += 12
-  if (lead.stage === 'proposal' || lead.stage === 'negotiation') score += 18
-  if (lead.priority === 'high') score += 10
-  if (lead.whatsapp_number) score += 5
-  return score
+// Area zone centers for clustering
+const ZONE_CENTERS: Record<string, { lat: number; lng: number; areas: string[] }> = {
+  'North Canggu':   { lat: -8.648, lng: 115.138, areas: ['Canggu', 'Berawa', 'Pererenan', 'Batu Belig'] },
+  'South Seminyak': { lat: -8.710, lng: 115.168, areas: ['Seminyak', 'Legian', 'Kuta', 'Petitenget'] },
+  'Ubud & Central': { lat: -8.507, lng: 115.262, areas: ['Ubud', 'Tabanan', 'Denpasar', 'Gianyar'] },
+  'South Bali':     { lat: -8.800, lng: 115.185, areas: ['Nusa Dua', 'Jimbaran', 'Uluwatu', 'Bukit'] },
+  'East Bali':      { lat: -8.701, lng: 115.262, areas: ['Sanur', 'Ketewel', 'Keramas'] },
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const {
     date = new Date().toISOString().split('T')[0],
-    reps = [],            // [{ name, area_cluster? }]
+    reps = [] as Rep[],
     leads_per_rep = 20,
-    wa_per_rep = 30,
-    revisit_cooldown_days = 7,
     replace_existing = false,
   } = body
 
@@ -73,139 +70,102 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No reps provided' }, { status: 400 })
   }
 
-  // Delete existing routes for this date if replacing
+  // Handle existing routes
   if (replace_existing) {
-    const { data: old } = await sb.from('sales_routes').select('id').eq('date', date)
-    if (old?.length) {
-      await sb.from('sales_routes').delete().eq('date', date)
-    }
+    await sb.from('sales_routes').delete().eq('date', date)
   } else {
-    // Check if routes already exist
     const { data: existing } = await sb.from('sales_routes').select('id').eq('date', date)
     if (existing?.length) {
-      return NextResponse.json({ error: 'Routes already exist for this date. Use replace_existing=true to regenerate.' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Routes already exist for this date. Use replace_existing=true to regenerate.' },
+        { status: 409 }
+      )
     }
   }
 
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - revisit_cooldown_days)
-  const cutoffStr = cutoffDate.toISOString()
+  // -----------------------------------------------------------------------
+  // CADENCE RULES: touch every lead until they are closed_won.
+  // - Never contacted → always eligible
+  // - Has a next_follow_up date <= today → eligible
+  // - Last contacted more than 30 days ago → eligible (persistent monthly touch)
+  // - closed_won → never eligible
+  // -----------------------------------------------------------------------
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const cutoff30 = thirtyDaysAgo.toISOString()
 
-  // Load all eligible leads for physical visits
-  const { data: visitLeads } = await sb
+  const { data: allLeads } = await sb
     .from('sales_leads')
-    .select('id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, estimated_value, last_contacted_at, next_follow_up, assigned_rep')
-    .not('stage', 'in', '("closed_won","closed_lost")')
-    .or(`last_contacted_at.is.null,last_contacted_at.lt.${cutoffStr},next_follow_up.lte.${date}`)
-    .order('priority', { ascending: false })
+    .select('id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, estimated_value, last_contacted_at, next_follow_up, lat, lng, assigned_rep')
+    .not('stage', 'in', '("closed_won")')
+    .or(`last_contacted_at.is.null,next_follow_up.lte.${date},last_contacted_at.lt.${cutoff30}`)
+    .order('next_follow_up', { ascending: true, nullsFirst: true })
 
-  const allVisitLeads = (visitLeads ?? []).map(l => ({
-    ...l,
-    _score: scoreLeadForVisit(l, date),
-  })).sort((a, b) => b._score - a._score)
+  const eligibleLeads = allLeads ?? []
 
-  // Generate physical routes per rep
+  // Assign to reps by zone, then sort each zone's stops by proximity
   const usedLeadIds = new Set<string>()
   const createdRoutes: any[] = []
 
   for (const rep of reps) {
-    // Filter leads for this rep's cluster if specified
-    let repLeads = allVisitLeads.filter(l => !usedLeadIds.has(l.id))
+    let repLeads = eligibleLeads.filter(l => !usedLeadIds.has(l.id))
 
-    if (rep.area_cluster && AREA_CLUSTERS[rep.area_cluster]) {
-      const clusterAreas = AREA_CLUSTERS[rep.area_cluster]
-      // Prefer leads in cluster, but fill remaining from anywhere
-      const inCluster = repLeads.filter(l => l.area && clusterAreas.includes(l.area))
-      const outCluster = repLeads.filter(l => !l.area || !clusterAreas.includes(l.area))
-      repLeads = [...inCluster, ...outCluster]
-    } else if (rep.area) {
-      // Single area preference
-      const preferred = repLeads.filter(l => l.area === rep.area)
-      const others = repLeads.filter(l => l.area !== rep.area)
-      repLeads = [...preferred, ...others]
+    // Filter to zone if specified
+    if (rep.area_cluster && ZONE_CENTERS[rep.area_cluster]) {
+      const zoneAreas = ZONE_CENTERS[rep.area_cluster].areas
+      const inZone = repLeads.filter(l => l.area && zoneAreas.some(a => l.area.toLowerCase().includes(a.toLowerCase())))
+      const outZone = repLeads.filter(l => !l.area || !zoneAreas.some(a => l.area.toLowerCase().includes(a.toLowerCase())))
+
+      // If zone has enough leads, use only zone leads. Otherwise fill from elsewhere.
+      repLeads = inZone.length >= leads_per_rep
+        ? inZone
+        : [...inZone, ...outZone]
     }
 
-    const stops = repLeads.slice(0, leads_per_rep)
-    stops.forEach(l => usedLeadIds.add(l.id))
+    // Nearest-neighbor sort within the assigned pool
+    const pool = repLeads.slice(0, leads_per_rep * 3) // take 3x then sort so we have options
+    const sortedPool = sortByProximity(pool)
+    const stops = sortedPool.slice(0, leads_per_rep)
 
+    stops.forEach(l => usedLeadIds.add(l.id))
     if (!stops.length) continue
 
-    // Create route
     const { data: route } = await sb.from('sales_routes').insert({
-      name: `${rep.name} — ${new Date(date).toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' })}`,
+      name: `${rep.name} — ${new Date(date + 'T12:00:00').toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' })}`,
       date,
       status: 'planned',
-      notes: rep.area_cluster ? `Zone: ${rep.area_cluster}` : null,
+      notes: rep.area_cluster ?? null,
       salesperson_id: rep.id ?? null,
     }).select().single()
 
     if (!route) continue
 
-    // Create stops
-    const stopRows = stops.map((lead, idx) => ({
-      route_id: route.id,
-      lead_id: lead.id,
-      order_index: idx,
-      status: 'pending',
-    }))
-    await sb.from('sales_route_stops').insert(stopRows)
+    await sb.from('sales_route_stops').insert(
+      stops.map((lead, idx) => ({
+        route_id: route.id,
+        lead_id: lead.id,
+        order_index: idx,
+        status: 'pending',
+      }))
+    )
 
     createdRoutes.push({
       ...route,
       rep_name: rep.name,
-      stops: stops.map((l, idx) => ({
-        order_index: idx,
-        lead_id: l.id,
-        company_name: l.company_name,
-        business_type: l.business_type,
-        area: l.area,
-        address: l.address,
-        contact_name: l.contact_name,
-        contact_phone: l.contact_phone,
-        whatsapp_number: l.whatsapp_number,
-        stage: l.stage,
-        priority: l.priority,
-        score: l._score,
-        last_contacted_at: l.last_contacted_at,
-        next_follow_up: l.next_follow_up,
-      })),
+      stop_count: stops.length,
     })
   }
-
-  // Generate WhatsApp queue — leads NOT assigned to physical routes today
-  const { data: waLeads } = await sb
-    .from('sales_leads')
-    .select('id, company_name, contact_name, whatsapp_number, area, business_type, stage, priority, last_contacted_at, next_follow_up, notes')
-    .not('stage', 'in', '("closed_won","closed_lost")')
-    .not('id', 'in', `(${[...usedLeadIds].join(',') || 'null'})`)
-    .not('whatsapp_number', 'is', null)
-    .order('priority', { ascending: false })
-
-  const waQueue = (waLeads ?? [])
-    .map(l => ({ ...l, _score: scoreLeadForWhatsApp(l, date) }))
-    .filter(l => l._score > 0)
-    .sort((a, b) => b._score - a._score)
-    .slice(0, reps.length * wa_per_rep)
-
-  // Distribute WA queue across reps
-  const waByRep: Record<string, any[]> = {}
-  reps.forEach((r: Rep) => { waByRep[r.name] = [] })
-  waQueue.forEach((lead, i) => {
-    const rep = reps[i % reps.length]
-    waByRep[rep.name].push(lead)
-  })
 
   return NextResponse.json({
     date,
     routes_created: createdRoutes.length,
     routes: createdRoutes,
-    whatsapp_queue: waByRep,
     total_leads_assigned: usedLeadIds.size,
-    total_wa_queued: waQueue.length,
+    total_eligible: eligibleLeads.length,
   })
 }
 
-// GET: fetch today's generated routes with full stop details
+// GET: fetch routes for a date with full stop details
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
 
@@ -220,7 +180,7 @@ export async function GET(req: NextRequest) {
   const routeIds = routes.map(r => r.id)
   const { data: stops } = await sb
     .from('sales_route_stops')
-    .select('id, route_id, lead_id, order_index, status, arrived_at, departed_at, lead:sales_leads(id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, last_contacted_at, next_follow_up, estimated_value)')
+    .select('id, route_id, lead_id, order_index, status, arrived_at, departed_at, notes, lead:sales_leads(id, company_name, contact_name, contact_phone, whatsapp_number, address, area, business_type, stage, priority, last_contacted_at, next_follow_up, estimated_value, lat, lng)')
     .in('route_id', routeIds)
     .order('order_index')
 
