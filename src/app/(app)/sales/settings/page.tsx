@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import { Plus, X, Save, RefreshCw, Users, Settings, CheckCircle, AlertCircle, Zap } from 'lucide-react'
+import { Plus, X, Save, RefreshCw, Users, Settings, CheckCircle, AlertCircle, Zap, ArrowLeft } from 'lucide-react'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +38,7 @@ type RouteSettings = {
 }
 
 export default function SalesSettingsPage() {
+  const router = useRouter()
   const [reps, setReps] = useState<Rep[]>([])
   const [settings, setSettings] = useState<RouteSettings>({
     stops_per_rep: 20,
@@ -202,9 +204,15 @@ CREATE POLICY "sales_route_settings_all" ON sales_route_settings FOR ALL TO auth
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Sales Route Settings</h1>
-          <p className="text-sm text-gray-500">Manage reps, zones, and daily auto-generate</p>
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.back()}
+            className="p-2 text-gray-500 border rounded-lg hover:bg-gray-50">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Sales Route Settings</h1>
+            <p className="text-sm text-gray-500">Manage reps, zones, and daily auto-generate</p>
+          </div>
         </div>
         <button onClick={save} disabled={saving}
           className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50">
