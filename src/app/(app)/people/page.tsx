@@ -102,8 +102,11 @@ function TeamTab() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return
-    const sb = createClient()
-    await sb.from('staff').delete().eq('id', id)
+    await fetch('/api/delete-staff', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId: id }),
+    })
     setStaff(prev => prev.filter(s => s.id !== id))
   }
 
