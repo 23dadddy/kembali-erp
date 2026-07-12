@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendPush } from '@/lib/push'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -154,6 +155,19 @@ export async function POST(req: NextRequest) {
       rep_name: rep.name,
       stop_count: stops.length,
     })
+
+    // Push notification to the rep's phone
+    if (rep.id) {
+      const { data: staffRow } = await sb.from('staff').select('push_token').eq('id', rep.id).maybeSingle()
+      if (staffRow?.push_token) {
+        sendPush({
+          to: staffRow.push_token,
+          title: 'Your route is ready 🗺️',
+          body: `${stops.length} stops today. Open the app to start.`,
+          data: { routeId: route.id },
+        }).catch(() => null)
+      }
+    }
   }
 
   return NextResponse.json({
