@@ -23,17 +23,31 @@ export async function POST(req: NextRequest) {
   // 1. Create customer record
   const { data: customer, error: custErr } = await sb.from('customers').insert({
     name: lead.company_name,
-    email: intake.billing_email || lead.contact_email,
-    phone: lead.contact_phone || lead.whatsapp_number,
-    address: intake.delivery_address || lead.address,
-    city: lead.city || lead.area,
+    contact_name: lead.contact_name ?? null,
+    contact_email: intake.billing_email || lead.contact_email,
+    contact_phone: lead.whatsapp_number || lead.contact_phone,
+    address: intake.delivery_address || lead.address || 'TBC',
+    city: lead.area ?? null,
     type: 'business',
-    notes: `Onboarded via sales pipeline. Contact: ${lead.contact_name ?? ''}. Rep: ${repName ?? ''}`,
+    status: 'active',
     active: true,
   }).select().single()
 
   if (custErr) {
     return NextResponse.json({ error: `Customer creation failed: ${custErr.message}` }, { status: 500 })
+  }
+
+  // 1b. Create the delivery subscription from the intake quantities
+  if ((intake.qty_350ml ?? 0) > 0 || (intake.qty_750ml ?? 0) > 0) {
+    await sb.from('customer_subscriptions').insert({
+      customer_id: customer.id,
+      status: 'active',
+      qty_350ml: intake.qty_350ml ?? 0,
+      qty_750ml: intake.qty_750ml ?? 0,
+      delivery_days: intake.preferred_days?.length ? intake.preferred_days : null,
+      start_date: new Date().toISOString().split('T')[0],
+      special_instructions: intake.special_notes || null,
+    }).then(r => { if (r.error) console.error('Subscription creation failed:', r.error.message) })
   }
 
   // 2. Mark lead as closed_won
