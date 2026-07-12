@@ -169,7 +169,10 @@ export function Sidebar() {
       <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
         {/* Dashboard */}
         <div className="space-y-0.5">
-          {[{ label: t('nav_dashboard'), href: '/dashboard', icon: LayoutDashboard }].map(({ label, href, icon: Icon }) => {
+          {[
+            { label: t('nav_dashboard'), href: '/dashboard', icon: LayoutDashboard },
+            { label: 'Executive', href: '/executive', icon: TrendingUp },
+          ].map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} prefetch={true}

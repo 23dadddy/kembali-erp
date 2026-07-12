@@ -4,8 +4,12 @@
     {
       "name": "kembali-erp",
       "runtimeExecutable": "/Users/kylewillging/Desktop/kembali-erp/node_modules/.bin/next",
-      "runtimeArgs": ["dev"],
-      "port": 3000,
+      "runtimeArgs": [
+        "dev",
+        "-p",
+        "3300"
+      ],
+      "port": 3300,
       "autoPort": false
     }
   ]
