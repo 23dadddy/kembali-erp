@@ -36,6 +36,26 @@ export async function GET(req: NextRequest) {
   const todayStr = today.toISOString().split('T')[0]
   const results: Record<string, any> = {}
 
+  // ── 0. Dispatch weekly/monthly jobs (Vercel Hobby allows only daily crons) ──
+  // Monday → weekly scorecards; 1st of month → monthly invoicing + lead scrape
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kembali-erp.vercel.app'
+  const cronHeaders: Record<string, string> = process.env.CRON_SECRET
+    ? { authorization: `Bearer ${process.env.CRON_SECRET}` }
+    : {}
+
+  if (today.getUTCDay() === 1) {
+    const r = await fetch(`${base}/api/cron/weekly`, { headers: cronHeaders }).then(x => x.json()).catch(e => ({ error: String(e) }))
+    results.weekly = r
+  }
+  if (today.getUTCDate() === 1) {
+    const [monthly, scrape] = await Promise.all([
+      fetch(`${base}/api/cron/monthly`, { headers: cronHeaders }).then(x => x.json()).catch(e => ({ error: String(e) })),
+      fetch(`${base}/api/sales/cron-scrape`, { headers: cronHeaders }).then(x => x.json()).catch(e => ({ error: String(e) })),
+    ])
+    results.monthly = monthly
+    results.scrape = scrape
+  }
+
   // ── 1. Mark overdue invoices ────────────────────────────────────────────────
   const { data: toMarkOverdue, error: overdueErr } = await sb
     .from('invoices')
