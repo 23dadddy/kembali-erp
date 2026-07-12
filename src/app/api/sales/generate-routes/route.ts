@@ -156,9 +156,9 @@ export async function POST(req: NextRequest) {
       stop_count: stops.length,
     })
 
-    // Push notification to the rep's phone
-    if (rep.id) {
-      const { data: staffRow } = await sb.from('staff').select('push_token').eq('id', rep.id).maybeSingle()
+    // Push notification to the rep's phone (sales_reps are copied from staff by name)
+    {
+      const { data: staffRow } = await sb.from('staff').select('push_token').eq('name', rep.name).maybeSingle()
       if (staffRow?.push_token) {
         sendPush({
           to: staffRow.push_token,
