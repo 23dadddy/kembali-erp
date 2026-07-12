@@ -1,9 +1,9 @@
 /**
  * POST /api/deliveries/en-route
  *
- * Fired when a driver opens a pending delivery — marks it in_progress and
+ * Fired when a driver opens a pending delivery — marks it in_transit and
  * sends the customer a "your driver is on the way" WhatsApp. Idempotent:
- * only fires on the pending → in_progress transition.
+ * only fires on the pending → in_transit transition.
  *
  * Body: { deliveryId }
  */
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!delivery) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (delivery.status !== 'pending') return NextResponse.json({ ok: true, skipped: 'already in progress or completed' })
 
-  await sb.from('deliveries').update({ status: 'in_progress' }).eq('id', deliveryId)
+  await sb.from('deliveries').update({ status: 'in_transit' }).eq('id', deliveryId)
 
   const customer = delivery.customer as any
   const driver = delivery.driver as any
