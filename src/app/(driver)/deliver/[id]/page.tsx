@@ -48,6 +48,14 @@ export default function DeliverPage({ params }: { params: Promise<{ id: string }
         delivered_350ml: d.delivered_350ml || 0,
         delivered_750ml: d.delivered_750ml || 0,
       }))
+      // Notify customer the driver is on the way (idempotent, pending → in_progress only)
+      if (d.status === 'pending') {
+        fetch('/api/deliveries/en-route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deliveryId: id }),
+        }).catch(() => null)
+      }
     }).finally(() => setLoading(false))
   }, [id])
 

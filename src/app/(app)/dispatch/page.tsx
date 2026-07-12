@@ -402,6 +402,23 @@ function RouteMapPanel({ stops, optimizeResult }: { stops: any[]; optimizeResult
   const [activeStop, setActiveStop] = useState<string | null>(null)
   const [geocoded, setGeocoded] = useState<Record<string, { lat: number; lng: number }>>({})
   const [geocoding, setGeocoding] = useState(false)
+  const [liveDrivers, setLiveDrivers] = useState<any[]>([])
+  const [activeDriver, setActiveDriver] = useState<string | null>(null)
+
+  // Poll live driver GPS positions every 15s
+  useEffect(() => {
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/driver/location')
+        const data = await res.json()
+        if (!cancelled) setLiveDrivers(data.drivers ?? [])
+      } catch { /* offline */ }
+    }
+    poll()
+    const id = setInterval(poll, 15000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   // Geocode stop addresses when stops change
   useEffect(() => {
@@ -499,6 +516,29 @@ function RouteMapPanel({ stops, optimizeResult }: { stops: any[]; optimizeResult
             </Marker>
           )
         })}
+        {/* Live driver positions */}
+        {liveDrivers.map((d) => (
+          <Marker
+            key={d.driver_id}
+            position={{ lat: Number(d.lat), lng: Number(d.lng) }}
+            icon={{
+              path: 'M17.402,0H5.643C2.526,0,0,2.526,0,5.643v11.759C0,20.518,2.526,23,5.643,23h11.759C20.518,23,23,20.518,23,17.402V5.643C23,2.526,20.518,0,17.402,0z M22,17.402C22,19.947,19.947,22,17.402,22H5.643C3.098,22,1,19.947,1,17.402V5.643C1,3.098,3.098,1,5.643,1h11.759C19.947,1,22,3.098,22,5.643V17.402z',
+              scale: 0,
+            }}
+            label={{ text: '🚚', fontSize: '24px' }}
+            onClick={() => setActiveDriver(d.driver_id === activeDriver ? null : d.driver_id)}
+          >
+            {activeDriver === d.driver_id && (
+              <InfoWindow onCloseClick={() => setActiveDriver(null)}>
+                <div className="text-xs">
+                  <p className="font-bold text-slate-800">🚚 {(d.driver as any)?.name ?? 'Driver'}</p>
+                  {d.speed_kmh != null && <p className="text-slate-500 mt-0.5">{Math.round(Number(d.speed_kmh))} km/h</p>}
+                  <p className="text-slate-400 mt-0.5">Updated {new Date(d.recorded_at).toLocaleTimeString()}</p>
+                </div>
+              </InfoWindow>
+            )}
+          </Marker>
+        ))}
       </GoogleMap>
     </div>
   )

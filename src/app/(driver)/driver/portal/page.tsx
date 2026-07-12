@@ -32,6 +32,33 @@ export default function DriverPortalPage() {
     return () => { sb.removeChannel(channel) }
   }, [])
 
+  // GPS beacon: send the driver's position every 30s while the portal is open
+  useEffect(() => {
+    if (!selectedDriver || typeof navigator === 'undefined' || !navigator.geolocation) return
+    let lastSent = 0
+    const send = (pos: GeolocationPosition) => {
+      const now = Date.now()
+      if (now - lastSent < 25000) return // throttle to ~30s
+      lastSent = now
+      fetch('/api/driver/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverId: selectedDriver,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          heading: pos.coords.heading,
+          speed_kmh: pos.coords.speed != null ? pos.coords.speed * 3.6 : null,
+          accuracy_m: pos.coords.accuracy,
+        }),
+      }).catch(() => null)
+    }
+    const watchId = navigator.geolocation.watchPosition(send, () => null, {
+      enableHighAccuracy: true, maximumAge: 15000, timeout: 20000,
+    })
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [selectedDriver])
+
   const loadDriversAndRoutes = async () => {
     const sb = createClient()
     const [driversRes, routesRes] = await Promise.all([
