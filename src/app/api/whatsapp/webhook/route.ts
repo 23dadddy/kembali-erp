@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { handleInboundMessage } from '@/lib/sales-agent'
+
+export const maxDuration = 60
 
 // Twilio WhatsApp inbound webhook
 // Configure in Twilio Console → Messaging → WhatsApp → Sandbox/Number → "A message comes in" webhook URL
@@ -64,7 +67,10 @@ export async function POST(req: NextRequest) {
     status: 'received',
   })
 
-  // Return empty TwiML (no auto-reply)
+  // AI agent handles the conversation and replies via Twilio.
+  // Awaited so the serverless function isn't frozen before the reply sends.
+  await handleInboundMessage(phone, msgBody).catch(e => console.error('[webhook] agent error:', e))
+
   return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
     headers: { 'Content-Type': 'text/xml' },
   })

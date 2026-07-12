@@ -8,13 +8,18 @@
  * Tasks:
  *  1. Mark eligible 'sent' invoices as 'overdue' (past due_date)
  *  2. Generate subscription deliveries for today (active subs that match today's day)
+ *  3. WhatsApp payment escalation for invoices 14+ days overdue
+ *  4. WhatsApp "delivery tomorrow" reminders to subscription customers
+ *  5. Auto-archive sales leads unresponsive for 90+ days
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendOverdueReminderEmail, sendDailySummaryEmail } from '@/lib/email'
+import { sendWhatsApp } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   // Protect endpoint — Vercel sends this header on cron requests
@@ -152,6 +157,70 @@ export async function GET(req: NextRequest) {
     .gt('reorder_point', 0)
 
   const lowStock = (allStock ?? []).filter(i => Number(i.quantity ?? 0) <= Number(i.reorder_point ?? 0))
+
+  // ── 5b. WhatsApp payment escalation (14+ days overdue) ──────────────────────
+  const fourteenDaysAgo = new Date(today.getTime() - 14 * 86400000).toISOString().split('T')[0]
+  const { data: escalation } = await sb
+    .from('invoices')
+    .select('id, invoice_number, total, due_date, customer:customers(name, contact_name, contact_phone)')
+    .eq('status', 'overdue')
+    .lte('due_date', fourteenDaysAgo)
+
+  let escalationsSent = 0
+  for (const inv of (escalation ?? [])) {
+    const customer = inv.customer as any
+    if (!customer?.contact_phone) continue
+    const wa = await sendWhatsApp({
+      to: customer.contact_phone,
+      contactName: customer.contact_name,
+      body: `Hi ${customer.contact_name ?? customer.name}, a friendly reminder from Kembali Water: invoice ${inv.invoice_number} for Rp ${Number(inv.total).toLocaleString('id-ID')} was due on ${inv.due_date} and is still outstanding.
+
+Please arrange payment at your earliest convenience, or reply here if you have any questions. Thank you! 💧`,
+    })
+    if (wa.ok) escalationsSent++
+  }
+  results.payment_escalations_sent = escalationsSent
+
+  // ── 5c. "Delivery tomorrow" WhatsApp reminders ───────────────────────────────
+  const tomorrow = new Date(today.getTime() + 86400000)
+  const tomorrowDayName = dayNames[tomorrow.getDay()]
+  const { data: tomorrowSubs } = await sb
+    .from('customer_subscriptions')
+    .select('customer_id, qty_350ml, qty_750ml, delivery_days, customer:customers(name, contact_name, contact_phone)')
+    .eq('status', 'active')
+
+  let deliveryRemindersSent = 0
+  for (const sub of (tomorrowSubs ?? [])) {
+    const days: string[] = sub.delivery_days ?? []
+    if (days.length > 0 && !days.includes(tomorrowDayName)) continue
+    const customer = sub.customer as any
+    if (!customer?.contact_phone) continue
+    const wa = await sendWhatsApp({
+      to: customer.contact_phone,
+      contactName: customer.contact_name,
+      body: `Hi ${customer.contact_name ?? customer.name}! Your Kembali Water delivery is scheduled for tomorrow${sub.qty_350ml || sub.qty_750ml ? ` (${[sub.qty_350ml ? `${sub.qty_350ml}×350ml` : '', sub.qty_750ml ? `${sub.qty_750ml}×750ml` : ''].filter(Boolean).join(' + ')})` : ''}.
+
+Please have your empty bottles ready for collection. See you tomorrow! 💧`,
+    })
+    if (wa.ok) deliveryRemindersSent++
+  }
+  results.delivery_reminders_sent = deliveryRemindersSent
+
+  // ── 5d. Auto-archive stale leads (90+ days no contact, never won) ───────────
+  const ninetyDaysAgo = new Date(today.getTime() - 90 * 86400000).toISOString()
+  const { data: staleLeads } = await sb
+    .from('sales_leads')
+    .select('id')
+    .not('stage', 'in', '("closed_won","closed_lost","prospect")')
+    .lt('last_contacted_at', ninetyDaysAgo)
+    .is('next_follow_up', null)
+
+  if (staleLeads?.length) {
+    await sb.from('sales_leads')
+      .update({ stage: 'closed_lost', notes: 'Auto-archived: no response for 90+ days' })
+      .in('id', staleLeads.map(l => l.id))
+  }
+  results.stale_leads_archived = staleLeads?.length ?? 0
 
   // ── 6. Send daily summary email to admin ─────────────────────────────────────
   await sendDailySummaryEmail({
